@@ -631,7 +631,7 @@ void MyPCA::writeMatrices() {
 }
 
 
-void MyPCA::generateEllipse(std::vector<Point>& points, int* arrGridLabel, int label, int nWidth, int nHeight, double dbDis) {
+void MyPCA::generateEllipse(std::vector<DPoint3>& points, int* arrGridLabel, int label, int nWidth, int nHeight, double dbDis) {
 	// calculate the confidence eclipse
 
 	int row = 0;

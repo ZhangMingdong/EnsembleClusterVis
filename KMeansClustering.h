@@ -5,17 +5,19 @@
 // ============================================================
 #pragma once
 #include "Clustering.h"
-class KMeansClustering : public Clustering
-{
-public:
-	KMeansClustering();
-	virtual ~KMeansClustering();
-protected:
-	virtual void doCluster();
-private:
-	// cluster centers
-	double* _arrCenters;
-	// length of each cluster
-	int* _arrClusterLen;
-};
+namespace CLUSTER {
+	class KMeansClustering : public Clustering
+	{
+	public:
+		KMeansClustering();
+		virtual ~KMeansClustering();
+	protected:
+		virtual void doCluster();
+	private:
+		// cluster centers
+		double* _arrCenters;
+		// length of each cluster
+		int* _arrClusterLen;
+	};
 
+}

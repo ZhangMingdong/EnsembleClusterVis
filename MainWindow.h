@@ -18,6 +18,8 @@ class MyGLWidget;
 
 class MeteModel;
 
+class ClusteringWidget;
+
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
@@ -30,6 +32,7 @@ private:
 	MyGLWidget *_view3D;
 	// table
 	ControlWidget *_pControlWidget;
+	ClusteringWidget* _pWidgetClustering;
 
 	// view
 	QAction *viewShowGridLinesAction;			
@@ -163,6 +166,8 @@ public slots:
 	void onSelectBackgroundVari(bool bChecked);
 	void onSelectBackgroundCluster(bool bChecked);
 	void onSelectBackgroundSDF(bool bChecked);
+	void onSelectBackgroundVarSmooth(bool bChecked);
+	void updateVarSmooth(int nSmooth);
 protected:
 	virtual void closeEvent(QCloseEvent *event);
 };

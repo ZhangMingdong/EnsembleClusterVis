@@ -28,9 +28,197 @@
 #include "ReanalysisModel.h"
 #include "ContourBandDepthModel.h"
 
+#include "SpatialCluster.h"
+
+
 using namespace std;
 
 
+void ClusterResult::PushLabel(int nIndex, int nLabel) {
+	_vecItems[nLabel].push_back(nIndex);
+	_arrLabels[nIndex] = nLabel;
+}
+
+
+void ClusterResult::Match(ClusterResult& mc) {
+	int mtxWeight[5][5];					// weight matrix
+	int arrMatch[5];						// the result of the perfect match
+	int nClusters = 5;						// number of clusters
+	// 0.initialize matrix
+	for (size_t i = 0; i < nClusters; i++)
+	{
+		for (size_t j = 0; j < nClusters; j++) {
+			mtxWeight[i][j] = 0;
+		}
+	}
+	// 1.calculate weight
+	for (size_t i = 0; i < _nM; i++)
+	{
+		mtxWeight[_arrLabels[i]][mc._arrLabels[i]]++;
+	}
+
+	for (size_t i = 0; i < nClusters; i++)
+	{
+		for (size_t j = 0; j < nClusters; j++) {
+			cout<< mtxWeight[i][j]<<"\t";
+		}
+		cout << endl;
+	}
+
+	// 2.calculate max weight perfect matching using Hungarian algorithm
+	// use approximate algorithm, always searching for the biggest value
+	for (size_t l = 0; l < nClusters; l++) {
+		// find biggest value
+		int iMax = 0; 
+		int jMax = 0;
+		int vMax = -1;
+		for (size_t i = 0; i < nClusters; i++)
+		{
+			for (size_t j = 0; j < nClusters; j++) {
+				if (mtxWeight[i][j]>vMax) {
+					vMax = mtxWeight[i][j];
+					iMax = i;
+					jMax = j;
+				}
+			}
+		}
+		arrMatch[iMax] = jMax;
+		for (size_t i = 0; i < nClusters; i++)
+		{
+			mtxWeight[i][jMax] = mtxWeight[iMax][i] = -1;
+		}
+	}
+	qDebug() << "match:";
+	for (size_t i = 0; i < nClusters; i++)
+	{
+		qDebug() << arrMatch[i];
+	}
+	// 3.reset labels
+	for (size_t i = 0; i < _nM; i++)
+	{
+		_arrLabels[i] = arrMatch[_arrLabels[i]];
+	}
+	generateItemsByLabels();
+
+
+	// 4.Sort items in each cluster according to the sequence in mc
+	// sort according to order in cluster of each other
+	for (size_t i = 0; i < 5; i++)
+	{
+		int len = _vecItems[i].size();
+		for (size_t j = 1; j < len; j++) {
+			for (size_t k = 1; k < len; k++) {
+				if (mc._arrLabels[_vecItems[i][k]]<mc._arrLabels[_vecItems[i][k - 1]]) {
+					int nTemp = _vecItems[i][k];
+					_vecItems[i][k] = _vecItems[i][k - 1];
+					_vecItems[i][k - 1] = nTemp;
+				}
+			}
+		}
+
+		len = mc._vecItems[i].size();
+		for (size_t j = 1; j < len; j++) {
+			for (size_t k = 1; k < len; k++) {
+				if (_arrLabels[mc._vecItems[i][k]]<_arrLabels[mc._vecItems[i][k - 1]]) {
+					int nTemp = mc._vecItems[i][k];
+					mc._vecItems[i][k] = mc._vecItems[i][k - 1];
+					mc._vecItems[i][k - 1] = nTemp;
+				}
+			}
+		}
+	}
+	// record order
+	int arrSeq[50];
+	int arrSeqMC[50];
+	int nIndex = 0;
+	int nIndexMC = 0;
+	for (size_t i = 0; i < 5; i++)
+	{
+		int len = _vecItems[i].size();
+		for (size_t j = 0; j < len; j++) {
+			arrSeq[_vecItems[i][j]] = nIndex++;
+		}
+		len = mc._vecItems[i].size();
+		for (size_t j = 0; j < len; j++) {
+			arrSeqMC[mc._vecItems[i][j]] = nIndexMC++;
+		}
+	}
+	// sort according to the order
+	for (size_t i = 0; i < 5; i++)
+	{
+		int len = _vecItems[i].size();
+		for (size_t j = 1; j < len; j++) {
+			for (size_t k = 1; k < len; k++) {
+				if (arrSeqMC[_vecItems[i][k]]<arrSeqMC[_vecItems[i][k - 1]]) {
+					int nTemp = _vecItems[i][k];
+					_vecItems[i][k] = _vecItems[i][k - 1];
+					_vecItems[i][k - 1] = nTemp;
+				}
+			}
+		}
+
+		len = mc._vecItems[i].size();
+		for (size_t j = 1; j < len; j++) {
+			for (size_t k = 1; k < len; k++) {
+				if (arrSeq[mc._vecItems[i][k]]<arrSeq[mc._vecItems[i][k - 1]]) {
+					int nTemp = mc._vecItems[i][k];
+					mc._vecItems[i][k] = mc._vecItems[i][k - 1];
+					mc._vecItems[i][k - 1] = nTemp;
+				}
+			}
+		}
+	}
+}
+
+void ClusterResult::generateItemsByLabels() {
+	for (size_t i = 0; i < 5; i++)
+	{
+		_vecItems[i].clear();
+	}
+	for (size_t i = 0; i < _nM; i++)
+	{
+		_vecItems[_arrLabels[i]].push_back(i);
+	}
+}
+
+void ClusterResult::Sort() {
+	// array recording count of each cluster
+	int arrCount[5];
+	for (size_t i = 0; i < 5; i++)
+	{
+		arrCount[i] = _vecItems[i].size();
+	}
+	// get the projection
+	int arrMap[5];
+	for (size_t i = 0; i < 5; i++)
+	{
+		int nMax = -1;
+		int nMaxIndex = -1;
+		for (size_t j = 0; j < 5; j++)
+		{
+			if (arrCount[j] > nMax) {
+				nMax = arrCount[j];
+				nMaxIndex = j;
+			}
+		}
+		arrMap[nMaxIndex] = i;
+		arrCount[nMaxIndex] = -1;
+	}
+	// reset label
+	for (size_t i = 0; i < _nM; i++)
+	{
+		_arrLabels[i] = arrMap[_arrLabels[i]];
+	}
+	generateItemsByLabels();
+}
+
+void ClusterResult::Reset(int nM, int nK) {
+	_nM = nM;
+	_nK = nK;
+	for (int i = 0; i < 5; i++) {
+		_vecItems[i].clear();
+	}
+}
 
 /*
 double PointToSegDist(double x, double y, double x1, double y1, double x2, double y2)
@@ -378,6 +566,8 @@ void MeteModel::readDataFromText() {
 }
 
 void MeteModel::doPCA() {
+	/*
+	
 	int nPCALen = _nEnsembleLen - 1;
 
 	// 1.pca
@@ -448,6 +638,7 @@ void MeteModel::doPCA() {
 	}
 	
 	delete[] arrData;
+	*/
 }
 
 void MeteModel::calculateSDF(const double* arrData, double* arrSDF, int nW, int nH, double isoValue, QList<ContourLine> contour) {
@@ -511,53 +702,29 @@ GLubyte* MeteModel::generateTexture() {
 
 GLubyte* MeteModel::generateTextureMean() {
 	const double* pData = _bgFunction==bg_mean? _pData->GetMean(): _pData->GetVari();
-	// old version, whole area
-	if (false)
-	{
-		GLubyte* dataTexture = new GLubyte[4 * _nLen];
+	GLubyte* dataTexture = new GLubyte[4 * _nFocusLen];
 
-		// color map
-		ColorMap* colormap = ColorMap::GetInstance();
+	// color map
+	ColorMap* colormap = ColorMap::GetInstance();
+	for (int i = _nFocusY, iLen = _nFocusY + _nFocusH; i < iLen; i++) {
+		for (int j = _nFocusX, jLen = _nFocusX + _nFocusW; j < jLen; j++) {
 
-		for (int i = 0; i < _nLen; i++)
-		{
-			MYGLColor color = colormap->GetColor(pData[i]);
+			int nIndex = i*_nWidth + j;
+			int nIndexFocus = (i - _nFocusY)*_nFocusW + j - _nFocusX;
+			MYGLColor color = colormap->GetColor(pData[nIndex]);
 			// using transparency and the blue tunnel
-			dataTexture[4 * i + 0] = color._rgb[0];
-			dataTexture[4 * i + 1] = color._rgb[1];
-			dataTexture[4 * i + 2] = color._rgb[2];
-			dataTexture[4 * i + 3] = (GLubyte)255;
+			dataTexture[4 * nIndexFocus + 0] = color._rgb[0];
+			dataTexture[4 * nIndexFocus + 1] = color._rgb[1];
+			dataTexture[4 * nIndexFocus + 2] = color._rgb[2];
+			dataTexture[4 * nIndexFocus + 3] = (GLubyte)255;
+
 		}
-
-		return dataTexture;
 	}
-	// new version, focused area
-	if (true)
-	{
-		GLubyte* dataTexture = new GLubyte[4 * _nFocusLen];
-
-		// color map
-		ColorMap* colormap = ColorMap::GetInstance();
-		for (int i = _nFocusY, iLen = _nFocusY + _nFocusH; i < iLen; i++) {
-			for (int j = _nFocusX, jLen = _nFocusX + _nFocusW; j < jLen; j++) {
-
-				int nIndex = i*_nWidth + j;
-				int nIndexFocus = (i - _nFocusY)*_nFocusW + j - _nFocusX;
-				MYGLColor color = colormap->GetColor(pData[nIndex]);
-				// using transparency and the blue tunnel
-				dataTexture[4 * nIndexFocus + 0] = color._rgb[0];
-				dataTexture[4 * nIndexFocus + 1] = color._rgb[1];
-				dataTexture[4 * nIndexFocus + 2] = color._rgb[2];
-				dataTexture[4 * nIndexFocus + 3] = (GLubyte)255;
-
-			}
-		}
-		return dataTexture;
-	}
+	return dataTexture;
 }
 
-GLubyte* MeteModel::generateTextureVar() {
-	const double* pData = _bgFunction == bg_mean ? _pData->GetMean() : _pData->GetVari();
+GLubyte* MeteModel::generateTextureThresholdVar() {
+	const double* pData = _bgFunction == bg_mean ? _pData->GetMean() : _pData->GetVari(_nSmooth);
 	GLubyte* dataTexture = new GLubyte[4 * _nFocusLen];
 
 	// color map
@@ -595,6 +762,7 @@ GLubyte* MeteModel::generateTextureVar() {
 
 
 GLubyte* MeteModel::generateTextureDiscreteSummary() {
+	/*
 	const double* pData = _pData->GetVari();
 	GLubyte* dataTexture = new GLubyte[4 * _nFocusLen];
 
@@ -602,64 +770,7 @@ GLubyte* MeteModel::generateTextureDiscreteSummary() {
 	ColorMap* colormap = ColorMap::GetInstance(ColorMap::CP_RainBow);
 
 	// clustering
-	bool bDBSCAN = true;
-	if (bDBSCAN) {
-		// 1.create input data for dbscan
-		int* arrState = new int[_nLen];
-		int* arrGridLabels= new int[_nLen];
-		// generate big variance points
-		for (int i = _nFocusY, iLen = _nFocusY + _nFocusH; i < iLen; i++) {
-			for (int j = _nFocusX, jLen = _nFocusX + _nFocusW; j < jLen; j++) {
-				int nIndexFocus = (i - _nFocusY)*_nFocusW + j - _nFocusX;
-				int nIndex = i*_nWidth + j;
-				arrState[nIndex] = 1;
-				if (pData[nIndex]>_dbVarThreshold)
-					arrState[nIndex] = 1;
-				else
-					arrState[nIndex] = 0;
-
-			}
-		}
-
-		// 2.dbscan
-		DBSCANClustering dbscan;
-		dbscan.DoCluster(_nFocusH, _nFocusW, g_nMinPts, g_dbEps, arrState, arrGridLabels);
-		// 3.count the clusters
-		int nClusters = 0;
-		for (size_t i = 0; i < _nLen; i++)
-		{
-			if (arrGridLabels[i] > nClusters) nClusters = arrGridLabels[i];
-		}
-
-		// generate big variance points
-		for (int i = _nFocusY, iLen = _nFocusY + _nFocusH; i < iLen; i++) {
-			for (int j = _nFocusX, jLen = _nFocusX + _nFocusW; j < jLen; j++) {
-				int nIndexFocus = (i - _nFocusY)*_nFocusW + j - _nFocusX;
-				int nIndex = i*_nWidth + j;
-				if (arrGridLabels[nIndex]>0)
-				{
-					MYGLColor color = colormap->GetColor(arrGridLabels[nIndex]-7);
-
-					dataTexture[4 * nIndexFocus + 0] = color._rgb[0];
-					dataTexture[4 * nIndexFocus + 1] = color._rgb[1];
-					dataTexture[4 * nIndexFocus + 2] = color._rgb[2];
-					dataTexture[4 * nIndexFocus + 3] = (GLubyte)255;
-				}
-				else {
-					dataTexture[4 * nIndexFocus + 0] = (GLubyte)255;
-					dataTexture[4 * nIndexFocus + 1] = (GLubyte)255;
-					dataTexture[4 * nIndexFocus + 2] = (GLubyte)255;
-					dataTexture[4 * nIndexFocus + 3] = (GLubyte)255;
-
-				}
-
-			}
-		}
-
-		delete[]arrState;
-		delete[]arrGridLabels;
-	}
-	else {
+	{
 		std::vector<int> vecX;
 		std::vector<int> vecY;
 
@@ -732,6 +843,271 @@ GLubyte* MeteModel::generateTextureDiscreteSummary() {
 	}
 
 	return dataTexture;
+	*/
+	return NULL;
+}
+
+// generate texture of clustered variance, old version, use dbscan directly
+GLubyte* MeteModel::generateClusteredVarianceTexture_old() {
+	{
+		const double* pData = _pData->GetVari();
+		GLubyte* dataTexture = new GLubyte[4 * _nFocusLen];
+
+
+		ColorMap* colormap = ColorMap::GetInstance(ColorMap::CP_RainBow);
+		std::vector<int> vecX;
+		std::vector<int> vecY;
+
+		// generate big variance points
+		for (int i = _nFocusY, iLen = _nFocusY + _nFocusH; i < iLen; i++) {
+			for (int j = _nFocusX, jLen = _nFocusX + _nFocusW; j < jLen; j++) {
+				int nIndexFocus = (i - _nFocusY)*_nFocusW + j - _nFocusX;
+				int nIndex = i*_nWidth + j;
+				if (pData[nIndex]>_dbVarThreshold)
+				{
+					vecX.push_back(i);
+					vecY.push_back(j);
+				}
+
+				dataTexture[4 * nIndexFocus + 0] = (GLubyte)100;
+				dataTexture[4 * nIndexFocus + 1] = (GLubyte)100;
+				dataTexture[4 * nIndexFocus + 2] = (GLubyte)100;
+				dataTexture[4 * nIndexFocus + 3] = (GLubyte)255;
+
+			}
+		}
+		bool bDBSCAN = true;
+		CLUSTER::Clustering* pClusterer = NULL;
+
+		if (bDBSCAN) {
+			int minPts = 3;
+			double dbEps = 8.0;
+			CLUSTER::DBSCANClustering* pSBSCAN = new CLUSTER::DBSCANClustering();
+			pSBSCAN->SetDBSCANParams(minPts, dbEps);
+			pClusterer = pSBSCAN;
+		}
+		else {
+			pClusterer = new CLUSTER::KMeansClustering();
+		}
+
+		//	AHCClustering clustering;
+		// KMeansClustering clustering;
+		//DBSCANClustering clustering;
+		int number = vecX.size();
+		double* arrBuf = new double[number * 2];
+		for (size_t i = 0; i < number; i++)
+		{
+			arrBuf[i * 2] = vecX[i];
+			arrBuf[i * 2 + 1] = vecY[i];
+		}
+		int* arrLabel = new int[number];
+		_nClusters = pClusterer->DoCluster(number, 2, _nClusters, arrBuf, arrLabel);
+
+		for (size_t i = 0; i < number; i++)
+		{
+
+			int nIndexFocus = (vecX[i] - _nFocusY)*_nFocusW + vecY[i] - _nFocusX;
+
+			switch (arrLabel[i]) {
+			case 0:
+				dataTexture[4 * nIndexFocus + 0] = (GLubyte)255;
+				dataTexture[4 * nIndexFocus + 1] = (GLubyte)0;
+				dataTexture[4 * nIndexFocus + 2] = (GLubyte)0;
+				dataTexture[4 * nIndexFocus + 3] = (GLubyte)255;
+				break;
+			case 1:
+				dataTexture[4 * nIndexFocus + 0] = (GLubyte)0;
+				dataTexture[4 * nIndexFocus + 1] = (GLubyte)255;
+				dataTexture[4 * nIndexFocus + 2] = (GLubyte)0;
+				dataTexture[4 * nIndexFocus + 3] = (GLubyte)255;
+				break;
+			case 2:
+				dataTexture[4 * nIndexFocus + 0] = (GLubyte)0;
+				dataTexture[4 * nIndexFocus + 1] = (GLubyte)0;
+				dataTexture[4 * nIndexFocus + 2] = (GLubyte)255;
+				dataTexture[4 * nIndexFocus + 3] = (GLubyte)255;
+				break;
+			case 3:
+				dataTexture[4 * nIndexFocus + 0] = (GLubyte)0;
+				dataTexture[4 * nIndexFocus + 1] = (GLubyte)128;
+				dataTexture[4 * nIndexFocus + 2] = (GLubyte)128;
+				dataTexture[4 * nIndexFocus + 3] = (GLubyte)255;
+				break;
+			}
+		}
+		delete pClusterer;
+		delete arrBuf;
+		delete arrLabel;
+		qDebug() << _nClusters;
+		return dataTexture;
+	}
+}
+
+// cluster comparison function, used for sort
+bool ClusterComparison(OneSpatialCluster c1, OneSpatialCluster c2) {
+	return c1._nArea > c2._nArea;
+}
+
+// generate texture of clustered variance
+GLubyte* MeteModel::generateClusteredVarianceTexture() {
+	const double* pData = _pData->GetVari(_nSmooth);
+	GLubyte* dataTexture = new GLubyte[4 * _nFocusLen];
+
+	SpatialCluster cluster;
+	std::vector<OneSpatialCluster> result;
+	cluster.DoCluster(pData, _nWidth, _nHeight, _dbVarThreshold,result);
+	sort(result.begin(), result.end(), ClusterComparison);
+
+
+
+	// cluster the two biggest clusters
+	if (result.size()>0)
+	{
+		clusterSpatialArea(result[0], _vecPCAPoints[0], _arrClusterResult[0]);
+		_arrClusterResult[0].Sort();
+		if (result.size()>1)
+		{
+			clusterSpatialArea(result[1], _vecPCAPoints[1], _arrClusterResult[1]);
+			_arrClusterResult[1].Match(_arrClusterResult[0]);
+		}
+	}
+
+
+	// initialize the texture
+	for (size_t i = 0; i < _nFocusLen; i++)
+	{
+		dataTexture[4 * i + 0] = (GLubyte)100;
+		dataTexture[4 * i + 1] = (GLubyte)100;
+		dataTexture[4 * i + 2] = (GLubyte)100;
+		dataTexture[4 * i + 3] = (GLubyte)255;
+	}
+
+	// set the cluster color
+	for (size_t i = 0, length = result.size(); i < length; i++)
+	{
+		
+		for (size_t j = 0, length = result[i]._vecPoints.size(); j < length; j++) {
+
+			int nIndex = result[i]._vecPoints[j].x*_nWidth + result[i]._vecPoints[j].y;
+
+			switch (i)
+			{
+			case 0:
+				dataTexture[4 * nIndex + 0] = (GLubyte)255;
+				dataTexture[4 * nIndex + 1] = (GLubyte)0;
+				dataTexture[4 * nIndex + 2] = (GLubyte)0;
+				dataTexture[4 * nIndex + 3] = (GLubyte)255;
+				break;
+			case 1:
+				dataTexture[4 * nIndex + 0] = (GLubyte)0;
+				dataTexture[4 * nIndex + 1] = (GLubyte)255;
+				dataTexture[4 * nIndex + 2] = (GLubyte)0;
+				dataTexture[4 * nIndex + 3] = (GLubyte)255;
+				break;
+			case 2:
+				dataTexture[4 * nIndex + 0] = (GLubyte)0;
+				dataTexture[4 * nIndex + 1] = (GLubyte)0;
+				dataTexture[4 * nIndex + 2] = (GLubyte)255;
+				dataTexture[4 * nIndex + 3] = (GLubyte)255;
+				break;
+			case 3:
+				dataTexture[4 * nIndex + 0] = (GLubyte)255;
+				dataTexture[4 * nIndex + 1] = (GLubyte)255;
+				dataTexture[4 * nIndex + 2] = (GLubyte)0;
+				dataTexture[4 * nIndex + 3] = (GLubyte)255;
+				break;
+			case 4:
+				dataTexture[4 * nIndex + 0] = (GLubyte)255;
+				dataTexture[4 * nIndex + 1] = (GLubyte)0;
+				dataTexture[4 * nIndex + 2] = (GLubyte)255;
+				dataTexture[4 * nIndex + 3] = (GLubyte)255;
+				break;
+			default:
+				dataTexture[4 * nIndex + 0] = (GLubyte)200;
+				dataTexture[4 * nIndex + 1] = (GLubyte)200;
+				dataTexture[4 * nIndex + 2] = (GLubyte)200;
+				dataTexture[4 * nIndex + 3] = (GLubyte)255;
+				break;
+			}
+		}
+	}
+	return dataTexture;
+}
+
+GLubyte* MeteModel::generateTextureNew() {
+	switch (_bgFunction)
+	{
+	case MeteModel::bg_mean:
+	case MeteModel::bg_vari:
+		{
+			const double* pData = _bgFunction == bg_mean ? _pData->GetMean() : _pData->GetVari();
+			GLubyte* dataTexture = new GLubyte[4 * _nFocusLen];
+
+			ofstream output("variance.txt");
+			output << (_bgFunction == bg_mean ? "mean" : "variance") << endl;
+			for (int i = _nFocusY, iLen = _nFocusY + _nFocusH; i < iLen; i++) {
+				for (int j = _nFocusX, jLen = _nFocusX + _nFocusW; j < jLen; j++) {
+
+					int nIndex = i*_nWidth + j;
+					int nIndexFocus = (i - _nFocusY)*_nFocusW + j - _nFocusX;
+					output << j << "\t" << i << "\t" << pData[nIndex] << endl;
+				}
+			}
+
+			// color map
+			ColorMap* colormap = ColorMap::GetInstance();
+			for (int i = _nFocusY, iLen = _nFocusY + _nFocusH; i < iLen; i++) {
+				for (int j = _nFocusX, jLen = _nFocusX + _nFocusW; j < jLen; j++) {
+
+					int nIndex = i*_nWidth + j;
+					int nIndexFocus = (i - _nFocusY)*_nFocusW + j - _nFocusX;
+					MYGLColor color = colormap->GetColor(pData[nIndex]);
+					// using transparency and the blue tunnel
+					dataTexture[4 * nIndexFocus + 0] = color._rgb[0];
+					dataTexture[4 * nIndexFocus + 1] = color._rgb[1];
+					dataTexture[4 * nIndexFocus + 2] = color._rgb[2];
+					dataTexture[4 * nIndexFocus + 3] = (GLubyte)255;
+
+				}
+			}
+			return dataTexture;
+		}
+		break;
+	case MeteModel::bg_cluster:
+//		return generateClusteredVarianceTexture_old();
+		return generateClusteredVarianceTexture();
+		break;
+	case MeteModel::bg_sdf:
+		return generateTextureThresholdVar();
+		break;
+	case MeteModel::bg_vari_smooth:
+	{
+		const double* pData =_pData->GetVari(_nSmooth);
+		GLubyte* dataTexture = new GLubyte[4 * _nFocusLen];
+
+		// color map
+		ColorMap* colormap = ColorMap::GetInstance();
+		for (int i = _nFocusY, iLen = _nFocusY + _nFocusH; i < iLen; i++) {
+			for (int j = _nFocusX, jLen = _nFocusX + _nFocusW; j < jLen; j++) {
+
+				int nIndex = i*_nWidth + j;
+				int nIndexFocus = (i - _nFocusY)*_nFocusW + j - _nFocusX;
+				MYGLColor color = colormap->GetColor(pData[nIndex]);
+				// using transparency and the blue tunnel
+				dataTexture[4 * nIndexFocus + 0] = color._rgb[0];
+				dataTexture[4 * nIndexFocus + 1] = color._rgb[1];
+				dataTexture[4 * nIndexFocus + 2] = color._rgb[2];
+				dataTexture[4 * nIndexFocus + 3] = (GLubyte)255;
+
+			}
+		}
+		return dataTexture;
+	}
+	break;
+	default:
+		break;
+	}
+
 }
 
 vector<double> MeteModel::GetVariance() {
@@ -995,6 +1371,7 @@ void MeteModel::readData() {
 }
 
 void MeteModel::doSpatialClustering() {
+	/*
 	// 1.create input data for dbscan
 	int* arrState = new int[_nLen];
 	for (size_t i = 0; i < _nLen; i++)
@@ -1021,7 +1398,7 @@ void MeteModel::doSpatialClustering() {
 			{
 				if (_arrGridLabels[i*_nWidth + j] == 1) {
 
-					_points.push_back(Point(DPoint3(j, i, 0)));
+					_points.push_back(DPoint3(DPoint3(j, i, 0)));
 				}
 			}
 		}
@@ -1041,6 +1418,7 @@ void MeteModel::doSpatialClustering() {
 		}
 	}
 	delete[] arrState;
+	*/
 }
 
 void MeteModel::initializeModel() {
@@ -1328,4 +1706,92 @@ MeteModel* MeteModel::CreateModel() {
 /*
 
 	*/
+}
+
+void MeteModel::generatePCAPoint(OneSpatialCluster& cluster, std::vector<DPoint3>& points) {
+	// 0.clear the points
+	points.clear();
+	// 1.set parameter
+	int mI = cluster._nArea;
+	int mO = 2;
+	int n = _nEnsembleLen;
+	// 2.allocate input and output buffer
+	double* arrInput = new double[mI*n];
+	double* arrOutput = new double[mO*n];
+	for (size_t i = 0; i < _nEnsembleLen; i++)
+	{
+		for (size_t j = 0; j < mI; j++) {
+			int x = cluster._vecPoints[j].x;
+			int y = cluster._vecPoints[j].y;
+			arrInput[i*mI + j] = _pData->GetData(i, x, y);
+		}
+	}
+	// 3.pca
+	MyPCA pca;
+	pca.DoPCA(arrInput, arrOutput, n, mI, mO, true);
+	// 4.generate points from the output
+	for (size_t i = 0; i < n; i++)
+	{
+		points.push_back(DPoint3(arrOutput[i * 2], arrOutput[i * 2 + 1], 0));
+	}
+	// 5.release the buffer
+	delete[] arrInput;
+	delete[] arrOutput;
+}
+
+void MeteModel::clusterSpatialArea(OneSpatialCluster& cluster, std::vector<DPoint3>& points, ClusterResult& cr) {
+	// 1.pca
+	generatePCAPoint(cluster, points);
+
+	// 2.cluster
+	CLUSTER::Clustering* pClusterer = new CLUSTER::KMeansClustering();
+	int nN = _nEnsembleLen;			// number of data items
+	int nK = 5;						// clusters
+	int* arrLabel = new int[nN];
+	bool bClusterUsingPCA = false;	// whether using pca points to cluster
+	if (bClusterUsingPCA)
+	{
+		int nM = 2;					// dimension
+		double* arrBuf = new double[nN * nM];
+		for (size_t i = 0; i < nN; i++)
+		{
+			arrBuf[i*nM] = points[i].x;
+			arrBuf[i*nM + 1] = points[i].y;
+		}
+		pClusterer->DoCluster(nN, nM, nK, arrBuf, arrLabel);
+		delete arrBuf;
+	}
+	else {
+		int nM = cluster._nArea;		// dimension
+		double* arrBuf = new double[nN * nM];
+		for (size_t i = 0; i < nN; i++)
+		{
+			for (size_t j = 0; j < nM; j++)
+			{
+				int x = cluster._vecPoints[j].x;
+				int y = cluster._vecPoints[j].y;
+				arrBuf[i * nM + j] = _pData->GetData(i, x, y);
+			}
+		}
+		pClusterer->DoCluster(nN, nM, nK, arrBuf, arrLabel);
+		delete arrBuf;
+	}
+
+
+	// 3.set label for pca points
+	for (size_t i = 0; i < nN; i++)
+	{
+		points[i].z = arrLabel[i] + .5;
+	}
+
+	// 4..record label
+	cr.Reset(_nEnsembleLen, nK);
+	for (size_t i = 0; i < _nEnsembleLen; i++)
+	{
+		cr.PushLabel(i, arrLabel[i]);
+	}
+
+	// 5.release the resouse
+	delete arrLabel;
+	delete pClusterer;
 }

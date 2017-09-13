@@ -27,6 +27,15 @@ private:
 
 	// tessellation the area segmentation, generate three display list start from _gllist
 	void tessSegmentation(GLuint gllist, QList<UnCertaintyArea*> areas);
+
+	// draw the chart of variance
+	void drawVarChart();
+
+	// draw the pca points
+	void drawPCAPoints();
+
+	// draw the cluster bars
+	void drawClusterBars();
 private:
 	// truth texture, generated from truth data
 	GLubyte* _dataTexture;

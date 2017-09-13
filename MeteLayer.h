@@ -50,6 +50,8 @@ public:
 
 	// select an index in variance widget, total range is 100
 	virtual void OnSelectVar(int nIndex) {}
+	
+
 private:
 	// implementation for render
 	virtual void draw(DisplayStates states) = 0;
@@ -62,12 +64,17 @@ protected:
 	GLuint _gllist;                           // display index
 	GLuint _gllistC;                           // display index for clustering
 	GLuint _gllistG;                           // display index for gradient
+
+	// the drawing area of this layer
 	double _fLeft;
 	double _fRight;
 	double _fBottom;
 	double _fTop;
+
 	double _fScaleW;
 	double _fScaleH;
 	bool _bShow;
+
+
 };
 

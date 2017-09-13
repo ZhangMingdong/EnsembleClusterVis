@@ -11,18 +11,21 @@ public:
 	DataField(int w,int h,int l);
 	~DataField();
 private:	
-	double* _pBuf;			// store the data	
-	double* _gridVari;		// variance of each grid among different ensemble results	
-	double* _gridMean;		// mean of each grid among different ensemble results
-	double* _gridUMax;		// maximum of union of each grid among different ensemble results
-	double* _gridUMin;		// minimum of union of each grid among different ensemble results
-	int _nW;				// width
-	int _nH;				// height
-	int _nL;				// number of ensemble members
+	double* _pBuf;					// store the data	
+	double* _gridVari;				// variance of each grid among different ensemble results	
+	double* _gridVarSmooth[10];		// smoothed variance
+	double* _gridMean;				// mean of each grid among different ensemble results
+	double* _gridUMax;				// maximum of union of each grid among different ensemble results
+	double* _gridUMin;				// minimum of union of each grid among different ensemble results
+	int _nW;						// width
+	int _nH;						// height
+	int _nL;						// number of ensemble members
+	int _nSmooth = 0;				// level of smooth
 public:
 	// get the l'th layer
 	const double* GetLayer(int l);
-	const double* GetVari();
+	// get variance, nSmooth: level of smooth
+	const double* GetVari(int nSmooth=0);
 	const double* GetMean();
 	const double* GetUMax();
 	const double* GetUMin();
@@ -37,5 +40,8 @@ public:
 	void DoStatistic();
 	// generate clustered data using the labels
 	void GenerateClusteredData(const QList<int> listClusterLens, const int* arrLabels, QList<DataField*>& arrData);
+private:
+	// smooth the variance to level nSmooth
+	void smoothVar(int nSmooth);
 };
 

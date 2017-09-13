@@ -3,7 +3,31 @@
 
 #include "ColorMap.h"
 #include "def.h"
+#include <QDebug>
 
+// set color according to group index
+void SetGroupColor(int nIndex) {
+	switch (nIndex)
+	{
+	case 0:
+		glColor3f(1, 0, 0);
+		break;
+	case 1:
+		glColor3f(0, 1, 0);
+		break;
+	case 2:
+		glColor3f(0, 0, 1);
+		break;
+	case 3:
+		glColor3f(0, 1, 1);
+		break;
+	case 4:
+		glColor3f(1, 0, 1);
+		break;
+	default:
+		break;
+	}
+}
 // for tess
 
 /// 初始化用户自定义的程序变量
@@ -101,6 +125,7 @@ EnsembleLayer::~EnsembleLayer()
 }
 
 void EnsembleLayer::draw(DisplayStates states){
+	glPushAttrib(GL_LINE_BIT);
 	// border
 	glBegin(GL_LINE_LOOP);
 	glVertex2f(_fLeft, _fBottom);
@@ -122,41 +147,15 @@ void EnsembleLayer::draw(DisplayStates states){
 		{ 0, 1, .5 },			// G
 		{ .5, 0, 1 },			// B
 	};
-	//*/
-	/*
-	double g_arrColors[9][3] = {
-		{ 165	/255.0, 206	/255.0, 227	 /255.0},
-		{ 81	/255.0, 154	/255.0, 165	 /255.0},
-		{ 86	/255.0, 177	/255.0, 70	 /255.0},
-		{ 249	/255.0, 141	/255.0, 141	 /255.0},
-		{ 239	/255.0, 105	/255.0, 68	 /255.0},
-		{ 255	/255.0, 135	/255.0, 16	 /255.0},
-		{ 178	/255.0, 149	/255.0, 200	 /255.0},
-		{ 198	/255.0, 180	/255.0, 153	 /255.0},
-		{ 176	/255.0, 88	/255.0, 40	 /255.0}
-	};
-	//*/
-	
 
-	/*
-	double fFocusL = _fLeft + (_fRight - _fLeft)*_pModel->GetFocusX() / _pModel->GetW();
-	double fFocusR = _fLeft + (_fRight - _fLeft)*(_pModel->GetFocusX()+_pModel->GetFocusW()) / _pModel->GetW();
-	double fFocusB = _fBottom + (_fTop - _fBottom)*_pModel->GetFocusY() / _pModel->GetH();
-	double fFocusT = _fBottom + (_fTop - _fBottom)*(_pModel->GetFocusY()+_pModel->GetFocusH()) / _pModel->GetH();
-	*/
-
-	/*
-	double fFocusL = _fLeft + (_fRight - _fLeft)*(_pModel->GetWest() + 180) / 360;
-	double fFocusR = _fLeft + (_fRight - _fLeft)*(_pModel->GetEast() + 180) / 360;
-	double fFocusB = _fBottom + (_fTop - _fBottom)*(_pModel->GetSouth() + 90) / 180;
-	double fFocusT = _fBottom + (_fTop - _fBottom)*(_pModel->GetNorth() + 90) / 180;
-	*/
 
 	int nClusterIndex = -1;	// -1 means show all clusters
 
+	// the x radius and y radius of the map in drawing space
 	double biasX = (_pModel->GetWest() + _pModel->GetEast()) / 2.0 *_fScaleW;
 	double biasY = (_pModel->GetSouth() + _pModel->GetNorth()) / 2.0*_fScaleH;
 
+	// the focused x radius and y radius of the map in drawing space
 	double biasFocusX = (_pModel->GetFocusWest() + _pModel->GetFocusEast()) / 2.0 *_fScaleW;
 	double biasFocusY = (_pModel->GetFocusSouth() + _pModel->GetFocusNorth()) / 2.0*_fScaleH;
 
@@ -171,17 +170,10 @@ void EnsembleLayer::draw(DisplayStates states){
 
 		glBindTexture(GL_TEXTURE_2D, texID[0]);
 
-
 		glTranslatef(biasFocusX, biasFocusY, 0);			// 位置偏移
-		glScalef(scaleFocusX, scaleFocusY, 0);			// 改变尺寸
+		glScalef(scaleFocusX, scaleFocusY, 0);				// 改变尺寸
 
 		glBegin(GL_QUADS);
-		/*
-		glTexCoord2f(0.0f, 0.0f); glVertex2f(fFocusL, fFocusB);
-		glTexCoord2f(1.0f, 0.0f); glVertex2f(fFocusR, fFocusB);
-		glTexCoord2f(1.0f, 1.0f); glVertex2f(fFocusR, fFocusT);
-		glTexCoord2f(0.0f, 1.0f); glVertex2f(fFocusL, fFocusT);
-		*/
 
 		glTexCoord2f(0.0f, 0.0f); glVertex2f(_fLeft, _fBottom);
 		glTexCoord2f(1.0f, 0.0f); glVertex2f(_fRight, _fBottom);
@@ -189,9 +181,6 @@ void EnsembleLayer::draw(DisplayStates states){
 		glTexCoord2f(0.0f, 1.0f); glVertex2f(_fLeft, _fTop);
 
 		glEnd();
-
-
-	
 
 		glPopMatrix();
 
@@ -206,7 +195,6 @@ void EnsembleLayer::draw(DisplayStates states){
 		glDisable(GL_TEXTURE_2D);
 
 		// border
-
 		glBegin(GL_LINE_LOOP);
 		glVertex2f(_fRight + .03, _fBottom);
 		glVertex2f(_fRight + .06, _fBottom);
@@ -231,14 +219,23 @@ void EnsembleLayer::draw(DisplayStates states){
 			_pCB->DrawText(buf, _fRight + .063, _fBottom + (_fTop - _fBottom)*i / (nLen-1));
 		}
 	}
+
+
 	glPushMatrix();
 
 	glTranslatef(biasX, biasY, 0);				// 移动到指定位置
 
+	/*
 	if (!_pModel->GetFilter())
 		glScalef(.5, .5, 1);						// 变换大小
+	glScalef(2, 2, 0);
+	*/
 
 	glTranslatef(-(_pModel->GetW()-1)*_fScaleW/2, -(_pModel->GetH() - 1)*_fScaleH / 2, 0);		// 移动到中间
+
+
+	glScalef(_fScaleW, _fScaleH, 0);
+
 	// draw contour line
 	if (states._bShowContourLineMin)
 	{
@@ -419,7 +416,7 @@ void EnsembleLayer::draw(DisplayStates states){
 		glColor3f(1, 0, 0);
 		glPointSize(2.0f);
 		glBegin(GL_POINTS);
-		const std::vector<Point> pts = _pModel->GetPoints();
+		const std::vector<DPoint3> pts = _pModel->GetPoints();
 		for (size_t i = 0; i < pts.size(); i++)
 		{
 
@@ -429,51 +426,241 @@ void EnsembleLayer::draw(DisplayStates states){
 	}
 	glPopMatrix();
 
+	drawVarChart();
 
+	// draw pca point
+	drawPCAPoints();
+
+	// draw cluster bars
+	drawClusterBars();
+
+	glPopAttrib();
+}
+
+void EnsembleLayer::drawVarChart() {
 	// draw chart
-	double dbChartBottom = _fTop+.01;
-	double dbLayer = .05;
-	int nLayers = 10;
+	double dbLayer = .05;							// distance between two layers
+	int nLayers = 10;								// layers of the chart
 
-	double dbChartLeft = 0;
-	glLineWidth(1.0f);
+	double dbChartBottom = _fTop + .01;				// bottom position of the chart, on top of the map
+	double dbChartLeft = 0.2;						// left position of the chart, 0.2
+	double dbChartRight = _fRight;
+	double dbChartTop = dbChartBottom + dbLayer*nLayers;
+
+	// draw chart framework
+	glLineWidth(2.0f);
 	glColor3f(0, 0, 1);
 	glBegin(GL_LINES);
-	// bottom
+	// bottom axis
+	glVertex2d(dbChartLeft, dbChartTop);
+	glVertex2d(dbChartRight, dbChartTop);
+	// top axis
 	glVertex2d(dbChartLeft, dbChartBottom);
 	glVertex2d(_fRight, dbChartBottom);
-	// left
+	// left axis
 	glVertex2d(dbChartLeft, dbChartBottom);
-	glVertex2d(dbChartLeft, dbChartBottom + nLayers*dbLayer);
+	glVertex2d(dbChartLeft, dbChartTop);
+	// right axis
+	glVertex2d(dbChartRight, dbChartBottom);
+	glVertex2d(dbChartRight, dbChartTop);
+	glEnd();
+
+	glLineWidth(1.0f);
+	glColor3f(0, 0, .5);
 	// scale
 	for (size_t i = 1; i < nLayers; i++)
 	{
-		glVertex2d(dbChartLeft - .00, dbChartBottom + i * dbLayer);
-		glVertex2d(dbChartLeft - .01, dbChartBottom + i * dbLayer);
-
+		glBegin(GL_LINES);
+		glVertex2d(dbChartLeft, dbChartBottom + i * dbLayer);
+		glVertex2d(dbChartRight, dbChartBottom + i * dbLayer);
+		glEnd();
+		char buf[10];
+		sprintf_s(buf, "%d", i);
+		_pCB->DrawText(buf, dbChartLeft + .01, dbChartBottom + i * dbLayer + .01);
 	}
 
-	glEnd();
-
+	// draw the chart line
+	glLineWidth(3.0f);
+	glColor3f(0.0, .5, .5);
 	std::vector<double> vecVar = _pModel->GetVariance();
 	int nLen = vecVar.size();
 	double dbStep = (_fRight - dbChartLeft) / (nLen - 1);
 	double dbThresholdX = -1;
 	glBegin(GL_LINE_STRIP);
-	for (size_t i = 0; i < nLen; i++)
+	for (size_t i = 0; i < nLen; i += 100)
 	{
-		glVertex2d(dbChartLeft + dbStep*i, dbChartBottom + vecVar[i]*dbLayer);
+		double dbYBias = vecVar[i] * dbLayer;
+		if (dbYBias>dbLayer*nLayers)
+		{
+			dbYBias = dbLayer*nLayers;
+		}
+		glVertex2d(dbChartLeft + dbStep*i, dbChartBottom + dbYBias);
 		if (dbThresholdX<0 && vecVar[i]>_dbVarThreshold) dbThresholdX = dbChartLeft + dbStep*i;
 	}
 	glEnd();
+
+	// draw the threshold line
 	if (dbThresholdX > 0) {
 		glColor3f(1.0, 0, 0);
 		glBegin(GL_LINES);
 		glVertex2d(dbThresholdX, dbChartBottom);
 		glVertex2d(dbThresholdX, dbChartBottom + nLayers*dbLayer);
 		glEnd();
+
+		char buf[10];
+		sprintf_s(buf, "%.2f", _dbVarThreshold);
+		_pCB->DrawText(buf, dbThresholdX, dbChartBottom + nLayers*dbLayer + .01);
+	}
+}
+
+void EnsembleLayer::drawPCAPoints() {
+	double dbRadius = .5;
+	double dbSpace = .01;
+	double dbPCAChartLeft = _fLeft + dbRadius;
+	double dbPCAChartBottom = _fTop + dbRadius;
+	double dbScale = .01;
+	glPointSize(3.0f);
+
+//	glPushMatrix();
+//	glTranslated(_fLeft / 2.0, _fTop + .5, 0);
+
+	std::vector<DPoint3>* vecPoints = _pModel->GetPCAPoints();
+	for (size_t clusterIndex = 0; clusterIndex < 2; clusterIndex++)
+	{
+		// draw border
+		// set color according to the color of the spatial cluster
+		switch (clusterIndex)
+		{
+		case 0:
+			glColor3f(1, 0, 0);
+			break;			
+		case 1:
+			glColor3f(0, 1, 0);
+			break;
+		default:
+			break;
+		}
+		glBegin(GL_LINE_LOOP);
+		glVertex3f(dbPCAChartLeft - (dbRadius - dbSpace), dbPCAChartBottom - (dbRadius - dbSpace), 0);
+		glVertex3f(dbPCAChartLeft + (dbRadius - dbSpace), dbPCAChartBottom - (dbRadius - dbSpace), 0);
+		glVertex3f(dbPCAChartLeft + (dbRadius - dbSpace), dbPCAChartBottom + (dbRadius - dbSpace), 0);
+		glVertex3f(dbPCAChartLeft - (dbRadius - dbSpace), dbPCAChartBottom + (dbRadius - dbSpace), 0);
+		glEnd();
+//		glPushMatrix();
+//		glScaled(.01, .01, 1);
+//		qDebug() << vecPoints[clusterIndex].size();
+		glBegin(GL_POINTS);
+		for (size_t i = 0, length = vecPoints[clusterIndex].size(); i < length; i++)
+		{
+			int nZ = vecPoints[clusterIndex][i].z;
+			switch (nZ)
+			{
+			case 0:
+				glColor3f(1.0, 0, 0);		// red
+				break;
+			case 1:
+				glColor3f(0, 1.0, 0);		// green
+				break;
+			case 2:
+				glColor3f(0, 0, 1.0);		// blue
+				break;
+			case 3:
+				glColor3f(0, 1, 1);			// Cyan
+				break;
+			case 4:
+				glColor3f(1, 0, 1);			// purple
+				break;
+			default:
+				glColor3f(.5, .5, .5);
+				break;
+			}
+			glVertex3f(dbPCAChartLeft + vecPoints[clusterIndex][i].x*dbScale, dbPCAChartBottom + vecPoints[clusterIndex][i].y*dbScale, 0);
+		}
+		glEnd();
+		dbPCAChartLeft += 2*dbRadius;
+//		glPopMatrix();
+
+//		glTranslated(1,0,0);
 	}
 
+//	glPopMatrix();
+}
+
+
+void EnsembleLayer::drawClusterBars() {
+	const ClusterResult* pCR = _pModel->GetClusterResults();
+	if (pCR->_nK == 0) return;
+
+	double dbRadius = .5;
+	double dbSpace = .01;
+	double dbSpaceII = .05;
+	double dbChartLeft = _fLeft + dbSpace;
+	double dbChartRight = dbChartLeft + dbRadius * 2 - dbSpace;
+	double dbChartMid = _fLeft + dbRadius;
+	double dbChartBottom = _fTop + dbRadius*2+ dbSpaceII;		// on top of the pca chart
+
+	int nClusters = _pModel->GetClusters();
+
+	double arrBaseY[50];			// the y position of the element in the first cluster
+
+	// first region
+	double dbY = dbChartBottom;
+	for (size_t i = 0; i < pCR[0]._nK; i++)
+	{
+		SetGroupColor(i);
+
+		for (size_t j = 0; j < pCR[0]._vecItems[i].size(); j++) {
+			glBegin(GL_LINES);
+			glVertex3f(dbChartLeft, dbY,0);
+			glVertex3f(dbChartRight, dbY, 0);
+			glEnd();
+			arrBaseY[pCR[0]._vecItems[i][j]] = dbY;
+			dbY += dbSpace;
+		}
+		dbY += dbSpaceII;
+	}
+	// second region
+	dbChartLeft += dbRadius * 2;
+	dbChartMid += dbRadius * 2;
+	dbChartRight += dbRadius * 2;
+	/*
+	// left part
+	dbY = dbChartBottom;
+	for (size_t i = 0; i < pCR[0]._nK; i++)
+	{
+		for (size_t j = 0; j < pCR[0]._vecItems[i].size(); j++) {
+
+			SetGroupColor(pCR[1]._arrLabels[pCR[0]._vecItems[i][j]]);
+
+			glBegin(GL_LINES);
+			glVertex3f(dbChartLeft, dbY, 0);
+			glVertex3f(dbChartMid, dbY, 0);
+			glEnd();
+			dbY += dbSpace;
+		}
+		dbY += dbSpaceII;
+	}
+	*/
+	// right part
+	dbY = dbChartBottom;
+	for (size_t i = 0; i < pCR[1]._nK; i++)
+	{
+		for (size_t j = 0; j < pCR[1]._vecItems[i].size(); j++) {
+			SetGroupColor(i);
+
+			glBegin(GL_LINES);
+			glVertex3f(dbChartLeft, arrBaseY[pCR[1]._vecItems[i][j]], 0);
+			glVertex3f(dbChartMid, dbY, 0);
+			glEnd();
+
+			glBegin(GL_LINES);
+			glVertex3f(dbChartMid, dbY, 0);
+			glVertex3f(dbChartRight, dbY, 0);
+			glEnd();
+			dbY += dbSpace;
+		}
+		dbY += dbSpaceII;
+	}
 }
 
 void EnsembleLayer::ReloadTexture() {
@@ -484,7 +671,8 @@ void EnsembleLayer::ReloadTexture() {
 //	_dataTexture = _pModel->generateTextureGridCluster();
 //	_dataTexture = _pModel->generateTextureRange(0);
 //	_dataTexture = _pModel->generateTextureMean();
-	_dataTexture = _pModel->generateTextureDiscreteSummary();
+//	_dataTexture = _pModel->generateTextureDiscreteSummary();
+	_dataTexture = _pModel->generateTextureNew();
 	//	_dataTexture = _pModel->generateTextureSDF();
 	glGenTextures(1, &texID[0]);
 	glBindTexture(GL_TEXTURE_2D, texID[0]);
@@ -571,8 +759,8 @@ void EnsembleLayer::drawContourLine(const QList<ContourLine>& contours){
 		glBegin(GL_LINE_STRIP);
 		for each (QPointF pt in contour._listPt)
 		{
-			double x = pt.x() * _fScaleW;
-			double y = pt.y() * _fScaleH;
+			double x = pt.x();// *_fScaleW;
+			double y = pt.y();// *_fScaleH;
 			glVertex2f(x, y);
 		}
 		glEnd();
@@ -667,7 +855,6 @@ void EnsembleLayer::tessSegmentation(GLuint gllist, QList<UnCertaintyArea*> area
 void EnsembleLayer::Brush(int nLeft, int nRight, int nTop, int nBottom) {
 	_pModel->Brush(nLeft, nRight, nTop, nBottom);
 }
-
 
 void EnsembleLayer::OnSelectVar(int nIndex) {
 	std::vector<double> vecVar = _pModel->GetVariance();

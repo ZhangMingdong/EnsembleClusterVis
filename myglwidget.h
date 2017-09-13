@@ -122,11 +122,13 @@ private:
 
 	GLFont font;                /**< 定义一个字体实例 */
 
-	// the map area
+	// the map area[(-1.8,-0.9)~(1.8,0.9)]
 	double _fLeft;
 	double _fRight;
 	double _fBottom;
 	double _fTop;
+
+	// scale: 0.01 (180/1.8)
 	double _fScaleW;
 	double _fScaleH;
 
@@ -209,6 +211,11 @@ public slots:
 	void viewShowClusterBV(bool on);
 
 	void onCheckShowBeliefEllipse(bool bChecked);
+
+
+	// for clustering
+	void updateMinPts(int minPts);
+	void updateEps(double eps);
 
 private:
 	// vector of layers to render

@@ -14,7 +14,7 @@ public:
 	virtual ~EnsembleModel();
 protected:
 	// projected 2D points of the data
-	std::vector<Point> _vecPoints;
+	std::vector<DPoint3> _vecPoints;
 	// matrix of the data. d1:day,d2: step
 	std::vector<std::vector<DataField* >> _matrixData;
 	int _nDay = 31;

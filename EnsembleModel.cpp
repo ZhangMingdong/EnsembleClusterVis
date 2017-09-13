@@ -99,6 +99,8 @@ void EnsembleModel::readDataFromText() {
 
 }
 
+
+
 GLubyte* EnsembleModel::generateTextureRange(int nIndex) {
 	GLubyte* dataTexture = new GLubyte[4 * _nFocusLen];
 

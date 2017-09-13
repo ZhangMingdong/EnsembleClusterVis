@@ -11,6 +11,7 @@
 #include "MeteLayer.h"
 #include "CostLineLayer.h"
 #include "EnsembleLayer.h"
+#include "MeteModel.h"
 
 
 
@@ -110,19 +111,11 @@ MyGLWidget::MyGLWidget(QWidget *parent)
 , _nSelectedTop(-1)
 , _nSelectedBottom(-1)
 {
-	/*
-	_fLeft = -0.5;
-	_fRight = 0.5;
-	double fHWScale = (g_focus_h - 1)*1.0 / (g_focus_w-1);
-	_fBottom = -0.5 * fHWScale;
-	_fTop = -_fBottom;
-	_fScaleW = 1.0 / (g_focus_w - 1);
-	_fScaleH = fHWScale / (g_focus_h - 1);
-	*/
 	_fLeft = -1.80;
 	_fRight = 1.80;
 	_fBottom = -0.90;
 	_fTop = 0.90;
+
 	_fScaleW = 0.01;
 	_fScaleH = 0.01;
 
@@ -1158,3 +1151,19 @@ void MyGLWidget::ReloadTexture() {
 	updateGL();
 }
 
+
+void MyGLWidget::updateMinPts(int minPts) {
+	qDebug() << "set minpts";
+	if(_pModelE)
+		_pModelE->SetMinPts(minPts);
+
+	ReloadTexture();
+}
+
+void MyGLWidget::updateEps(double eps) {
+	qDebug() << "set eps";
+	if (_pModelE)
+		_pModelE->SetEps(eps);
+
+	ReloadTexture();
+}

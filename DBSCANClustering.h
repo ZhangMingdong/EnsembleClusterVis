@@ -6,35 +6,20 @@
 // ============================================================
 #pragma once
 #include "Clustering.h"
-class DBSCANClustering// : public Clustering
-{
-public:
-	DBSCANClustering();
-	virtual ~DBSCANClustering();
+namespace CLUSTER {
+	class DBSCANClustering : public Clustering
+	{
+	public:
+		DBSCANClustering();
+		virtual ~DBSCANClustering();
+	private:
+		// clustering parameters
+		int _nMinPts=100;
+		double _dbEps=.5;
+	protected:
+		virtual void doCluster();
+	public:		
+		virtual void SetDBSCANParams(int minPts, double eps) { _nMinPts = minPts; _dbEps = eps; };
+	};
 
-public:
-	/*
-		do the clustering
-		h,w: the height and width of the clustering field
-		nMinPts, dbEps: clustering paramter
-		arrData: input data, 0/1, 1 means this point is to cluster
-		return the number of clusters
-	*/
-	int DoCluster(int h, int w, int nMinPts, double dbEps, const int *arrData, int* arrLabels);
-
-private:
-	// clustering parameters
-	int _nH;
-	int _nW;
-	int _nMinPts;
-	double _dbEps;
-	const int* _arrData;
-	int* _arrLabels;
-
-	// indicate the current label
-	int _nCurrentlabel;
-
-private:
-	int doCluster();
-};
-
+}

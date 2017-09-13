@@ -23,6 +23,7 @@
 
 #include "myglwidget.h"
 #include "MeteModel.h"
+#include "ClusteringWidget.h"
 
 
 // using the original temperature data
@@ -252,6 +253,13 @@ void MainWindow::createDockWidgets() {
 	controlDockWidget->setWidget(_pControlWidget);
 	addDockWidget(Qt::RightDockWidgetArea, controlDockWidget);
 
+
+	_pWidgetClustering = new ClusteringWidget();
+	QDockWidget *pDockWidgetClustering = new QDockWidget(tr("Clustering"), this);
+	pDockWidgetClustering->setFeatures(features);
+	pDockWidgetClustering->setWidget(_pWidgetClustering);
+	addDockWidget(Qt::LeftDockWidgetArea, pDockWidgetClustering);
+
 }
 
 void MainWindow::populateMenusAndToolBars()
@@ -443,9 +451,17 @@ void MainWindow::createConnections(){
 	connect(_pControlWidget->ui.radioButtonBackgroundVari, SIGNAL(clicked(bool)), this, SLOT(onSelectBackgroundVari(bool)));
 	connect(_pControlWidget->ui.radioButtonBackgroundCluster, SIGNAL(clicked(bool)), this, SLOT(onSelectBackgroundCluster(bool)));
 	connect(_pControlWidget->ui.radioButtonBackgroundSDF, SIGNAL(clicked(bool)), this, SLOT(onSelectBackgroundSDF(bool)));
+	connect(_pControlWidget->ui.radioButtonBackgroundVarSmooth, SIGNAL(clicked(bool)), this, SLOT(onSelectBackgroundVarSmooth(bool)));
+
+
+	connect(_pControlWidget->ui.spinBoxVarSmooth, SIGNAL(valueChanged(int)), this, SLOT(updateVarSmooth(int)));
 
 
 	connect(_pControlWidget->ui.checkBoxShowEllipse, SIGNAL(toggled(bool)), _view3D, SLOT(onCheckShowBeliefEllipse(bool)));
+
+
+	connect(_pWidgetClustering, SIGNAL(minPtsChanged(int)), _view3D, SLOT(updateMinPts(int)));
+	connect(_pWidgetClustering, SIGNAL(epsChanged(double)), _view3D, SLOT(updateEps(double)));
 
 
 }
@@ -966,5 +982,17 @@ void MainWindow::onSelectBackgroundCluster(bool bChecked) {
 
 void MainWindow::onSelectBackgroundSDF(bool bChecked) {
 	_pModel->SetBgFunctionMean(MeteModel::bg_sdf);
+	_view3D->ReloadTexture();
+}
+
+
+
+void MainWindow::onSelectBackgroundVarSmooth(bool bChecked) {
+	_pModel->SetBgFunctionMean(MeteModel::bg_vari_smooth);
+	_view3D->ReloadTexture();
+}
+
+void MainWindow::updateVarSmooth(int nSmooth) {
+	_pModel->SetSmooth(nSmooth);
 	_view3D->ReloadTexture();
 }

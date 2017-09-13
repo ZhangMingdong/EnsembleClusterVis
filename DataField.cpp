@@ -19,6 +19,10 @@ DataField::~DataField()
 	delete[] _gridUMax;
 	delete[] _gridUMin;
 	delete[] _pBuf;
+	for (size_t i = 0; i < _nSmooth; i++)
+	{
+		delete[] _gridVarSmooth[i];
+	}
 }
 
 const double* DataField::GetLayer(int l) {
@@ -29,7 +33,20 @@ double* DataField::GetEditableLayer(int l) {
 	return _pBuf + l*_nW*_nH;
 }
 
-const double* DataField::GetVari() { return _gridVari;}
+const double* DataField::GetVari(int nSmooth) {
+	if (nSmooth==0)
+	{
+		return _gridVari;
+	}
+	else {
+		for (size_t i= _nSmooth; i < nSmooth; i++)
+		{
+			smoothVar(i);
+		}
+		_nSmooth = nSmooth;
+		return _gridVarSmooth[nSmooth-1];
+	}
+}
 
 const double* DataField::GetMean() { return _gridMean; }
 
@@ -115,4 +132,42 @@ void DataField::GenerateClusteredData(const QList<int> listClusterLens, const in
 	{
 		arrData[i]->DoStatistic();
 	}
+}
+
+
+void DataField::smoothVar(int nSmooth) {
+	const double* pVar = (nSmooth == 0) ? _gridVari : _gridVarSmooth[nSmooth - 1];
+
+	double* _pVarNew= _gridVarSmooth[nSmooth] = new double[_nW*_nH];
+
+	// smooth
+	for (size_t i = 1; i < _nH-1; i++)
+	{
+		for (size_t j = 1; j < _nW-1; j++)
+		{
+			double dbVar = 0;
+			for (int ii = -1; ii < 2; ii++)
+			{
+				for (int jj = -1; jj < 2; jj++) {
+					dbVar += pVar[(i + ii)*_nW + j + jj];
+				}
+			}
+			int nIndex = i*_nW + j;
+
+			_pVarNew[nIndex] = dbVar / 9.0;
+		}
+	}
+
+	// zero border
+	for (size_t i = 0; i < _nH; i++)
+	{
+		_pVarNew[i*_nW + 0] = 0;
+		_pVarNew[i*_nW + _nW-1] = 0;
+	}
+	for (size_t j = 1; j < _nW - 1; j++)
+	{
+		_pVarNew[j] = 0;
+		_pVarNew[(_nH - 1)*_nW + j] = 0;
+	}
+
 }

@@ -57,7 +57,7 @@ const int g_temperatureLen = 1;
 const bool g_bClustering = false;			// whether do clustering (PCA+AHC)
 const bool g_bSpatialClustering = false;	// whether do spatial clustering (DBSCAN)
 
-const double g_fThreshold = 273.16-15;
+const double g_fThreshold = 1;// 273.16 - 15;
 //const double g_fThreshold = 2.0;
 const int g_nMinPts = 110;
 const double g_dbEps = 6;

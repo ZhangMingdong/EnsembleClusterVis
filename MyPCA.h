@@ -6,7 +6,7 @@
 #pragma once
 
 #include "tnt_array2d.h"
-#include "BasicDataStructure.h"
+#include <MathTypes.hpp>
 #include <vector>
 class MyPCA
 {
@@ -64,6 +64,6 @@ public:
 		nWidth,nHeight:	the width and height of the field
 		dbDis:			the threshold
 	*/
-	static void generateEllipse(std::vector<Point>& points, int* arrGridLabel, int label, int nWidth, int nHeight,double dbDis);
+	static void generateEllipse(std::vector<DPoint3>& points, int* arrGridLabel, int label, int nWidth, int nHeight,double dbDis);
 };
 
