@@ -30,8 +30,6 @@ int const g_width = 1810;
 int const g_height = 1010;
 
 
-// length of the ensembles
-const int g_lenEnsembles = 50;
 
 // threshold of intersection numbers
 const int g_nThreshold = 40;
@@ -57,12 +55,12 @@ const int g_temperatureLen = 1;
 const bool g_bClustering = false;			// whether do clustering (PCA+AHC)
 const bool g_bSpatialClustering = false;	// whether do spatial clustering (DBSCAN)
 
-const double g_fThreshold = 1;// 273.16 - 15;
+const double g_fThreshold = 273.16 - 15;
 //const double g_fThreshold = 2.0;
 const int g_nMinPts = 110;
 const double g_dbEps = 6;
 
-const bool g_bGlobalArea = true;
+const bool g_bGlobalArea = false;
 
 // whether filter the half degree data
 const bool g_bFilter = false;
@@ -99,11 +97,11 @@ enum enumMeteModel
 //const enumMeteModel g_usedModel = PRE_CMA;
 //const enumMeteModel g_usedModel = PRE_CPTEC;
 //const enumMeteModel g_usedModel = PRE_ECCC;
-const enumMeteModel g_usedModel = PRE_ECMWF;
+//const enumMeteModel g_usedModel = PRE_ECMWF;
 //const enumMeteModel g_usedModel = PRE_JMA;
 //const enumMeteModel g_usedModel = PRE_KMA;
 //const enumMeteModel g_usedModel = PRE_NCEP;
-//const enumMeteModel g_usedModel = T2_ECMWF;
+const enumMeteModel g_usedModel = T2_ECMWF;
 //const enumMeteModel g_usedModel = T2_Reanalysis;
 
 // just use white to show the uncertainty area
@@ -120,4 +118,11 @@ const double g_dbMDis = 2.0;
 
 // whether use ensemble model
 const bool g_bEnsembleModel = false;
+
+
+
+// 2017/09/14
+const int g_nEnsembles = 50;					// number of ensemble members
+const int g_nUncertaintyAreaMax = 6;			// max number of uncertainty area
+const int g_nClusterMax = 10;					// max number of clusters
 

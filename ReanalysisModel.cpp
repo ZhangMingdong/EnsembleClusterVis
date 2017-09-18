@@ -26,7 +26,6 @@ void ReanalysisModel::InitModel(int nEnsembleLen, int nWidth, int nHeight, int n
 	, QString strFile, bool bBinary, int nWest, int nEast, int nSouth, int nNorth
 	, int nFocusWest, int nFocusEast, int nFocusSouth, int nFocusNorth, bool bFilter) {
 	// 0.record states variables
-	_nClusters = g_nClusters;
 
 	_nEnsembleLen = nEnsembleLen;
 	_nWidth = nWidth;
@@ -55,9 +54,6 @@ void ReanalysisModel::InitModel(int nEnsembleLen, int nWidth, int nHeight, int n
 
 	// 2.allocate resource
 	_pData = new DataField(_nWidth, _nHeight, _nEnsembleLen);
-	_pSDF = new DataField(_nWidth, _nHeight, _nEnsembleLen);
-	_arrLabels = new int[_nEnsembleLen];
-	_arrGridLabels = new int[_nLen];
 
 
 	_pRelationH = new DataField(_nWidth-1, _nHeight, _nEnsembleLen);
@@ -86,101 +82,10 @@ void ReanalysisModel::InitModel(int nEnsembleLen, int nWidth, int nHeight, int n
 	// 6.calculate relation
 	calculateRelation();
 
-	return;
-	if (g_bSDFBand)
-	{
-		generator.Generate(_pSDF->GetUMin(), _listContourMinE, 0, _nWidth, _nHeight, _nFocusX, _nFocusY, _nFocusW, _nFocusH);
-		generator.Generate(_pSDF->GetUMax(), _listContourMaxE, 0, _nWidth, _nHeight, _nFocusX, _nFocusY, _nFocusW, _nFocusH);
-		generator.Generate(_pSDF->GetMean(), _listContourMeanE, 0, _nWidth, _nHeight, _nFocusX, _nFocusY, _nFocusW, _nFocusH);
-		// generate gradient feature
-		double* arrTempMin = new double[_nLen];
-		double* arrTempMax = new double[_nLen];
-		const double* pMean = _pSDF->GetMean();
-		const double* pVari = _pSDF->GetVari();
-		double dbScale = 0.1;
-		for (size_t i = 0; i < g_gradient_l; i++)
-		{
-			for (size_t j = 0; j < _nLen; j++)
-			{
-				arrTempMin[j] = pMean[j] - dbScale*pVari[j];
-				arrTempMax[j] = pMean[j] + dbScale*pVari[j];
-			}
-			dbScale += 0.1;
-			QList<ContourLine> contourMin;
-			QList<ContourLine> contourMax;
-			generator.Generate(arrTempMin, contourMin, 0, _nWidth, _nHeight, _nFocusX, _nFocusY, _nFocusW, _nFocusH);
-			generator.Generate(arrTempMax, contourMax, 0, _nWidth, _nHeight, _nFocusX, _nFocusY, _nFocusW, _nFocusH);
-			_listContourMinEG.push_back(contourMin);
-			_listContourMaxEG.push_back(contourMax);
-		}
-		delete[] arrTempMin;
-		delete[] arrTempMax;
 
-		for (size_t i = 0; i < g_gradient_l; i++)
-		{
-			QList<UnCertaintyArea*> area;
-			generateContourImp(_listContourMinEG[i], _listContourMaxEG[i], area);
-			_listUnionAreaEG.push_back(area);
-		}
-	}
-	else {
-	}
 
 	generateContourImp(_listContourMinE, _listContourMaxE, _listUnionAreaE);
 
-	if (g_bClustering)
-	{
-		// 1.PCA
-		doPCA();
-
-		bool bUsingGlobalData = false;	// not just focus the iso value
-		double dbIsoValue;
-		// 2.generate clustered data
-		if (bUsingGlobalData)
-		{
-			_pData->GenerateClusteredData(_listClusterLen, _arrLabels, _listClusterData);
-			dbIsoValue = g_fThreshold;
-		}
-		else {
-			dbIsoValue = 0;
-			_pSDF->GenerateClusteredData(_listClusterLen, _arrLabels, _listClusterData);
-		}
-		// 3.generate features for clusters
-		for (size_t i = 0; i < _nClusters; i++)
-		{
-			QList<ContourLine> listContourMin;
-			QList<ContourLine> listContourMax;
-			QList<ContourLine> listContourMean;
-			QList<QList<ContourLine>> listContour;
-			QList<UnCertaintyArea*> listUnionArea;
-			generator.Generate(_listClusterData[i]->GetMean(), listContourMean, dbIsoValue, _nWidth, _nHeight, _nFocusX, _nFocusY, _nFocusW, _nFocusH);
-			generator.Generate(_listClusterData[i]->GetUMin(), listContourMin, dbIsoValue, _nWidth, _nHeight, _nFocusX, _nFocusY, _nFocusW, _nFocusH);
-			generator.Generate(_listClusterData[i]->GetUMax(), listContourMax, dbIsoValue, _nWidth, _nHeight, _nFocusX, _nFocusY, _nFocusW, _nFocusH);
-			_listContourMinEC.push_back(listContourMin);
-			_listContourMaxEC.push_back(listContourMax);
-			_listContourMeanEC.push_back(listContourMean);
-			_listContourC.push_back(listContour);
-			_listUnionAreaEC.push_back(listUnionArea);
-
-			// pca
-			QList<ContourLine> listContourMeanPCA;
-			generator.Generate(_pClusterCenter + i*_nLen, listContourMeanPCA, 0, _nWidth, _nHeight, _nFocusX, _nFocusY, _nFocusW, _nFocusH);
-			_listContourMeanPCA.push_back(listContourMeanPCA);
-		}
-		// 4.put the spaghetti into different list according to their clusters
-		for (size_t i = 0; i < _nEnsembleLen; i++)
-		{
-			_listContourC[_arrLabels[i]].push_back(_listContour[i]);
-		}
-		// 5.generate uncertainty areas
-		for (size_t i = 0; i < _nClusters; i++)
-		{
-			if (_listClusterLen[i]>1)
-			{
-				generateContourImp(_listContourMinEC[i], _listContourMaxEC[i], _listUnionAreaEC[i]);
-			}
-		}
-	}
 	// specializaed initialization
 	initializeModel();
 }

@@ -1,34 +1,30 @@
 #ifndef MYGLWIDGET_H
 #define MYGLWIDGET_H
-//#include <gl/glew.h>
+
 #include <QGLWidget>
 
 #include "def.h"
 #include "ContourGenerator.h"
 #include "EnsembleIntersections.h"
-
 #include "GLFont.h"
 #include "UnCertaintyArea.h"
 #include "MeteLayer.h"
 
 class MeteLayer;
 class MeteModel;
+class LayerLayout;
 
-#define BUFSIZE 512
 
-class GLUtesselator;
 class MyGLWidget : public QGLWidget,ILayerCB
 {
 	Q_OBJECT
 
 public:
-
+	// draw text
 	virtual void DrawText(char* pText, double fX, double fY);
 public:
 	MyGLWidget(QWidget *parent = 0);
 	~MyGLWidget();
-
-
 protected:
 	virtual void initializeGL();
 	virtual void paintGL();
@@ -55,10 +51,8 @@ private:		// mouse trackball
 private:		// modelview matrix transformation
 	// global modelview matrix
 	double m_modelViewMatrixGlobal[16];
-
 private:
 	const double c_dbPI;
-	const double c_dbSideLen;
 private:
 	// draw one cube
 	void updateTrackBallPos(QPoint pt, double* result);
@@ -68,42 +62,11 @@ private:
 	void move(QPoint pt1, QPoint pt2);
 	// reset every thing
 	void reset();
-
-	// 2017/02/28
 private:
-
-	// truth data
-	const double* _pDataT;
-	const double* _pDataB;
-// 	const double* _pDataE;
-	// labels of each grid
-	const int *_arrLabels;
-	// mean of the variance of Bayesian
-	const double* _gridDataMeanVarB;
-	// variance of the means of Bayesian
-	const double* _gridDataVarMeanB;
-	// truth contour
-	QList<ContourLine> _listContourTruth[g_temperatureLen];
-	QList<ContourLine> _listContourMean[g_temperatureLen];
-	QList<ContourLine> _listContourMinB[g_temperatureLen];
-	QList<ContourLine> _listContourMaxB[g_temperatureLen];
 	QPoint _ptLast;
 	// viewport size
 	int _nWidth;
 	int _nHeight;
-
-	// list of the uncertainty area of intersection of B
-	QList<UnCertaintyArea*> _listIntersectionAreaB[g_temperatureLen];
-
-	// list of the uncertainty area of union of B
-	QList<UnCertaintyArea*> _listUnionAreaB[g_gradient_l];
-
-	QList<ContourLine> _listContourMin_3[g_gradient_l];
-	QList<ContourLine> _listContourMax_3[g_gradient_l];
-
-
-	GLUtesselator *_tobj;                    /**< 网格化对象指针 */
-	GLuint _gllist;                            /**< 显示列表索引 */
 
 	// the selected x and y
 	int _nSelectedX;
@@ -115,18 +78,10 @@ private:
 	int _nSelectedTop;
 	int _nSelectedBottom;
 
-	
-
-	const EnsembleIntersections* _arrIntersections;
-
-
 	GLFont font;                /**< 定义一个字体实例 */
 
-	// the map area[(-1.8,-0.9)~(1.8,0.9)]
-	double _fLeft;
-	double _fRight;
-	double _fBottom;
-	double _fTop;
+	// layout of the layers
+	LayerLayout* _pLayout = NULL;
 
 	// scale: 0.01 (180/1.8)
 	double _fScaleW;
@@ -163,30 +118,15 @@ private:
 	void select(int& nX, int&nY, const QPoint& pt);
 
 
+	// called when texture reloaded
+	void onTextureReloaded();
+	// set new uncertainty areas
+	void setUncertaintyAreas(int nUCAreas);
 public:
-	void SetLabels(const int* labels);
-	void SetDataT(const double* data);
-	void SetDataB(const double* data);
 	void SetModelE(MeteModel* pModelE);
 	void SetModelT(MeteModel* pModelT);
-	void SetVar(const double* pVM, const double *pMV);
-	void SetContourTruth(QList<ContourLine>* listContourTruth);
-	void SetContourMean(QList<ContourLine>* listContour);
-	void SetContourIntervalB(QList<ContourLine>* listContourMin, QList<ContourLine>* listContourMax);
-
-	// generate the contours from the min and max contour lines
-	void generateContour();
-
-	void SetMultiStatistic(QList<ContourLine>* listContourMin, QList<ContourLine>* listContourMax);
-
-	void SetIntersections(const EnsembleIntersections* arrIntersections){ _arrIntersections = arrIntersections; }
-
-
-	// reload texture
-	void ReloadTexture();
 private:// state
 	MeteLayer::DisplayStates _displayStates;
-
 	bool _bShowGridLines;
 	bool _bShowIntersection;
 	bool _bShowUnionB;
@@ -209,23 +149,20 @@ public slots:
 	void viewShowContourLineMean(bool on);
 	void viewShowClusterBS(bool on);
 	void viewShowClusterBV(bool on);
-
 	void onCheckShowBeliefEllipse(bool bChecked);
-
-
 	// for clustering
 	void updateMinPts(int minPts);
 	void updateEps(double eps);
-
+	// for clustered variance
+	void updateVarSmooth(int nSmooth);
+	void updateBgFunction(int nBgFunction);
+	void updateUncertaintyAreas(int nAreas);
+	void updateFocusedCluster(int nFocusedCluster);
 private:
 	// vector of layers to render
 	std::vector<MeteLayer*> _vecLayers;
 	MeteModel* _pModelE;
 	MeteModel* _pModelT;
-
-
-	
-
 };
 
 #endif // MYGLWIDGET_H

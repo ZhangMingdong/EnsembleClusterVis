@@ -8,6 +8,7 @@
 #include <QGLWidget>
 
 class MeteModel;
+class LayerLayout;
 
 // callback interface
 class ILayerCB{
@@ -38,18 +39,22 @@ public:
 	// interface for render
 	void DrawLayer(DisplayStates states);
 	// interface for initialization
-	void InitLayer(double fLeft, double fRight, double fTop, double fBottom, double fScaleW, double fScaleH);
+	void InitLayer(const LayerLayout* pLayout, double fScaleW, double fScaleH);
 	// set model for the layer
 	void SetModel(MeteModel* pModel){ _pModel = pModel; };
 	// show or hide
 	void Show(bool bShow){ _bShow = bShow; }
 	// reload texture
 	virtual void ReloadTexture() {};
+	// set new value for uncertainty areas
+	virtual void SetUncertaintyAreas(int nUCAreas) {};
+	// set the index of the focused cluster
+	virtual void SetFocusedCluster(int nFocusedCluster) {};
 	// brushing
 	virtual void Brush(int nLeft, int nRight, int nTop, int nBottom) {};
 
 	// select an index in variance widget, total range is 100
-	virtual void OnSelectVar(int nIndex) {}
+	void OnSelectVar(int nIndex);
 	
 
 private:
@@ -60,21 +65,21 @@ private:
 
 
 protected:
-	MeteModel* _pModel;
-	GLuint _gllist;                           // display index
-	GLuint _gllistC;                           // display index for clustering
-	GLuint _gllistG;                           // display index for gradient
+	// set group color
+	void SetGroupColor(int nIndex);
 
-	// the drawing area of this layer
-	double _fLeft;
-	double _fRight;
-	double _fBottom;
-	double _fTop;
+protected:
+	MeteModel* _pModel = NULL;
+	GLuint _gllist;                           // display index
+	GLuint _gllistG;                           // display index for gradient
 
 	double _fScaleW;
 	double _fScaleH;
 	bool _bShow;
-
-
+	// layout of the layers
+	const LayerLayout* _pLayout = NULL;
+protected:	// opengl function
+	// draw circle
+	void drawCircle(double x, double y, double dbRadius, bool bFill = false);
 };
 

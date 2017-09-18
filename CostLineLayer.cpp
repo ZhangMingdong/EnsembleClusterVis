@@ -4,6 +4,7 @@
 #include <gl/GLU.h>
 #include <iostream>
 #include "../Shapefile/Shapefile.h"
+#include "LayerLayout.h"
 
 using namespace std;
 
@@ -33,10 +34,10 @@ void CostLineLayer::drawCostline(){
 
 	// draw the frame
 	glBegin(GL_LINE_LOOP);
-	glVertex2f(_fLeft, _fTop);
-	glVertex2f(_fRight, _fTop);
-	glVertex2f(_fRight, _fBottom);
-	glVertex2f(_fLeft, _fBottom);
+	glVertex2f(_pLayout->_dbLeft, _pLayout->_dbTop);
+	glVertex2f(_pLayout->_dbRight, _pLayout->_dbTop);
+	glVertex2f(_pLayout->_dbRight, _pLayout->_dbBottom);
+	glVertex2f(_pLayout->_dbLeft, _pLayout->_dbBottom);
 
 	glEnd();
 }
@@ -50,8 +51,8 @@ void CostLineLayer::readCostline(){
 	if (pShapefile == 0) {
 		return;
 	}
-	double fWidth = _fRight - _fLeft;
-	double fHeight = _fTop - _fBottom;
+	double fWidth = _pLayout->_dbRight - _pLayout->_dbLeft;
+	double fHeight = _pLayout->_dbTop - _pLayout->_dbBottom;
 
 	SFShapes* pShapes = read_shapes(pShapefile);
 

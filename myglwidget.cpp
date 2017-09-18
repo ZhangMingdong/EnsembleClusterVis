@@ -2,18 +2,21 @@
 #include <gl/GLU.h>
 
 #include <QMouseEvent>
-#include <QImage>
+#include <QDebug>
+
 
 #include <iostream>
-#include <QDebug>
-#include "ContourStripGenerator.h"
+
 
 #include "MeteLayer.h"
 #include "CostLineLayer.h"
 #include "EnsembleLayer.h"
+#include "ClusterLayer.h"
 #include "MeteModel.h"
+#include "VarAnalysis.h"
+#include "LayerLayout.h"
 
-
+#define BUFSIZE 512
 
 using namespace std;
 double g_arrColors[20][3] = {
@@ -65,15 +68,13 @@ public:
 	GridStatistic(double fMin, double fMax) :_fMin(fMin), _fMax(fMax),_fMean((fMax+fMin)/2){};
 };
 
-
-
-
 void vertorMult(const double* m1, const double* m2, double* result)
 {
 	result[0] = m1[1] * m2[2] - m2[1] * m1[2];//y1*z2 - y2*z1;
 	result[1] = m1[2] * m2[0] - m2[2] * m1[0];//z1*x2 - z2*x1;
 	result[2] = m1[0] * m2[1] - m2[0] * m1[1];//x1*y2 - x2*y1;
 }
+
 // result = pt0pt1*pt0pt2
 void vectorMult(const double* pt0, const double* pt1, const double* pt2, double*result)
 {
@@ -94,9 +95,6 @@ MyGLWidget::MyGLWidget(QWidget *parent)
 , m_nMouseState(0)
 , m_nRank(3)
 , c_dbPI(3.14159265)
-, c_dbSideLen(1.0)
-, _pDataT(NULL)
-, _pDataB(NULL)
 , _nSelectedX(10)
 , _nSelectedY(10)
 , _bShowGridLines(false)
@@ -111,11 +109,8 @@ MyGLWidget::MyGLWidget(QWidget *parent)
 , _nSelectedTop(-1)
 , _nSelectedBottom(-1)
 {
-	_fLeft = -1.80;
-	_fRight = 1.80;
-	_fBottom = -0.90;
-	_fTop = 0.90;
-
+	_pLayout = new LayerLayout();
+	
 	_fScaleW = 0.01;
 	_fScaleH = 0.01;
 
@@ -132,26 +127,13 @@ MyGLWidget::MyGLWidget(QWidget *parent)
 
 MyGLWidget::~MyGLWidget()
 {
-// 	if (_dataTexture)
-// 	{
-// 		delete[]_dataTexture;
-// 	}
-	// release the uncertainty area
-// 	for (int i = 0; i < g_temperatureLen; i++)
-// 		for each (UnCertaintyArea* pArea in _listUnionAreaE[i])
-// 			delete pArea;
-	for (int i = 0; i < g_temperatureLen; i++)
-		for each (UnCertaintyArea* pArea in _listIntersectionAreaB[i]) 
-			delete pArea;
-	for (int i = 0; i < g_gradient_l; i++)
-		for each (UnCertaintyArea* pArea in _listUnionAreaB[i])
-			delete pArea;
-
 	// release the layers
 	for each (MeteLayer* layer in _vecLayers)
 	{
 		delete layer;
 	}
+
+	delete _pLayout;
 }
 
 void MyGLWidget::initializeGL()
@@ -177,17 +159,22 @@ void MyGLWidget::initializeGL()
 
 //	MeteLayer* pLayer = new EnsembleLayer();
 //	pLayer->SetModel(_pModelT);
-//	pLayer->InitLayer(_fLeft, _fRight, _fTop, _fBottom, _fScaleW, _fScaleH);
+//	pLayer->InitLayer(_pLayout->_dbLeft, _pLayout->_dbRight, _pLayout->_dbTop, _pLayout->_dbBottom, _fScaleW, _fScaleH);
 //	_vecLayers.push_back(pLayer);	
 
 	MeteLayer* pLayer = new EnsembleLayer();
 	pLayer->SetModel(_pModelE);
-	pLayer->InitLayer(_fLeft, _fRight, _fTop, _fBottom, _fScaleW, _fScaleH);
+	pLayer->InitLayer(_pLayout, _fScaleW, _fScaleH);
+	_vecLayers.push_back(pLayer);
+
+	pLayer = new ClusterLayer();
+	pLayer->SetModel(_pModelE);
+	pLayer->InitLayer(_pLayout, _fScaleW, _fScaleH);
 	_vecLayers.push_back(pLayer);
 
 	// create cost line layer
 	pLayer = new CostLineLayer();
-	pLayer->InitLayer(_fLeft, _fRight, _fTop, _fBottom, _fScaleW, _fScaleH);
+	pLayer->InitLayer(_pLayout, _fScaleW, _fScaleH);
 	_vecLayers.push_back(pLayer);
 
 
@@ -201,10 +188,10 @@ void MyGLWidget::paintGL(){
 	// draw selected point
 	glLineWidth(2.0f);
 	glColor4f(1.0, .3, 0.0, 1.0);
-	double fX0 = _fLeft + _nSelectedLeft*_fScaleW;
-	double fY0 = _fBottom + _nSelectedBottom*_fScaleH;
-	double fX1 = _fLeft + _nSelectedRight*_fScaleW;
-	double fY1 = _fBottom + _nSelectedTop*_fScaleH;
+	double fX0 = _pLayout->_dbLeft + _nSelectedLeft*_fScaleW;
+	double fY0 = _pLayout->_dbBottom + _nSelectedBottom*_fScaleH;
+	double fX1 = _pLayout->_dbLeft + _nSelectedRight*_fScaleW;
+	double fY1 = _pLayout->_dbBottom + _nSelectedTop*_fScaleH;
 	glBegin(GL_LINE_LOOP);
 	glVertex2f(fX0,fY0);
 	glVertex2f(fX0,fY1);
@@ -212,60 +199,10 @@ void MyGLWidget::paintGL(){
 	glVertex2f(fX1,fY0);
 	glEnd();
 
-
 	for each (MeteLayer* pLayer in _vecLayers)
 	{
 		pLayer->DrawLayer(_displayStates);
 	}
-
-// 	font.PrintText("123", 0, 0);
-	// Render quad
-
-
-	if (_bShowUnionB)
-	{
-// 		glColor4f(1.0, 1.0, 0.0, 0.05);
-		for (int i = 0; i < g_gradient_l;i++)
-		{
-			glColor4f(g_arrColors[0][0], g_arrColors[0][1], g_arrColors[0][2], 0.05);
-			glCallList(_gllist + i * 3 + 0);
-			glColor4f(g_arrColors[1][0], g_arrColors[1][1], g_arrColors[1][2], 0.05);
-			glCallList(_gllist + i * 3 + 1);
-			glColor4f(g_arrColors[2][0], g_arrColors[2][1], g_arrColors[2][2], 0.05);
-			glCallList(_gllist + i * 3 + 2);
-		}
-	}
-
-	if (_bShowIntersection)
-	{
-		double fTransparency = .5;
-		for (int i = 0; i < g_temperatureLen; i++)
-		{
-			glColor4f(g_arrColors[0][0], g_arrColors[0][1], g_arrColors[0][2], fTransparency);
-			glCallList(_gllist + g_gradient_l * 3 + g_temperatureLen * 3 + i * 3 + 0);
-			glColor4f(g_arrColors[1][0], g_arrColors[1][1], g_arrColors[1][2], fTransparency);
-			glCallList(_gllist + g_gradient_l * 3 + g_temperatureLen * 3 + i * 3 + 1);
-			glColor4f(g_arrColors[2][0], g_arrColors[2][1], g_arrColors[2][2], fTransparency);
-			glCallList(_gllist + g_gradient_l * 3 + g_temperatureLen * 3 + i * 3 + 2);
-		}
-
-	}
-
-	// contour line of truth data
-	if (_bShowContourLineTruth)
-	{
-		glLineWidth(2);
-		glColor4f(0.0, 0.0, 0.0, 1.0); 
-		for (int i = 0; i < g_temperatureLen; i++)
-		{
-			drawContourLine(_listContourTruth[i]);
-		}
-		glLineWidth(1);
-	}
-
-
-// 	double fStepW = 1.0 / (g_focus_w - 1);
-// 	double fStepH = (_fTop-_fBottom) / (g_focus_h - 1);
 
 	// grid lines
 	if (_bShowGridLines){
@@ -275,13 +212,13 @@ void MyGLWidget::paintGL(){
 		int nStep = 10;
 		for (int i = 0; i < g_globalW; i += nStep)
 		{
-			glVertex2f(_fLeft + i*_fScaleW, _fBottom);
-			glVertex2f(_fLeft + i*_fScaleW, _fTop);
+			glVertex2f(_pLayout->_dbLeft + i*_fScaleW, _pLayout->_dbBottom);
+			glVertex2f(_pLayout->_dbLeft + i*_fScaleW, _pLayout->_dbTop);
 		}
 		for (int j = 0; j < g_globalH; j += nStep)
 		{
-			glVertex2f(_fLeft, _fBottom + j*_fScaleH);
-			glVertex2f(_fRight, _fBottom + j*_fScaleH);
+			glVertex2f(_pLayout->_dbLeft, _pLayout->_dbBottom + j*_fScaleH);
+			glVertex2f(_pLayout->_dbRight, _pLayout->_dbBottom + j*_fScaleH);
 		}
 		glEnd();
 		// show detail
@@ -291,378 +228,17 @@ void MyGLWidget::paintGL(){
 			int nStep = 1;
 			for (int i = 0; i < g_globalW; i += nStep)
 			{
-				glVertex2f(_fLeft + i*_fScaleW, _fBottom);
-				glVertex2f(_fLeft + i*_fScaleW, _fTop);
+				glVertex2f(_pLayout->_dbLeft + i*_fScaleW, _pLayout->_dbBottom);
+				glVertex2f(_pLayout->_dbLeft + i*_fScaleW, _pLayout->_dbTop);
 			}
 			for (int j = 0; j < g_globalH; j += nStep)
 			{
-				glVertex2f(_fLeft, _fBottom + j*_fScaleH);
-				glVertex2f(_fRight, _fBottom + j*_fScaleH);
+				glVertex2f(_pLayout->_dbLeft, _pLayout->_dbBottom + j*_fScaleH);
+				glVertex2f(_pLayout->_dbRight, _pLayout->_dbBottom + j*_fScaleH);
 			}
 			glEnd();
 		}
 	}
-
-
-
-	double fMargin = .02;
-
-	if (_bShowLineChart)
-	{
-
-		// draw selected point
-		glLineWidth(2.0f);
-		glColor4f(1.0, 1.0, 1.0, 1.0);
-		double fX = _fLeft + _nSelectedX*_fScaleW;
-		double fY = _fBottom + _nSelectedY*_fScaleH;
-		glBegin(GL_LINE_LOOP);
-		glVertex2f(fX - 0.5*_fScaleW, fY - 0.5*_fScaleH);
-		glVertex2f(fX + 0.5*_fScaleW, fY - 0.5*_fScaleH);
-		glVertex2f(fX + 0.5*_fScaleW, fY + 0.5*_fScaleH);
-		glVertex2f(fX - 0.5*_fScaleW, fY + 0.5*_fScaleH);
-		glEnd();
-
-		// draw the statistic stack graph
-		QList<GridStatistic> list;
-		for (int ll = 0; ll < g_lenEnsembles; ll++)
-		{
-			const double *data = _pDataB + ll * 4 * g_focus_l + (_nSelectedY*g_focus_w + _nSelectedX) * 4;
-			double mb = data[0];
-			double mv = data[1];
-			double m = data[2];
-			double v = data[3];
-			// 			qDebug() << mb << "\t" << mb << "\t" << m << "\t" << v;
-			double fMin = m - v;
-			double fMax = m + v;
-			double fMean = m;
-			fMin = fMin*mv + mb;
-			fMax = fMax*mv + mb;
-			fMean = fMean*mv + mb;
-			list.append(GridStatistic(fMin, fMax));
-			// 			qDebug() << fMin << "\t" << fMax << "\t" << fMean;
-
-		}
-		qSort(list);
-		int nMinT = -70;
-		int nMaxT = 30;
-		double fMinT = nMinT;
-		double fMaxT = nMaxT;
-		for (int ll = 0; ll < g_lenEnsembles; ll++)
-		{
-			double fMin = list[ll]._fMin;
-			double fMax = list[ll]._fMax;
-			double fX1 = _fChartLeft + (fMin - fMinT) / (fMaxT - fMinT)*_fChartW;
-			double fX2 = _fChartLeft + (fMax - fMinT) / (fMaxT - fMinT)*_fChartW;
-
-			glColor4f(0, 0.8, 0, 0.5);
-			glBegin(GL_QUADS);
-			glVertex2f(fX1, _fBottom + (ll + 1)*(_fTop - _fBottom) / 50.0);
-			glVertex2f(fX2, _fBottom + (ll + 1)*(_fTop - _fBottom) / 50.0);
-			glVertex2f(fX2, _fBottom + ll*(_fTop - _fBottom) / 50.0);
-			glVertex2f(fX1, _fBottom + ll*(_fTop - _fBottom) / 50.0);
-
-			// 			glVertex2f(fMin*0.01,0.51+(ll-1)*0.01);
-			// 			glVertex2f(fMax*0.01,0.51+ (ll - 1)*0.01);
-			// 			glVertex2f(fMax*0.01,0.51+ ll*0.01);
-			// 			glVertex2f(fMin*0.01,0.51+ ll*0.01);
-			glEnd();
-			glColor4f(0, 0.8, 0, 1.0);
-			glBegin(GL_LINES);
-			glVertex2f((fX1 + fX2) / 2, _fBottom + (ll + 1)*(_fTop - _fBottom) / 50.0);
-			glVertex2f((fX1 + fX2) / 2, _fBottom + ll*(_fTop - _fBottom) / 50.0);
-			glEnd();
-		}
-		// draw the frame
-		glBegin(GL_LINES);
-		glLineWidth(2.0);
-		glColor3f(.5, .5, .5);
-		glVertex2f(_fChartLeft, _fBottom);
-		glVertex2f(_fChartRight, _fBottom);
-		glVertex2f(_fChartLeft, _fTop);
-		glVertex2f(_fChartLeft, _fBottom);
-		glEnd();
-		// x coordinate
-		for (int i = 0, j = nMinT; j <= nMaxT; i += 10, j += 10)
-		{
-			char buf[5];
-			sprintf_s(buf, "%d", j);
-			font.PrintText(buf, _fChartLeft + _fChartW*i / (nMaxT - nMinT), _fBottom - fMargin);
-		}
-		// y coordinate
-		for (int i = 10; i <= g_lenEnsembles; i += 10)
-		{
-			char buf[5];
-			sprintf_s(buf, "%d", i);
-			font.PrintText(buf, _fChartLeft - fMargin, _fBottom + (_fTop - _fBottom)*i / g_lenEnsembles);
-
-		}
-
-		// draw intersection line chart
-		EnsembleIntersections intersection = _arrIntersections[_nSelectedY*g_focus_w + _nSelectedX];
-		int nLen = intersection._listIntersection.length();
-		// 		double fMin = intersection._listIntersection[0]._fMin;
-		// 		double fMax = intersection._listIntersection[nLen - 1]._fMax;
-		// 		double fRange = fMax - fMin;
-		// 
-		// 		glColor3f(1.0, 0, 0);
-		// 		glBegin(GL_LINE_STRIP);
-		// 		// 		qDebug() << "==================";
-		// 		double fLastOverlap = 0;
-		// 		glVertex2f(_fChartLeft, _fBottom + (_fTop - _fBottom)*intersection._listIntersection[0]._nOverlap / g_lenEnsembles);
-		// 		for (int i = 0; i < nLen; i++)
-		// 		{
-		// 			double fValue = intersection._listIntersection[i]._fMax;
-		// 			double fOverlap = intersection._listIntersection[i]._nOverlap;
-		// 			double fX = _fChartLeft + (fValue - fMin) / fRange;
-		// 			if (i>0) glVertex2f(fX, _fBottom + (_fTop - _fBottom)*fLastOverlap / g_lenEnsembles);
-		// 
-		// 			glVertex2f(fX, _fBottom + (_fTop - _fBottom)*fOverlap / g_lenEnsembles);
-		// 			fLastOverlap = fOverlap;
-		// 			qDebug() << fOverlap;
-		// 		}
-		// 		glEnd();
-
-		double fMin = nMinT;
-		double fMax = nMaxT;
-		double fRange = fMax - fMin;
-
-		glColor3f(1.0, 0, 0);
-		glBegin(GL_LINE_STRIP);
-		// 		qDebug() << "==================";
-		// left end
-		glVertex2f(_fChartLeft, _fBottom);
-		glVertex2f(_fChartLeft + (intersection._listIntersection[0]._fMin - fMin) / fRange*_fChartW, _fBottom);
-		// 		glVertex2f(_fChartLeft + (intersection._listIntersection[0]._fMax - fMin) / fRange, _fBottom);
-		// 
-		// 		qDebug() << intersection._listIntersection[0]._fMin;
-		// 		qDebug() << intersection._listIntersection[0]._fMax;
-
-		for (int i = 0; i < nLen; i++)
-		{
-			double fValue1 = intersection._listIntersection[i]._fMin;
-			double fValue2 = intersection._listIntersection[i]._fMax;
-			double fOverlap = intersection._listIntersection[i]._nOverlap;
-			double fX1 = _fChartLeft + (fValue1 - fMin) / fRange*_fChartW;
-			double fX2 = _fChartLeft + (fValue2 - fMin) / fRange*_fChartW;
-			glVertex2f(fX1, _fBottom + (_fTop - _fBottom)*fOverlap / g_lenEnsembles);
-			glVertex2f(fX2, _fBottom + (_fTop - _fBottom)*fOverlap / g_lenEnsembles);
-			// 			qDebug() << fOverlap;
-		}
-
-		glVertex2f(_fChartLeft + (intersection._listIntersection[intersection._listIntersection.length() - 1]._fMax - fMin) / fRange*_fChartW, _fBottom);
-		// right end
-		glVertex2f(_fChartRight, _fBottom);
-		glEnd();
-
-
-		// draw the threshold line
-		glColor3f(.5, 0, 0);
-		glBegin(GL_LINE_STRIP);
-		glVertex2f(_fChartLeft, _fBottom + (_fTop - _fBottom)*g_nThreshold / g_lenEnsembles);
-		glVertex2f(_fChartRight, _fBottom + (_fTop - _fBottom)*g_nThreshold / g_lenEnsembles);
-		glEnd();
-	}
-	// draw clustering
-	if (_bShowClusterBS)
-	{
-		double colors[20][3] = {
-			{ 1, 0, 0 },			// R
-			{ 0, 1, 0 },			// G
-			{ 0, 0, 1 },			// B
-	
-			{ 1, 1, 0 },			// yellow
-			{ 0, 1, 1 },			// purple
-			{ 1, 0, 1 },			// 
-
-			{ .6, .3, 1 },			// R
-			{ 1, .6, .3 },			// R
-			{ .3, 1, .6 },			// R
-
-			{ .3, .6, 1 },			// R
-			{ 1, .3, .6 },			// R
-			{ .6, 1, .3 },			// R
-		
-			{ .5, 1, 1 },			// R
-			{ 1, .5, 1 },			// R
-			{ 1, 1, .5 },			// R
-		
-			{ .5, 1, 0 },			// R
-			{ 0, .5, 1 },			// R
-			{ 1, 0, .5 },			// R
-			
-			{ .2, .7, .2 },			// R
-			{ .2, .2, .7 },			// R
-
-		};
-
-		glBegin(GL_QUADS);
-		for (int i = 0; i < g_focus_h; i++)
-		{
-			for (int j = 0; j < g_focus_w; j++)
-			{
-
-				double fX = _fLeft + j*_fScaleW;
-				double fY = _fBottom + i*_fScaleH;
-				double* color = colors[_arrLabels[i*g_focus_w + j]];
-				glColor4f(color[0] * .5, color[1] * .5, color[2] * .5, 1);
-				glVertex2f(fX - 0.5*_fScaleW, fY - 0.5*_fScaleH);
-				glVertex2f(fX + 0.5*_fScaleW, fY - 0.5*_fScaleH);
-				glVertex2f(fX + 0.5*_fScaleW, fY + 0.5*_fScaleH);
-				glVertex2f(fX - 0.5*_fScaleW, fY + 0.5*_fScaleH);
-// 				qDebug() << _arrLabels[i*g_focus_h + j];
-			}
-		}
-		glEnd();
-
-
-		// draw the cluster chart
-
-
-
-		// draw the frame
-		glBegin(GL_LINES);
-		glLineWidth(2.0);
-		glColor3f(.5, .5, .5);
-		glVertex2f(_fChartLLeft, _fBottom);
-		glVertex2f(_fChartLRight, _fBottom);
-		glVertex2f(_fChartLLeft, _fTop);
-		glVertex2f(_fChartLLeft, _fBottom);
-		glLineWidth(.5);
-// 		glColor3f(.2, .2, .2);
-		glVertex2f(_fChartLLeft, _fBottom + (_fTop - _fBottom)/2);
-		glVertex2f(_fChartLRight, _fBottom + (_fTop - _fBottom) / 2);
-		glVertex2f(_fChartLLeft + _fChartLW/2, _fTop);
-		glVertex2f(_fChartLLeft + _fChartLW/2, _fBottom);
-		glEnd();
-
-
-
-// 		double fMargin = .02;
-// 		// x coordinate
-// 		for (int i = 0, j = nMinT; j <= nMaxT; i += 10, j += 10)
-// 		{
-// 			char buf[5];
-// 			sprintf_s(buf, "%d", j);
-// 			font.PrintText(buf, _fChartLeft + _fChartW*i / (nMaxT - nMinT), _fBottom - fMargin);
-// 		}
-// 		// y coordinate
-// 		for (int i = 10; i <= g_lenEnsembles; i += 10)
-// 		{
-// 			char buf[5];
-// 			sprintf_s(buf, "%d", i);
-// 			font.PrintText(buf, _fChartLeft - fMargin, _fBottom + (_fTop - _fBottom)*i / g_lenEnsembles);
-// 
-// 		}
-
-		font.PrintText("0", _fChartLLeft - fMargin, _fBottom - fMargin);
-		font.PrintText("1", _fChartLLeft + _fChartLW, _fBottom - fMargin);
-		font.PrintText("1", _fChartLLeft - fMargin, _fBottom + (_fTop - _fBottom));
-
-
-		font.PrintText(".5", _fChartLLeft + _fChartLW/2, _fBottom - fMargin);
-		font.PrintText(".5", _fChartLLeft - fMargin, _fBottom + (_fTop - _fBottom)/2);
-
-
-
-// 		double fVMMin = 1000;
-// 		double fMVMin = 1000;
-// 		double fVMMax = -1000;
-// 		double fMVMax = -1000;
-// 		for (int i = 0; i < g_focus_l; i++){
-// 			if (_gridDataMeanVarB[i] > fMVMax) fMVMax = _gridDataMeanVarB[i];
-// 			if (_gridDataMeanVarB[i] < fMVMin) fMVMin = _gridDataMeanVarB[i];
-// 			if (_gridDataVarMeanB[i] > fVMMax) fVMMax = _gridDataVarMeanB[i];
-// 			if (_gridDataVarMeanB[i] < fVMMin) fVMMin = _gridDataVarMeanB[i];
-// 		}
-// 		double fVMRange = fVMMax - fVMMin;
-		// 		double fMVRange = fMVMax - fMVMin;
-		glPointSize(2.0);
-		glBegin(GL_POINTS);
-		for (int i = 0; i < g_focus_l;i++)
-		{
-			double* color = colors[_arrLabels[i]];
-// 			glColor3f(color[0], color[1], color[2]);
-// 			glVertex2f(_fChartLLeft + (_gridDataMeanVarB[i] - fMVMin)*_fChartLW / fMVRange,
-// 				_fBottom + (_gridDataVarMeanB[i] - fVMMin)*(_fTop-_fBottom) / fVMRange);
-
-			glColor3f(color[0] * .5, color[1] * .5, color[2] * .5);
-			glVertex2f(_fChartLLeft + _gridDataMeanVarB[i]*_fChartLW,
-				_fBottom + _gridDataVarMeanB[i]*(_fTop - _fBottom));
-
-		}
-		// draw selected point
-// 		glPointSize(4.0);
-// 		int index = _nSelectedY*g_focus_w + _nSelectedX;
-// 		double* color = colors[_arrLabels[index]];
-// 
-// 		glColor3f(color[0], color[1], color[2]);
-// 		glVertex2f(_fChartLLeft + _gridDataMeanVarB[index] * _fChartLW,
-// 			_fBottom + _gridDataVarMeanB[index] * (_fTop - _fBottom));
-		glEnd();
-
-		// draw the selected point
-		glColor3f(1, 1, 1);
-		glLineWidth(.5);
-		int index = _nSelectedY*g_focus_w + _nSelectedX;
-		double fX = _fChartLLeft + _gridDataMeanVarB[index] * _fChartLW;
-		double fY = _fBottom + _gridDataVarMeanB[index] * (_fTop - _fBottom);
-		glBegin(GL_LINES);
-		glVertex2f(_fChartLLeft, fY);
-		glVertex2f(fX, fY);
-		glVertex2f(fX, fY);
-		glVertex2f(fX, _fBottom);
-		glEnd();
-
-	}
-
-
-
-	// draw the surface
-	if (false)
-	{
-		double fMin = 100000;
-		double fMax = -100000;
-
-		for (int i = 0; i < g_focus_l; i++)
-		{
-			if (_pDataT[i]>fMax) fMax = _pDataT[i];
-			if (_pDataT[i] < fMin) fMin = _pDataT[i];
-		}
-		double fRange = fMax - fMin;
-		qDebug() << fMin;
-		qDebug() << fMax;
-		qDebug() << fRange;
-
-		glColor4f(0, 0, .5, .5);
-		glBegin(GL_QUADS);
-		for (int i = 0; i < g_focus_h - 1; i++)
-		{
-			for (int j = 0; j < g_focus_w - 1; j++)
-			{
-				double fX1 = _fLeft + j*_fScaleW;
-				double fY1 = _fBottom + i*_fScaleH;
-				double fX2 = _fLeft + (j + 1)*_fScaleW;
-				double fY2 = _fBottom + (i + 1)*_fScaleH;
-				int nZ11 = i*g_focus_w + j;
-				int nZ12 = (i + 1)*g_focus_w + j;
-				int nZ21 = i*g_focus_w + j + 1;
-				int nZ22 = (i + 1)*g_focus_w + j + 1;
-				double z11 = (_pDataT[nZ11] - fMin)*.1 / fRange;
-				double z12 = (_pDataT[nZ12] - fMin)*.1 / fRange;
-				double z21 = (_pDataT[nZ21] - fMin)*.1 / fRange;
-				double z22 = (_pDataT[nZ22] - fMin)*.1 / fRange;
-				glVertex3f(fX1, fY1, z11);
-				glVertex3f(fX1, fY2, z12);
-				glVertex3f(fX2, fY2, z22);
-				glVertex3f(fX2, fY1, z21);
-				// 			qDebug() << z11 << z12 << z21 << z22;
-			}
-		}
-		glEnd();
-	}
-
-
-
 }
 
 void MyGLWidget::drawContourLine(const QList<ContourLine>& contours){
@@ -672,8 +248,8 @@ void MyGLWidget::drawContourLine(const QList<ContourLine>& contours){
 		glBegin(GL_LINE_STRIP);
 		for each (QPointF pt in contour._listPt)
 		{
-			double x = _fLeft + pt.x() * _fScaleW;
-			double y = _fTop - pt.y() * _fScaleH;
+			double x = _pLayout->_dbLeft + pt.x() * _fScaleW;
+			double y = _pLayout->_dbTop - pt.y() * _fScaleH;
 			glVertex2f(x, y);
 		}
 		glEnd();
@@ -811,7 +387,6 @@ void MyGLWidget::mouseMoveEvent(QMouseEvent *event)
 	}
 }
 
-
 void MyGLWidget::select(int& nX, int&nY, const QPoint& pt) {
 
 
@@ -852,9 +427,10 @@ void MyGLWidget::select(int& nX, int&nY, const QPoint& pt) {
 		if (pick._nX < g_focus_w) {
 			nX = pick._nX;
 			nY = pick._nY;
-			qDebug() << pick._nX << "\t" << pick._nY << "\t" << _pDataT[nY*g_focus_w + nX];
+			qDebug() << pick._nX << "\t" << pick._nY;
 		}
 		else {
+			// bias of the index of the variance is beyond g_focus_w
 			int nIndex = pick._nX - g_focus_w;
 			for each (MeteLayer* pLayer in _vecLayers)
 			{
@@ -865,6 +441,7 @@ void MyGLWidget::select(int& nX, int&nY, const QPoint& pt) {
 		updateGL();
 	}
 }
+
 void MyGLWidget::mouseDoubleClickEvent(QMouseEvent *event){
 	select(_nSelectedX, _nSelectedRight, event->pos());
 }
@@ -941,78 +518,12 @@ void MyGLWidget::updateTrackBallPos(QPoint pt, double* result)
 
 }
 
-void MyGLWidget::SetDataT(const double* data){
-	_pDataT = data;
-
-}
-
-void MyGLWidget::SetLabels(const int* labels){
-	_arrLabels = labels;
-}
-
-void MyGLWidget::SetDataB(const double* data){
-	_pDataB = data;
-}
-
 void MyGLWidget::SetModelE(MeteModel* pModelE){
 	_pModelE = pModelE;
 }
 
 void MyGLWidget::SetModelT(MeteModel* pModelT) {
 	_pModelT = pModelT;
-}
-
-void MyGLWidget::SetVar(const double* pVM, const double *pMV){
-	_gridDataMeanVarB = pMV;
-	_gridDataVarMeanB = pVM;
-}
-
-void MyGLWidget::SetContourTruth(QList<ContourLine>* listContourTruth){
-	for (int i = 0; i < g_temperatureLen; i++)
-	{
-		_listContourTruth[i] = listContourTruth[i];
-	}
-}
-
-void MyGLWidget::SetContourMean(QList<ContourLine>* listContour){
-	for (int i = 0; i < g_temperatureLen; i++)
-	{
-		_listContourMean[i] = listContour[i];
-	}
-
-}
-
-void MyGLWidget::SetContourIntervalB(QList<ContourLine>* listContourMin, QList<ContourLine>* listContourMax){
-	for (int i = 0; i < g_temperatureLen; i++)
-	{
-		_listContourMaxB[i] = listContourMax[i];
-		_listContourMinB[i] = listContourMin[i];
-	}
-}
-
-void MyGLWidget::SetMultiStatistic(QList<ContourLine>* listContourMin, QList<ContourLine>* listContourMax){
-	for (int i = 0; i < g_gradient_l;i++)
-	{
-		_listContourMin_3[i] = listContourMin[i];
-		_listContourMax_3[i] = listContourMax[i];
-	}
-}
-
-void MyGLWidget::generateContour(){
-	// data preparation
-	for (int i = 0; i < g_gradient_l;i++)
-	{
-// 		generateContourImp_New(_listContourMin_3[i], _listContourMax_3[i], _listUnionAreaB[i]);
-	}
-	for (int i = 0; i < g_temperatureLen;i++)
-	{
-// 		generateContourImp_New(_listContourMinE[i], _listContourMaxE[i], _listUnionAreaE[i]);
-	}
-
-	for (int i = 0; i < g_temperatureLen; i++)
-	{
-// 		generateContourImp_New(_listContourMinB[i], _listContourMaxB[i], _listIntersectionAreaB[i]);
-	}
 }
 
 bool MyGLWidget::processHits(GLint hits, GLuint buffer[], PickIndex& pick)
@@ -1057,8 +568,8 @@ void MyGLWidget::drawPlaceHolder()
 		glLoadName(i);
 		for (int j = 0; j < g_focus_h; j++){
 			glPushName(j);
-			double fX = _fLeft + i*_fScaleW;
-			double fY = _fBottom + j*_fScaleH;
+			double fX = _pLayout->_dbLeft + i*_fScaleW;
+			double fY = _pLayout->_dbBottom + j*_fScaleH;
 			glBegin(GL_QUADS);
 			glVertex2f(fX - 0.5*_fScaleW, fY - 0.5*_fScaleH);
 			glVertex2f(fX + 0.5*_fScaleW, fY - 0.5*_fScaleH);
@@ -1070,15 +581,15 @@ void MyGLWidget::drawPlaceHolder()
 	}
 
 	// for variance chart
-	int nWidth = 100;
-	double dbStep = _fRight / nWidth;
+	int nWidth = VarAnalysis::_nVarBars;
+	double dbStep = (_pLayout->_dbRight-_pLayout->_dbLeft) / nWidth;
 
 	for (size_t i = 0; i < nWidth; i++)
 	{
 		glLoadName(i + g_focus_w);
-		double fX0 = 0 + i*dbStep;
-		double fX1 = 0 + (i+1)*dbStep;
-		double fY = _fTop;
+		double fX0 = _pLayout->_dbLeft + i*dbStep;
+		double fX1 = _pLayout->_dbLeft + (i+1)*dbStep;
+		double fY = _pLayout->_dbTop;
 		glBegin(GL_QUADS);
 		glVertex2f(fX0, fY );
 		glVertex2f(fX1, fY );
@@ -1133,6 +644,7 @@ void MyGLWidget::viewShowContourLineMean(bool on){
 void MyGLWidget::viewShowClusterBS(bool on){
 	_bShowClusterBS = on; updateGL();
 }
+
 void MyGLWidget::viewShowClusterBV(bool on){
 	_bShowClusterBV = on; updateGL();
 }
@@ -1143,21 +655,29 @@ void MyGLWidget::DrawText(char* pText, double fX, double fY){
 }
 
 // reload texture
-void MyGLWidget::ReloadTexture() {
+void MyGLWidget::onTextureReloaded() {
 	for each (MeteLayer* pLayer in _vecLayers)
 	{
 		pLayer->ReloadTexture();
 	}
+
 	updateGL();
 }
+void MyGLWidget::setUncertaintyAreas(int nUCAreas) {
+	for each (MeteLayer* pLayer in _vecLayers)
+	{
+		pLayer->SetUncertaintyAreas(nUCAreas);
+	}
 
+	updateGL();
+}
 
 void MyGLWidget::updateMinPts(int minPts) {
 	qDebug() << "set minpts";
 	if(_pModelE)
 		_pModelE->SetMinPts(minPts);
 
-	ReloadTexture();
+	onTextureReloaded();
 }
 
 void MyGLWidget::updateEps(double eps) {
@@ -1165,5 +685,30 @@ void MyGLWidget::updateEps(double eps) {
 	if (_pModelE)
 		_pModelE->SetEps(eps);
 
-	ReloadTexture();
+	onTextureReloaded();
+}
+void MyGLWidget::updateVarSmooth(int nSmooth) {
+	if (_pModelE)
+		_pModelE->SetSmooth(nSmooth);
+	onTextureReloaded();
+}
+void MyGLWidget::updateBgFunction(int nBgFunction) {
+	if (_pModelE)
+		_pModelE->SetBgFunction((MeteModel::enumBackgroundFunction)nBgFunction);
+	onTextureReloaded();
+}
+
+void MyGLWidget::updateUncertaintyAreas(int nAreas) {
+	if (_pModelE)
+		_pModelE->SetUncertaintyAreas(nAreas);
+	setUncertaintyAreas(nAreas);
+}
+
+void MyGLWidget::updateFocusedCluster(int nFocusedCluster) {
+	for each (MeteLayer* pLayer in _vecLayers)
+	{
+		pLayer->SetFocusedCluster(nFocusedCluster);
+	}
+
+	updateGL();
 }

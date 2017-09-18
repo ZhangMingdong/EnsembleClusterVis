@@ -6,7 +6,7 @@
 #pragma once
 #include <QGLWidget>
 // struct of the color
-struct MYGLColor 
+struct MYGLColor
 {
 	GLubyte _rgb[3];	// 0~255
 public:
@@ -19,12 +19,13 @@ public:
 	enum Enum_Color_Pallet
 	{
 		CP_Perception	// perception color, support value 0~16, using 9 colors
-		,CP_RB			// red/blue color, support value -10~10, using 2 colors only
-		,CP_RainBow		// rainbow color, support value -7~7, using 8 colors 
-		,CP_Length		// length of color pallet
+		, CP_RB			// red/blue color, support value -10~10, using 2 colors only
+		, CP_RainBow		// rainbow color, support value -9~9, using 7 colors 
+		, CP_12			// 12 colors
+		, CP_Length		// length of color pallet
 	};
 public:
-	static ColorMap* GetInstance(Enum_Color_Pallet cp=CP_Perception);
+	static ColorMap* GetInstance(Enum_Color_Pallet cp = CP_Perception);
 private:
 	static ColorMap* _pInstance[CP_Length];
 	// weather initialized
@@ -35,8 +36,8 @@ public:
 	// get a color given an value
 	MYGLColor GetColor(double fValue);
 	~ColorMap();
-	int GetLength(){ return _nLen; }
-	int GetStep(){ return _nStep; }
+	int GetLength() { return _nLen; }
+	int GetStep() { return _nStep; }
 private:
 	MYGLColor* _pColors;		// list of color
 	double* _pValues;		// list of value
@@ -44,5 +45,12 @@ private:
 	int _nStep;
 private:
 	MYGLColor interpolateColor(MYGLColor color0, MYGLColor color1, double fBias0, double fBias1);
+
+private:
+	// color categoryt20 from d3
+	static int s_arrCategoryColor20[20][3];
+public:
+	static int GetCategory20I(int nColorIndex, int nComponentIndex);
+	static double GetCategory20D(int nColorIndex, int nComponentIndex);
 };
 
