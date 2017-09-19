@@ -102,7 +102,6 @@ EnsembleLayer::~EnsembleLayer()
 }
 
 void EnsembleLayer::draw(DisplayStates states){
-	glPushAttrib(GL_LINE_BIT);
 	// border
 	glBegin(GL_LINE_LOOP);
 	glVertex2f(_pLayout->_dbLeft, _pLayout->_dbBottom);
@@ -111,19 +110,6 @@ void EnsembleLayer::draw(DisplayStates states){
 	glVertex2f(_pLayout->_dbLeft, _pLayout->_dbTop);
 	glEnd();
 
-
-	//*
-	double g_arrColors[9][3] = {
-		{ 1, 0, 0 },			// R
-		{ 0, 1, 0 },			// G
-		{ 0, 0, 1 },			// B
-		{ 1, 1, 0 },			// R
-		{ 0, 1, 1 },			// G
-		{ 1, 0, 1 },			// B
-		{ 1, .5, 0 },			// R
-		{ 0, 1, .5 },			// G
-		{ .5, 0, 1 },			// B
-	};
 
 
 	int nClusterIndex = -1;	// -1 means show all clusters
@@ -197,14 +183,11 @@ void EnsembleLayer::draw(DisplayStates states){
 		}
 	}
 
-
-	glPushMatrix();
-
 	glTranslatef(biasX, biasY, 0);				// 移动到指定位置
 
 	
-	if (!_pModel->GetFilter())
-		glScalef(.5, .5, 1);						// 变换大小
+//	if (!_pModel->GetFilter())
+//		glScalef(.5, .5, 1);						// 变换大小
 //	glScalef(2, 2, 0);
 
 
@@ -225,7 +208,6 @@ void EnsembleLayer::draw(DisplayStates states){
 	}
 	if (states._bShowContourLineMean)
 	{
-
 		glColor4f(1.0, 0.0, 1.0, .5);
 		drawContourLine(_pModel->GetContourMean());
 	}
@@ -267,23 +249,11 @@ void EnsembleLayer::draw(DisplayStates states){
 		else
 			for (size_t j = 0; j < 3; j++)
 			{
-				glColor4f(g_arrColors[j][0], g_arrColors[j][1], g_arrColors[j][2], fTransparency);
+				glColor4f(ColorMap::GetRGB(j, 0), ColorMap::GetRGB(j, 1), ColorMap::GetRGB(j, 2), fTransparency);
 				glCallList(_gllist + j);
 			}
 	}
-	if (states._bShowBeliefEllipse)
-	{
-
-	}
-
-	glPopMatrix();
-
-
-
-	glPopAttrib();
 }
-
-
 
 void EnsembleLayer::ReloadTexture() {
 

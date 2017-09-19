@@ -24,7 +24,7 @@ ReanalysisModel::~ReanalysisModel()
 
 void ReanalysisModel::InitModel(int nEnsembleLen, int nWidth, int nHeight, int nFocusX, int nFocusY, int nFocusW, int nFocusH
 	, QString strFile, bool bBinary, int nWest, int nEast, int nSouth, int nNorth
-	, int nFocusWest, int nFocusEast, int nFocusSouth, int nFocusNorth, bool bFilter) {
+	, int nFocusWest, int nFocusEast, int nFocusSouth, int nFocusNorth) {
 	// 0.record states variables
 
 	_nEnsembleLen = nEnsembleLen;
@@ -50,7 +50,7 @@ void ReanalysisModel::InitModel(int nEnsembleLen, int nWidth, int nHeight, int n
 
 	_strFile = strFile;
 	_bBinaryFile = bBinary;
-	_bFilter = bFilter;
+
 
 	// 2.allocate resource
 	_pData = new DataField(_nWidth, _nHeight, _nEnsembleLen);

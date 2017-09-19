@@ -5,31 +5,10 @@
 #include "ContourStripGenerator.h"
 #include <MathTypes.hpp>
 #include "def.h"
+#include "ClusterResult.h"
 
 class DataField;
 class OneSpatialCluster;
-
-// record the cluster result
-struct ClusterResult {
-	int _nM = 0;								// dimension of each item. also length of _arrLabels;
-	int _nK=0;									// number of clusters 1~5;
-	std::vector<int> _vecItems[g_nClusterMax];	// items of each cluster, only the first _nK are used
-	int _arrLabels[g_nEnsembles];				// labels of each ensemble member
-	// push a label
-	void PushLabel(int nIndex, int nLabel);
-	// match this cluster index with c, minimized the items that changing cluster index
-	void Match(ClusterResult& c);
-	// align with a map
-	void AlighWith(int* arrMap);
-	// reset the result
-	void Reset(int nM, int nK);
-	// sort clusters by number of items in them
-	void Sort();
-	// generate items by the array of labels
-	void generateItemsByLabels();
-
-};
-
 
 /*
 	model of the meteorology data
@@ -46,7 +25,7 @@ public:
 	virtual void InitModel(int nEnsembleLen, int nWidth, int nHeight, int nFocusX, int nFocusY, int nFocusW, int nFocusH
 		, QString strFile, bool bBinary = false
 		, int nWest = -179, int nEast = 180, int nSouth = -90, int nNorth = 90
-		, int nFocusWest = -179, int nFocusEast = 180, int nFocusSouth = -90, int nFocusNorth = 90, bool bFiltered = false);
+		, int nFocusWest = -179, int nFocusEast = 180, int nFocusSouth = -90, int nFocusNorth = 90);
 	// generate color mapping texture
 	virtual GLubyte* generateTextureNew();
 
@@ -64,9 +43,7 @@ public:
 	virtual int GetFocusEast() { return _nFocusEast; }
 	virtual int GetFocusSouth() { return _nFocusSouth; }
 	virtual int GetFocusNorth() { return _nFocusNorth; }
-	virtual bool GetFilter() {
-		return _bFilter; 
-	}
+
 	virtual QList<ContourLine> GetContourMin(){ return _listContourMinE; }
 	virtual QList<ContourLine> GetContourMax(){ return _listContourMaxE; }
 	virtual QList<ContourLine> GetContourMean(){ return _listContourMeanE; }
@@ -165,7 +142,6 @@ protected:
 	// 0.io related	
 	QString _strFile;				// file name of the data	
 	bool _bBinaryFile;				// whether read binary file	
-	bool _bFilter;					// filtered the data between grids	
 
 	double _dbVarThreshold = 1.5;	// threshold of the variance
 

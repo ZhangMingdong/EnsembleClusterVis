@@ -18,8 +18,13 @@ MeteLayer::~MeteLayer()
 }
 
 void MeteLayer::DrawLayer(DisplayStates states){
-	if (_bShow)
+	if (_bShow) {
+		glPushAttrib(GL_ALL_ATTRIB_BITS);
+		glPushMatrix();
 		this->draw(states);
+		glPopMatrix();
+		glPopAttrib();
+	}
 }
 
 void MeteLayer::InitLayer(const LayerLayout* pLayout, double fScaleW, double fScaleH){

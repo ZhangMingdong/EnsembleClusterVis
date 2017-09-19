@@ -1,21 +1,18 @@
 #include "ClusterLayer.h"
 
-#include"MeteModel.h"
-#include"LayerLayout.h"
+#include "MeteModel.h"
+#include "LayerLayout.h"
 #include "VarAnalysis.h"
 
 ClusterLayer::ClusterLayer()
 {
 }
 
-
 ClusterLayer::~ClusterLayer()
 {
 }
 
 void ClusterLayer::draw(DisplayStates states) {
-	glPushAttrib(GL_ALL_ATTRIB_BITS);
-
 	drawVarChart();
 
 	// draw pca point
@@ -25,8 +22,6 @@ void ClusterLayer::draw(DisplayStates states) {
 	drawClusterBars();
 
 	drawUCAreaRelation();
-
-	glPopAttrib();
 }
 
 void ClusterLayer::init() {
@@ -34,10 +29,18 @@ void ClusterLayer::init() {
 }
 
 void ClusterLayer::drawVarChart() {
-	// draw chart
-	double dbVarThreshold = _pModel->GetVarThreshold();
+	
+	double dbVarThreshold = _pModel->GetVarThreshold();			// threshold value
+	std::vector<double> vecVar = _pModel->GetVariance();		// list of the variances
+	int nLen = vecVar.size();									// length of the Variance vectors
+	double dbVarMin = vecVar[0];								// min of variance
+	double dbVarMax = vecVar[nLen - 1];							// max of variance
+	int nVarVLayers = 10;// dbVarMax + 1;											// Vertical layers of the chart
+	double dbVarVLayer = _pLayout->_dbVarChartHeight / nVarVLayers;			// distance between two layers
 
-	// draw chart framework
+
+
+	// 1.draw chart framework
 	glLineWidth(2.0f);
 	glColor3f(0, 0, 1);
 	glBegin(GL_LINES);
@@ -55,42 +58,63 @@ void ClusterLayer::drawVarChart() {
 	glVertex2d(_pLayout->_dbVarChartRight, _pLayout->_dbVarChartTop);
 	glEnd();
 
+	// inner grid lines
 	glLineWidth(1.0f);
 	glColor3f(0, 0, .5);
-	// scale
-	for (size_t i = 1; i < _pLayout->_nVarLayers; i++)
+	// horizontal 
+	for (size_t i = 1; i < nVarVLayers; i++)
 	{
 		glBegin(GL_LINES);
-		glVertex2d(_pLayout->_dbVarChartLeft, _pLayout->_dbVarChartBottom + i * _pLayout->_dbVarLayer);
-		glVertex2d(_pLayout->_dbVarChartRight, _pLayout->_dbVarChartBottom + i * _pLayout->_dbVarLayer);
+		glVertex2d(_pLayout->_dbVarChartLeft, _pLayout->_dbVarChartBottom + i * dbVarVLayer);
+		glVertex2d(_pLayout->_dbVarChartRight, _pLayout->_dbVarChartBottom + i * dbVarVLayer);
 		glEnd();
 		char buf[10];
 		sprintf_s(buf, "%d", i);
-		_pCB->DrawText(buf, _pLayout->_dbVarChartLeft + .01, _pLayout->_dbVarChartBottom + i * _pLayout->_dbVarLayer + .01);
+		_pCB->DrawText(buf, _pLayout->_dbVarChartLeft + .01, _pLayout->_dbVarChartBottom + i * dbVarVLayer + .01);
 	}
 
-	// draw the chart line
+	// vertical
+	for (size_t i = 10; i < _pLayout->_nVarHLayers; i+=10)
+	{
+		glBegin(GL_LINES);
+		glVertex2d(_pLayout->_dbVarChartLeft + i*_pLayout->_dbVarHLayer, _pLayout->_dbVarChartTop);
+		glVertex2d(_pLayout->_dbVarChartLeft + i*_pLayout->_dbVarHLayer, _pLayout->_dbVarChartBottom);
+		glEnd();
+		char buf[10];
+		sprintf_s(buf, "%d", i);
+		_pCB->DrawText(buf, _pLayout->_dbVarChartLeft + i*_pLayout->_dbVarHLayer, _pLayout->_dbVarChartBottom - dbVarVLayer/2.0);
+	}
+
+
+	// 2.draw the chart line
 	glLineWidth(3.0f);
 	glColor3f(0.0, .5, .5);
-	std::vector<double> vecVar = _pModel->GetVariance();
-	int nLen = vecVar.size();
 	double dbStep = (_pLayout->_dbRight - _pLayout->_dbVarChartLeft) / (nLen - 1);
-	double dbThresholdX = -1;
+	double dbThresholdX = -1001;
+	int nStep = nLen / 1000;
+	int i = 0;
 	glBegin(GL_LINE_STRIP);
-	for (size_t i = 0; i < nLen; i += 100)
+	while(true)
 	{
-		double dbYBias = vecVar[i] * _pLayout->_dbVarLayer;
+		double dbYBias = vecVar[i] * dbVarVLayer;
 		if (dbYBias>_pLayout->_dbVarChartHeight)
 		{
 			dbYBias = _pLayout->_dbVarChartHeight;
 		}
 		glVertex2d(_pLayout->_dbVarChartLeft + dbStep*i, _pLayout->_dbVarChartBottom + dbYBias);
-		if (dbThresholdX<0 && vecVar[i]>dbVarThreshold) dbThresholdX = _pLayout->_dbVarChartLeft + dbStep*i;
+		if (dbThresholdX<-999 && vecVar[i]>dbVarThreshold) dbThresholdX = _pLayout->_dbVarChartLeft + dbStep*i;
+
+		if (i==nLen-1)
+		{
+			break;
+		}
+		i += nStep;
+		if (i > nLen - 1) i = nLen - 1;
 	}
 	glEnd();
 
-	// draw the threshold line
-	if (dbThresholdX > 0) {
+	// 3.draw the threshold line
+	if (dbThresholdX > _pLayout->_dbVarChartLeft) {
 		glColor3f(1.0, 0, 0);
 		glBegin(GL_LINES);
 		glVertex2d(dbThresholdX, _pLayout->_dbVarChartBottom);
@@ -217,37 +241,42 @@ void ClusterLayer::drawUCAreaRelation() {
 	glEnd();
 
 
-
-	// draw nodes
-	DPoint3 arrNodePosition[g_nUncertaintyAreaMax];
-
 	int nUncertaintyAreas = std::min(_pModel->GetUncertaintyAreas(), _nUncertaintyRegions);
+	if (nUncertaintyAreas < 2) return;
+
+	// calculate node position
+	DPoint3 arrNodePosition[g_nUncertaintyAreaMax];
 	double dbNodeRadius = .1;
 	double dbChartRadius = _pLayout->dbChartRadius - 2 * dbNodeRadius;
-	if (nUncertaintyAreas < 2) return;
 	for (size_t i = 0; i < nUncertaintyAreas; i++)
 	{
 		double dbAngle = 2.0*M_PI*i / nUncertaintyAreas;
 		double dbX = _pLayout->_dbUCARChartCenterX + dbChartRadius*cos(dbAngle);
 		double dbY = _pLayout->_dbUCARChartCenterY + dbChartRadius*sin(dbAngle);
-		SetGroupColor(i);
-		drawCircle(dbX, dbY, dbNodeRadius, true);
+
 		arrNodePosition[i].x = dbX;
 		arrNodePosition[i].y = dbY;
 	}
-	// draw lines
 
+	// draw lines
 	SetGroupColor(_nFocusedCluster);
 	for (size_t i = 0; i < nUncertaintyAreas; i++)
 	{
 		for (size_t j = 0; j < i; j++)
 		{
-			glLineWidth(_pModel->GetRegionSimilarity(i,j,_nFocusedCluster));
+			glLineWidth(_pModel->GetRegionSimilarity(i, j, _nFocusedCluster));
 			glBegin(GL_LINES);
 			glVertex3f(arrNodePosition[i].x, arrNodePosition[i].y, 0);
 			glVertex3f(arrNodePosition[j].x, arrNodePosition[j].y, 0);
 			glEnd();
 		}
+	}
+
+	// draw nodes
+	for (size_t i = 0; i < nUncertaintyAreas; i++)
+	{
+		SetGroupColor(i);
+		drawCircle(arrNodePosition[i].x, arrNodePosition[i].y, dbNodeRadius, true);
 	}
 
 }

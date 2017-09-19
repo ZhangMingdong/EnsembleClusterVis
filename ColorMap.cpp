@@ -191,9 +191,44 @@ int ColorMap::s_arrCategoryColor20[20][3] = {
 	{ 158, 218, 229 }
 };
 
+
+double ColorMap::s_arrSelfDefinedColor20[20][3] = {
+	{ 1, 0, 0 },			// R
+	{ 0, 1, 0 },			// G
+	{ 0, 0, 1 },			// B
+
+	{ 1, 1, 0 },			// yellow
+	{ 0, 1, 1 },			// purple
+	{ 1, 0, 1 },			// 
+
+	{ .6, .3, 1 },			// R
+	{ 1, .6, .3 },			// R
+	{ .3, 1, .6 },			// R
+
+	{ .3, .6, 1 },			// R
+	{ 1, .3, .6 },			// R
+	{ .6, 1, .3 },			// R
+
+	{ .5, 1, 1 },			// R
+	{ 1, .5, 1 },			// R
+	{ 1, 1, .5 },			// R
+
+	{ .5, 1, 0 },			// R
+	{ 0, .5, 1 },			// R
+	{ 1, 0, .5 },			// R
+
+	{ .2, .7, .2 },			// R
+	{ .2, .2, .7 },			// R
+};
+
 int ColorMap::GetCategory20I(int nColorIndex, int nComponentIndex) {
 	return s_arrCategoryColor20[nColorIndex][nComponentIndex];
 }
 double ColorMap::GetCategory20D(int nColorIndex, int nComponentIndex) {
 	return s_arrCategoryColor20[nColorIndex][nComponentIndex] / 255.0;
+}
+
+
+double ColorMap::GetRGB(int nColorIndex, int nComponentIndex) {
+	return s_arrSelfDefinedColor20[nColorIndex][nComponentIndex];
 }

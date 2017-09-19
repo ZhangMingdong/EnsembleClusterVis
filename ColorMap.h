@@ -49,8 +49,16 @@ private:
 private:
 	// color categoryt20 from d3
 	static int s_arrCategoryColor20[20][3];
+
+	// self defined 20 colors
+	static double s_arrSelfDefinedColor20[20][3];
 public:
+	// get color category20: 0~255
 	static int GetCategory20I(int nColorIndex, int nComponentIndex);
+	// get color category20: 0.0~1.0
 	static double GetCategory20D(int nColorIndex, int nComponentIndex);
+	// get color of red, green, and blue
+	static double GetRGB(int nColorIndex, int nComponentIndex);
+
 };
 

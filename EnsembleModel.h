@@ -19,8 +19,8 @@ protected:
 	std::vector<std::vector<DataField* >> _matrixData;
 	int _nDay = 31;
 	int _nStep = 61;
-	int _nWidth = 31;
-	int _nHeight = 31;
+//	int _nWidth = 31;
+//	int _nHeight = 31;
 	int _nEnsembleLen = 50;
 protected:
 

@@ -33,179 +33,6 @@
 
 using namespace std;
 
-/* 
-	allign these result
-	nK: number of clusters
-	arrMap: map of the ensemble members to its new sequence
-*/
-void Align(ClusterResult* arrResult, int nK,int* arrMap) {	
-
-	// initialize the map to natral sequence
-	for (size_t i = 0; i < g_nEnsembles; i++) arrMap[i] = i;
-
-	// swap sorting
-	for (size_t i = 0; i < g_nEnsembles-1; i++)
-	{
-		for (size_t j = i + 1; j < g_nEnsembles; j++) {
-			bool bSwap = false;
-			for (size_t k = 0; k < nK; k++)
-			{
-				if (arrResult[k]._arrLabels[arrMap[i]]>arrResult[k]._arrLabels[arrMap[j]]) {
-					bSwap = true;
-					break;
-				}
-				else if (arrResult[k]._arrLabels[arrMap[i]] < arrResult[k]._arrLabels[arrMap[j]]) {
-					break;
-				}
-			}
-			if (bSwap)
-			{
-				int nTemp = arrMap[i];
-				arrMap[i] = arrMap[j];
-				arrMap[j] = nTemp;
-			}
-		}
-	}
-}
-
-void ClusterResult::PushLabel(int nIndex, int nLabel) {
-	_vecItems[nLabel].push_back(nIndex);
-	_arrLabels[nIndex] = nLabel;
-}
-
-
-void ClusterResult::Match(ClusterResult& mc) {
-	int mtxWeight[5][5];					// weight matrix
-	int arrMatch[5];						// the result of the perfect match
-	int nClusters = 5;						// number of clusters
-	// 0.initialize matrix
-	for (size_t i = 0; i < nClusters; i++)
-	{
-		for (size_t j = 0; j < nClusters; j++) {
-			mtxWeight[i][j] = 0;
-		}
-	}
-	// 1.calculate weight
-	for (size_t i = 0; i < _nM; i++)
-	{
-		mtxWeight[_arrLabels[i]][mc._arrLabels[i]]++;
-	}
-
-	for (size_t i = 0; i < nClusters; i++)
-	{
-		for (size_t j = 0; j < nClusters; j++) {
-			cout<< mtxWeight[i][j]<<"\t";
-		}
-		cout << endl;
-	}
-
-	// 2.calculate max weight perfect matching using Hungarian algorithm
-	// use approximate algorithm, always searching for the biggest value
-	for (size_t l = 0; l < nClusters; l++) {
-		// find biggest value
-		int iMax = 0; 
-		int jMax = 0;
-		int vMax = -1;
-		for (size_t i = 0; i < nClusters; i++)
-		{
-			for (size_t j = 0; j < nClusters; j++) {
-				if (mtxWeight[i][j]>vMax) {
-					vMax = mtxWeight[i][j];
-					iMax = i;
-					jMax = j;
-				}
-			}
-		}
-		arrMatch[iMax] = jMax;
-		for (size_t i = 0; i < nClusters; i++)
-		{
-			mtxWeight[i][jMax] = mtxWeight[iMax][i] = -1;
-		}
-	}
-	/*
-	qDebug() << "match:";
-	for (size_t i = 0; i < nClusters; i++)
-	{
-		qDebug() << arrMatch[i];
-	}
-	*/
-	// 3.reset labels
-	for (size_t i = 0; i < _nM; i++)
-	{
-		_arrLabels[i] = arrMatch[_arrLabels[i]];
-	}
-	generateItemsByLabels();
-
-}
-
-
-void ClusterResult::AlighWith(int* arrMap) {
-	for (size_t i = 0; i < _nK; i++)
-	{
-		int nLen = _vecItems[i].size();
-		for (size_t j = 0; j < nLen-1; j++)
-		{
-			for (size_t k = j + 1; k < nLen; k++) {
-				if (arrMap[_vecItems[i][j]]>arrMap[_vecItems[i][k]])
-				{
-					int nTemp = _vecItems[i][j];
-					_vecItems[i][j] = _vecItems[i][k];
-					_vecItems[i][k] = nTemp;
-				}
-			}
-		}
-	}
-}
-
-void ClusterResult::generateItemsByLabels() {
-	for (size_t i = 0; i < 5; i++)
-	{
-		_vecItems[i].clear();
-	}
-	for (size_t i = 0; i < _nM; i++)
-	{
-		_vecItems[_arrLabels[i]].push_back(i);
-	}
-}
-
-void ClusterResult::Sort() {
-	// array recording count of each cluster
-	int arrCount[g_nClusterMax];
-	for (size_t i = 0; i < g_nClusterMax; i++)
-	{
-		arrCount[i] = _vecItems[i].size();
-	}
-	// get the projection
-	int arrMap[g_nClusterMax];
-	for (size_t i = 0; i < 5; i++)
-	{
-		int nMax = -1;
-		int nMaxIndex = -1;
-		for (size_t j = 0; j < g_nClusterMax; j++)
-		{
-			if (arrCount[j] > nMax) {
-				nMax = arrCount[j];
-				nMaxIndex = j;
-			}
-		}
-		arrMap[nMaxIndex] = i;
-		arrCount[nMaxIndex] = -1;
-	}
-	// reset label
-	for (size_t i = 0; i < _nM; i++)
-	{
-		_arrLabels[i] = arrMap[_arrLabels[i]];
-	}
-	generateItemsByLabels();
-}
-
-void ClusterResult::Reset(int nM, int nK) {
-	_nM = nM;
-	_nK = nK;
-	for (int i = 0; i < 5; i++) {
-		_vecItems[i].clear();
-	}
-}
 
 /*
 double PointToSegDist(double x, double y, double x1, double y1, double x2, double y2)
@@ -265,7 +92,7 @@ MeteModel::~MeteModel()
 
 void MeteModel::InitModel(int nEnsembleLen, int nWidth, int nHeight, int nFocusX, int nFocusY, int nFocusW, int nFocusH
 	, QString strFile, bool bBinary, int nWest, int nEast, int nSouth, int nNorth
-	, int nFocusWest, int nFocusEast, int nFocusSouth, int nFocusNorth,bool bFilter) {
+	, int nFocusWest, int nFocusEast, int nFocusSouth, int nFocusNorth) {
 	// 0.record states variables
 	_nEnsembleLen = nEnsembleLen;
 	_nWidth = nWidth;
@@ -291,7 +118,6 @@ void MeteModel::InitModel(int nEnsembleLen, int nWidth, int nHeight, int nFocusX
 
 	_strFile = strFile;
 	_bBinaryFile = bBinary;
-	_bFilter = bFilter;
 
 	// 2.allocate resource
 	_pData = new DataField(_nWidth, _nHeight, _nEnsembleLen);
@@ -364,18 +190,18 @@ void MeteModel::readDataFromText() {
 					int r = j / _nWidth;
 					int c = j%_nWidth;
 					
-					if (_bFilter&&c < _nWidth - 1) {
-
-						in.readLine();
-						nCount++;
-					}
-					else if (_bFilter&&r < _nHeight - 1) {
-						for (size_t ii = 0, length = 2 * (_nWidth - 1) + 1; ii < length; ii++)
-						{
-							in.readLine();
-							nCount++;
-						}
-					}
+//					if (_bFilter&&c < _nWidth - 1) {
+//
+//						in.readLine();
+//						nCount++;
+//					}
+//					else if (_bFilter&&r < _nHeight - 1) {
+//						for (size_t ii = 0, length = 2 * (_nWidth - 1) + 1; ii < length; ii++)
+//						{
+//							in.readLine();
+//							nCount++;
+//						}
+//					}
 				}
 			}
 		}
@@ -493,7 +319,6 @@ void MeteModel::buildTextureClusteredVariance() {
 	cluster.DoCluster(pData, _nWidth, _nHeight, _dbVarThreshold,result);
 	sort(result.begin(), result.end(), ClusterComparison);
 
-
 	// 2.cluster in each uncertainty region
 	for (size_t i = 0,length=std::min((int)result.size(), _nUncertaintyRegions); i < length; i++)
 	{
@@ -510,22 +335,7 @@ void MeteModel::buildTextureClusteredVariance() {
 	}
 
 	// 3.align the results
-	int arrMap[g_nEnsembles];
-	Align(_arrClusterResult, _nUncertaintyRegions, arrMap);
-
-	int arrMap2[g_nEnsembles];
-	for (size_t i = 0; i < g_nEnsembles; i++)
-	{
-		arrMap2[arrMap[i]] = i;
-	}
-
-	for (size_t i = 0; i < _nUncertaintyRegions; i++)
-	{
-		_arrClusterResult[i].AlighWith(arrMap2);
-	}
-
-
-
+	ClusterResult::Align(_arrClusterResult, _nUncertaintyRegions);
 
 	// 4.reset labels for pca
 	for (size_t i = 0; i < _nUncertaintyRegions; i++)
@@ -644,7 +454,7 @@ void MeteModel::buildTextureSmoothedVariance()
 
 vector<double> MeteModel::GetVariance() {
 
-	const double* pData = _pData->GetVari();
+	const double* pData = _pData->GetVari(_nSmooth);
 	vector<double> vecVar;
 	for (int i = _nFocusY, iLen = _nFocusY + _nFocusH; i < iLen; i++) {
 		for (int j = _nFocusX, jLen = _nFocusX + _nFocusW; j < jLen; j++) {
@@ -686,10 +496,10 @@ void MeteModel::readData() {
 				double fT = *f;
 				_pData->SetData(l, i, j, *f++);
 				// 只取整度，过滤0.5度
-				if (_bFilter&&j < _nWidth - 1) f++;
+//				if (_bFilter&&j < _nWidth - 1) f++;
 			}
 			// 只取整度，过滤0.5度
-			if (_bFilter&&i < _nHeight - 1) f += (_nWidth * 2 - 1);
+//			if (_bFilter&&i < _nHeight - 1) f += (_nWidth * 2 - 1);
 		}
 	}
 }
@@ -840,7 +650,7 @@ MeteModel* MeteModel::CreateModel() {
 			//, "../../data/t2-2007-2017-jan-144 and 240h-50.txt", false
 			, "../../data/t2-mod-ecmwf-200701-00-360.txt", false
 			, nWest, nEast, nSouth, nNorth
-			, nFocusWest, nFocusEast, nFocusSouth, nFocusNorth, g_bFilter);
+			, nFocusWest, nFocusEast, nFocusSouth, nFocusNorth);
 
 		return pModel;
 	}
@@ -874,14 +684,9 @@ MeteModel* MeteModel::CreateModel() {
 			nFocusH = nHeight;
 		}
 		else {
-			if (g_bFilter) {
-				nWidth = 91;
-				nHeight = 51;
-			}
-			else {
-				nWidth = 181;
-				nHeight = 101;
-			}
+
+			nWidth = 91;
+			nHeight = 51;
 			if (g_bSubArea)
 			{
 				nFocusX = 0;
@@ -945,14 +750,24 @@ MeteModel* MeteModel::CreateModel() {
 			pModel = new EnsembleModel();
 			pModel->InitModel(20, nWidth, nHeight, nFocusX, nFocusY, nFocusW, nFocusH, "../../data/data10/pre-mod-ncep-20160802-00-96.txt"); break;
 		case T2_ECMWF:
+			nWidth = 91;
+			nHeight = 51;
+			nFocusW = 91;
+			nFocusH = 51;
+			pModel = new MeteModel();
+			pModel->InitModel(50, nWidth, nHeight, nFocusX, nFocusY, nFocusW, nFocusH
+				, "../../data/t2-2007-2017-jan-144 and 240h-50(1Degree).txt", false
+				, nWest, nEast, nSouth, nNorth
+				, nFocusWest, nFocusEast, nFocusSouth, nFocusNorth);
+			/*
 			pModel = new ContourBandDepthModel();
 			if (bNewData) {
 				pModel->InitModel(50, nWidth, nHeight, nFocusX, nFocusY, nFocusW, nFocusH
 					//				, "../../data/t2-mod-ecmwf-20160105-00-72-216.txt", false
-					//				, "../../data/t2-2007-2017-jan-120h-50.txt", false
+					//				, "../../data/t2-2007-2017-jan-120h-50.txt", false				// 这个区域小一点
 					, "../../data/t2-2007-2017-jan-144 and 240h-50.txt", false
 					, nWest, nEast, nSouth, nNorth
-					, nFocusWest, nFocusEast, nFocusSouth, nFocusNorth, g_bFilter);
+					, nFocusWest, nFocusEast, nFocusSouth, nFocusNorth);
 			}
 			else {
 
@@ -961,13 +776,14 @@ MeteModel* MeteModel::CreateModel() {
 					, nWest, nEast, nSouth, nNorth
 					, nFocusWest, nFocusEast, nFocusSouth, nFocusNorth, g_bFilter);
 			}
+			*/
 			break;
 		case T2_Reanalysis:
 			pModel = new ReanalysisModel();
 			pModel->InitModel(1209, nWidth, nHeight, nFocusX, nFocusY, nFocusW, nFocusH
 				, "../../data/t2_obs_1979-2017_1_china.txt", false
 				, nWest, nEast, nSouth, nNorth
-				, nFocusWest, nFocusEast, nFocusSouth, nFocusNorth, false);
+				, nFocusWest, nFocusEast, nFocusSouth, nFocusNorth);
 			break;
 		defaut:
 			break;
@@ -975,9 +791,6 @@ MeteModel* MeteModel::CreateModel() {
 
 		return pModel;
 	}
-/*
-
-	*/
 }
 
 void MeteModel::generatePCAPoint(OneSpatialCluster& cluster, std::vector<DPoint3>& points) {

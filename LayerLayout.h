@@ -9,7 +9,7 @@ public:
 	~LayerLayout();
 public:
 	double _dbSpace = .01;
-	double _dbSpaceII = .05;
+	double _dbSpaceII = .08;
 	// the map area[(-1.8,-0.9)~(1.8,0.9)]
 	double _dbLeft = -1.8;
 	double _dbRight = 1.8;
@@ -19,19 +19,21 @@ public:
 
 
 	// variance chart
-	double _dbVarLayer = .05;											// distance between two layers
-	int _nVarLayers = 10;												// layers of the chart
-	double _dbVarChartHeight = _dbVarLayer*_nVarLayers;
-
-	double _dbVarChartBottom = _dbTop + _dbSpace;						// bottom position of the chart, on top of the map
+	int _nVarHLayers = 100;												// Horizontal layers of the chart
+	double _dbVarChartBottom = _dbTop + _dbSpaceII;						// bottom position of the chart, on top of the map
 	double _dbVarChartLeft = _dbLeft;									// left position of the chart
 	double _dbVarChartRight = _dbRight;
+	double _dbVarChartHeight = .5;
+	double _dbVarChartWidth = _dbVarChartRight - _dbVarChartLeft;
 	double _dbVarChartTop = _dbVarChartBottom + _dbVarChartHeight;
+	double _dbVarHLayer = _dbVarChartWidth / _nVarHLayers;
+
+
 
 	// pca point chart
 	double _dbPCAChartRadius = (_dbRight - _dbLeft) / 8.0;				// .5;
 	double _dbPCAChartLeft = _dbLeft;
-	double _dbPCAChartBottom = _dbVarChartTop + _dbSpace;
+	double _dbPCAChartBottom = _dbVarChartTop + _dbSpaceII;
 
 	// var bar
 	double _dbBarChartLeft = _dbLeft;
