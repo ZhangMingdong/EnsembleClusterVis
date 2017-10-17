@@ -12,7 +12,9 @@ public:
 	~DataField();
 private:	
 	double* _pBuf;					// store the data	
+	double* _pDipBuf;				// store the dip data	
 	double* _gridVari;				// variance of each grid among different ensemble results	
+	double* _gridVV;				// variance of variance of each grid among different ensemble results	
 	double* _gridVarSmooth[10];		// smoothed variance
 	double* _gridMean;				// mean of each grid among different ensemble results
 	double* _gridUMax;				// maximum of union of each grid among different ensemble results
@@ -26,6 +28,7 @@ public:
 	const double* GetLayer(int l);
 	// get variance, nSmooth: level of smooth
 	const double* GetVari(int nSmooth=0);
+	const double* GetDipValue();
 	const double* GetMean();
 	const double* GetUMax();
 	const double* GetUMin();
@@ -33,6 +36,8 @@ public:
 	// set the data value at a given position
 	void SetData(int l, int bias, double dbValue);
 	void SetData(int l, int y,int x, double dbValue);
+	// set the dip value
+	void SetDipValue(int bias, double dbValue);
 	// get the data value at a given position
 	double GetData(int l, int bias);
 	double GetData(int l, int r, int c);

@@ -2,11 +2,15 @@
 
 #include <QList>
 #include <math.h>
+#include <vector>
+#include <algorithm>
 
 DataField::DataField(int w, int h, int l):_nW(w),_nH(h),_nL(l)
 {
 	_pBuf = new double[w*h*l];
+	_pDipBuf = new double[w*h];
 	_gridVari = new double[w*h];
+	_gridVV = new double[w*h];
 	_gridMean = new double[w*h];
 	_gridUMax = new double[w*h];
 	_gridUMin = new double[w*h];
@@ -14,7 +18,9 @@ DataField::DataField(int w, int h, int l):_nW(w),_nH(h),_nL(l)
 
 DataField::~DataField()
 {
+	delete[] _pDipBuf;
 	delete[] _gridVari;
+	delete[] _gridVV;
 	delete[] _gridMean;
 	delete[] _gridUMax;
 	delete[] _gridUMin;
@@ -47,7 +53,9 @@ const double* DataField::GetVari(int nSmooth) {
 		return _gridVarSmooth[nSmooth-1];
 	}
 }
-
+const double* DataField::GetDipValue() {
+	return _pDipBuf;
+}
 const double* DataField::GetMean() { return _gridMean; }
 
 const double* DataField::GetUMax() { return _gridUMax; }
@@ -58,6 +66,10 @@ void DataField::SetData(int l, int bias, double dbValue) {
 	_pBuf[l*_nW*_nH + bias] = dbValue;
 }
 
+void DataField::SetDipValue(int bias, double dbValue) {
+	_pDipBuf[bias] = dbValue;
+
+}
 void DataField::SetData(int l, int y, int x, double dbValue) {
 	_pBuf[l*_nW*_nH + y*_nW + x] = dbValue;
 }
@@ -65,23 +77,28 @@ void DataField::SetData(int l, int y, int x, double dbValue) {
 double DataField::GetData(int l, int bias) {
 	return _pBuf[l*_nW*_nH + bias];
 }
+
 double DataField::GetData(int l, int r, int c) {
 	return _pBuf[l*_nW*_nH + r*_nW + c];
 }
 
 void DataField::DoStatistic() {
 	int nLen = _nW*_nH;
+	// for each grid point
 	for (int i = 0; i < nLen; i++)
 	{
-		// calculate mean
+
+		std::vector<double> vecData;	// store the data for vv calculation
+		// 1.calculate mean
 		double fMean = 0;
 		for (int j = 0; j < _nL; j++)
 		{
+			vecData.push_back(this->GetData(j, i));
 			fMean += this->GetData(j, i);
 		}
 		fMean /= _nL;
 		_gridMean[i] = fMean;
-		// calculate variance
+		// 2.calculate variance
 		double fVariance = 0;
 		for (int j = 0; j < _nL; j++)
 		{
@@ -89,6 +106,71 @@ void DataField::DoStatistic() {
 			fVariance += fBias*fBias;
 		}
 		_gridVari[i] = sqrt(fVariance / _nL);
+		// 3.caluclate variance of variance
+		// sort the data
+		std::sort(vecData.begin(), vecData.end());
+		// find the largest space
+		const int nQueueLen = 10;
+		double arrMax[nQueueLen];
+		double arrMin[nQueueLen];
+		for (size_t i = 0; i < nQueueLen; i++)
+		{
+			arrMax[i] = 0;
+		}
+		for (size_t i = 0; i < nQueueLen; i++)
+		{
+			arrMin[i] = 100000;
+		}
+		double dbRange = vecData[vecData.size() - 1] - vecData[0];
+		for (size_t i = 1; i < vecData.size(); i++)
+		{
+			double dbSpace = vecData[i] - vecData[i - 1];
+			// max array
+			for (size_t j = 0; j < nQueueLen; j++)
+			{
+				if (dbSpace > arrMax[j]) {
+					for (size_t k = nQueueLen-1; k > j; k--)
+					{
+						arrMax[k] = arrMax[k - 1];
+					}
+					arrMax[j] = dbSpace;
+					break;
+				}
+			}
+			// min array
+			for (size_t j = 0; j < nQueueLen; j++)
+			{
+				if (dbSpace < arrMin[j]) {
+					for (size_t k = nQueueLen - 1; k > j; k--)
+					{
+						arrMin[k] = arrMin[k - 1];
+					}
+					arrMin[j] = dbSpace;
+					break;
+				}
+			}
+		}
+		double dbMax = 0;
+		double dbMin = 0;
+		for (size_t i = 0; i < nQueueLen; i++)
+		{
+			dbMax += arrMax[i];
+			dbMin += arrMin[i];
+		}
+		double vv = dbMax / dbMin/10.0;
+		_gridVV[i] = vv;
+		/*
+		// the codes for calculating variance of variance. old version
+		double dbVV = 0;
+		for (int j = 0; j < _nL; j++)
+		{
+			double fBias = this->GetData(j, i) - fMean;
+			double fBB = fBias*fBias - _gridVari[i] * _gridVari[i];
+			dbVV += fBB*fBB;
+		}
+		_gridVV[i] = sqrt(sqrt(dbVV / _nL));
+		*/
+		// 4.calculate max and min
 		if (false)
 		{
 			// calculate max and min

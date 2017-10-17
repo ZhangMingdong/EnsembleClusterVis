@@ -17,6 +17,7 @@ private:
 	QSpinBox *_pSpinBoxSmooth;
 	QSpinBox *_pSpinBoxAreas;
 	QSpinBox *_pSpinBoxFocusedCluster;
+	QSpinBox *_pSpinBoxFocusedRegion;
 
 private:
 	void createWidgets();
@@ -28,9 +29,11 @@ private slots:
 	void updateSmooth(int nSmooth);
 	void updateUncertaintyAreas(int nArea);
 	void updateFocusedCluster(int nFocusedCluster);
+	void updateFocusedRegion(int nFocusedRegion);
 signals:
 	void bgFunctionChanged(int nFunction);
 	void smoothChanged(int nSmooth);
 	void areasChanged(int nArea);
 	void focusedClusterChanged(int nFocusedCluster);
+	void focusedRegionChanged(int nFocusedRegion);
 };

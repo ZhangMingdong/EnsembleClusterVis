@@ -23,6 +23,7 @@ void CostLineLayer::draw(DisplayStates states){
 }
 void CostLineLayer::init(){
 
+	_gllist = glGenLists(1);	// generate the display lists
 	readCostline();
 }
 
@@ -80,16 +81,6 @@ void CostLineLayer::readCostline(){
 
 	free_shapes(pShapes);
 	close_shapefile(pShapefile);
-
-	/*
-	glNewList(_gllist + g_gradient_l * 3 + g_temperatureLen * 3 + g_temperatureLen * 3 + 2 + 1, GL_COMPILE);
-	glBegin(GL_LINE_LOOP);
-	glVertex2f(0.0, 0.0);
-	glVertex2f(1.0, 0.0);
-	glVertex2f(1.0, 1.0);
-	glEnd();
-	glEndList();
-	*/
 
 	cout << "read cost line" << endl;
 

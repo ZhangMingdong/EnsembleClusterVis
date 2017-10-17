@@ -1,6 +1,7 @@
 #include "ClusterResult.h"
 
 #include <iostream>
+#include <QDebug>
 
 using namespace std;
 
@@ -50,7 +51,70 @@ void ClusterResult::Align(ClusterResult* arrResult, int nK) {
 		arrResult[i].AlighWith(arrMap2);
 	}
 }
+/*
+allign these result
+nK: number of clusters
+arrMap: map of the ensemble members to its new sequence
+nBase: alignment base
+*/
+void ClusterResult::Align(ClusterResult* arrResult, int nK,int nBase) {
+	qDebug() << "Align: "<<nBase;
+	int arrMap[g_nEnsembles];
+	// 0.initialize the map to natral sequence
+	for (size_t i = 0; i < g_nEnsembles; i++) arrMap[i] = i;
 
+	// 1.swap sorting
+	for (size_t i = 0; i < g_nEnsembles - 1; i++)
+	{
+		for (size_t j = i + 1; j < g_nEnsembles; j++) {
+			bool bSwap = false;
+			for (int k = 0; k < nK; k++)
+			{
+				int kk = nBase - k;
+				if (kk >= 0) {
+					qDebug() << kk;
+					if (arrResult[kk]._arrLabels[arrMap[i]]>arrResult[kk]._arrLabels[arrMap[j]]) {
+						bSwap = true;
+						break;
+					}
+					else if (arrResult[kk]._arrLabels[arrMap[i]] < arrResult[kk]._arrLabels[arrMap[j]]) {
+						break;
+					}
+				}
+
+				kk = nBase + k;
+				if (kk < nK) {
+					qDebug() << kk;
+					if (arrResult[kk]._arrLabels[arrMap[i]]>arrResult[kk]._arrLabels[arrMap[j]]) {
+						bSwap = true;
+						break;
+					}
+					else if (arrResult[kk]._arrLabels[arrMap[i]] < arrResult[kk]._arrLabels[arrMap[j]]) {
+						break;
+					}
+				}
+			}
+			if (bSwap)
+			{
+				int nTemp = arrMap[i];
+				arrMap[i] = arrMap[j];
+				arrMap[j] = nTemp;
+			}
+		}
+	}
+
+	// 2.reset the ordering
+	int arrMap2[g_nEnsembles];
+	for (size_t i = 0; i < g_nEnsembles; i++)
+	{
+		arrMap2[arrMap[i]] = i;
+	}
+
+	for (size_t i = 0; i < nK; i++)
+	{
+		arrResult[i].AlighWith(arrMap2);
+	}
+}
 void ClusterResult::PushLabel(int nIndex, int nLabel) {
 	_vecItems[nLabel].push_back(nIndex);
 	_arrLabels[nIndex] = nLabel;

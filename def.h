@@ -53,12 +53,13 @@ const int g_temperatureLen = 1;
 const bool g_bClustering = false;			// whether do clustering (PCA+AHC)
 const bool g_bSpatialClustering = false;	// whether do spatial clustering (DBSCAN)
 
-//const double g_fThreshold = 273.16 - 15;
-const double g_fThreshold = 2.0;
+const double g_fThreshold = 273.16 - 15;
+//const double g_fThreshold = 2.0;
 const int g_nMinPts = 110;
 const double g_dbEps = 6;
 
-const bool g_bGlobalArea = true;
+//const bool g_bGlobalArea = true;
+const bool g_bGlobalArea = false;
 
 
 const bool g_bSubArea = false;
@@ -73,7 +74,7 @@ const int g_nTimeStep = 0;
 
 
 
-const int g_globalW = 360;
+const int g_globalW = 361;
 const int g_globalH = 181;
 
 enum enumMeteModel
@@ -93,15 +94,15 @@ enum enumMeteModel
 //const enumMeteModel g_usedModel = PRE_CMA;
 //const enumMeteModel g_usedModel = PRE_CPTEC;
 //const enumMeteModel g_usedModel = PRE_ECCC;
-const enumMeteModel g_usedModel = PRE_ECMWF;
+//const enumMeteModel g_usedModel = PRE_ECMWF;
 //const enumMeteModel g_usedModel = PRE_JMA;
 //const enumMeteModel g_usedModel = PRE_KMA;
 //const enumMeteModel g_usedModel = PRE_NCEP;
-//const enumMeteModel g_usedModel = T2_ECMWF;
+const enumMeteModel g_usedModel = T2_ECMWF;
 //const enumMeteModel g_usedModel = T2_Reanalysis;
 
 // just use white to show the uncertainty area
-const bool g_bShowUncertaintyOnly = false;
+const bool g_bShowUncertaintyOnly = true;
 
 // calculate the uncertainty band based on the signed distance function, otherwise calculate directly
 const bool g_bSDFBand = false;

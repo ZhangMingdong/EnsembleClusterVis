@@ -146,7 +146,7 @@ void MyGLWidget::initializeGL()
 	_vecLayers.push_back(pLayer);
 
 
-	font.InitFont(wglGetCurrentDC(), L"Arial", 15);
+	_font.InitFont(wglGetCurrentDC(), L"Arial", 22);
 	MeteLayer::_pCB = this;
 }
 
@@ -618,7 +618,7 @@ void MyGLWidget::viewShowClusterBV(bool on){
 }
 
 void MyGLWidget::DrawText(char* pText, double fX, double fY){
-	font.PrintText(pText, fX, fY);
+	_font.PrintText(pText, fX, fY);
 
 }
 
@@ -677,6 +677,13 @@ void MyGLWidget::updateFocusedCluster(int nFocusedCluster) {
 	{
 		pLayer->SetFocusedCluster(nFocusedCluster);
 	}
+
+	updateGL();
+}
+
+void MyGLWidget::updateFocusedRegion(int nFocusedRegion) {
+//	qDebug() << "updateFocusedRegion";
+	_pModelE->SetFocusedRegion(nFocusedRegion);
 
 	updateGL();
 }

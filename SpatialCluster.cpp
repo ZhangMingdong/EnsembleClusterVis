@@ -14,7 +14,7 @@ SpatialCluster::~SpatialCluster()
 #define UNPROCESSED -2
 #define THRESHOLD	-1
 
-void SpatialCluster::DoCluster(const double* arrGrid, int nW, int nH, double dbThreshold, std::vector<OneSpatialCluster>& result) {
+void SpatialCluster::DoCluster(const double* arrGrid, int nW, int nH, double dbThreshold, std::vector<UncertaintyRegion>& result) {
 	// 0.set parameter
 	_arrGrid = arrGrid;
 	_nW = nW;
@@ -43,7 +43,7 @@ void SpatialCluster::DoCluster(const double* arrGrid, int nW, int nH, double dbT
 					_arrStates[nIndex] = THRESHOLD;
 				}
 				else {
-					result.push_back(OneSpatialCluster());
+					result.push_back(UncertaintyRegion());
 					spread(i, j, nCurrentCluster, result[nCurrentCluster]);
 					nCurrentCluster++;
 				}
@@ -55,7 +55,7 @@ void SpatialCluster::DoCluster(const double* arrGrid, int nW, int nH, double dbT
 }
 
 
-void  SpatialCluster::spread(int nI, int nJ, int nCluster, OneSpatialCluster& cluster) {
+void  SpatialCluster::spread(int nI, int nJ, int nCluster, UncertaintyRegion& cluster) {
 	_arrStates[nI*_nW + nJ] = nCluster;
 	cluster._vecPoints.push_back(IPoint2(nI, nJ));
 	cluster._nArea++;

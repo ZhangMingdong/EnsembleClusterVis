@@ -47,7 +47,7 @@ void EnsembleModel::readDataFromText() {
 				for (size_t iEns = 0; iEns < _nEnsembleLen; iEns++)
 				{
 					QString line = in.readLine();
-//					qDebug() << line;
+
 					// every grid
 					for (int i = 0; i < _nLen; i++)
 					{

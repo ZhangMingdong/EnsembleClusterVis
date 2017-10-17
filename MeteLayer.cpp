@@ -33,37 +33,25 @@ void MeteLayer::InitLayer(const LayerLayout* pLayout, double fScaleW, double fSc
 	_fScaleW = fScaleW;
 	_fScaleH = fScaleH;
 
-	_gllist = glGenLists(1);	// generate the display lists
 	this->init();
 }
 
-// set color according to group index
-void MeteLayer::SetGroupColor(int nIndex) {
-	if (nIndex<20)
+// set color according to cluster index
+void MeteLayer::SetClusterColor(int nIndex) {
+	if (nIndex<10)
 	{
-		glColor3f(ColorMap::GetCategory20D(nIndex, 0), ColorMap::GetCategory20D(nIndex, 1), ColorMap::GetCategory20D(nIndex, 2));
+		glColor3f(ColorMap::GetCategory10D(nIndex, 0, 1)
+			, ColorMap::GetCategory10D(nIndex, 1, 1)
+			, ColorMap::GetCategory10D(nIndex, 2, 1));
 	}
-	return;
-	// old code
-	switch (nIndex)
+}
+
+void MeteLayer::SetRegionColor(int nIndex) {
+	if (nIndex<10)
 	{
-	case 0:
-		glColor3f(1, 0, 0);
-		break;
-	case 1:
-		glColor3f(0, 1, 0);
-		break;
-	case 2:
-		glColor3f(0, 0, 1);
-		break;
-	case 3:
-		glColor3f(0, 1, 1);
-		break;
-	case 4:
-		glColor3f(1, 0, 1);
-		break;
-	default:
-		break;
+		glColor3f(ColorMap::GetCategory10D(nIndex, 0)
+			, ColorMap::GetCategory10D(nIndex, 1)
+			, ColorMap::GetCategory10D(nIndex, 2));
 	}
 }
 
@@ -87,7 +75,7 @@ void MeteLayer::drawCircle(double x, double y, double dbRadius, bool bFill) {
 		double dbAngle = 2.0*M_PI*i / nSegs;
 		double dbX = x + dbRadius*cos(dbAngle);
 		double dbY = y + dbRadius*sin(dbAngle);
-		std::cout << dbX << ": "<<dbY << std::endl;
+//		std::cout << dbX << ": "<<dbY << std::endl;
 		glVertex3f(dbX, dbY, 0);
 	}
 

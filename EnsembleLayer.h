@@ -28,14 +28,24 @@ private:
 	// tessellation the area segmentation, generate three display list start from _gllist
 	void tessSegmentation(GLuint gllist, QList<UnCertaintyArea*> areas);
 
+	// draw the color bar
+	void drawColorBar();
+
+	// generate the texture for the color bar
+	void generateColorBarTexture();
+
+	// build the tess for uncertainty regions
+	void buildTess();
+
+
 
 private:
 	// truth texture, generated from truth data
 	const GLubyte* _dataTexture = NULL;
 	// texture of the color bar, 160*2
 	GLubyte* _colorbarTexture;
-	// texture id,1-data,2-colorbar
-	GLuint texID[2];
+	// texture id:0-data,1-colorbar
+	GLuint _uiTexID[2];
 	// 网格化对象指针
 	GLUtesselator *_tobj;  
 	

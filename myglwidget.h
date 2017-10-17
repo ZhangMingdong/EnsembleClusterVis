@@ -78,7 +78,7 @@ private:
 	int _nSelectedTop;
 	int _nSelectedBottom;
 
-	GLFont font;                /**< 定义一个字体实例 */
+	GLFont _font;                /**< 定义一个字体实例 */
 
 	// layout of the layers
 	LayerLayout* _pLayout = NULL;
@@ -158,6 +158,7 @@ public slots:
 	void updateBgFunction(int nBgFunction);
 	void updateUncertaintyAreas(int nAreas);
 	void updateFocusedCluster(int nFocusedCluster);
+	void updateFocusedRegion(int nFocusedRegion);
 private:
 	// vector of layers to render
 	std::vector<MeteLayer*> _vecLayers;

@@ -52,6 +52,9 @@ private:
 
 	// self defined 20 colors
 	static double s_arrSelfDefinedColor20[20][3];
+
+	// threshold color
+	static double s_arrThreshold[3];
 public:
 	// get color category20: 0~255
 	static int GetCategory20I(int nColorIndex, int nComponentIndex);
@@ -59,6 +62,15 @@ public:
 	static double GetCategory20D(int nColorIndex, int nComponentIndex);
 	// get color of red, green, and blue
 	static double GetRGB(int nColorIndex, int nComponentIndex);
+	// get the color used for threshhold
+	static int GetThresholdColorI(int nComponentIndex);
+	// get the color used for threshold
+	static double GetThresholdColorD(int nComponentIndex);
+
+	// get 10 colors in category20: 0~255
+	static int GetCategory10I(int nColorIndex, int nComponentIndex, int nBias = 0);
+	// get 10 colors in category20: 0.0~1.0
+	static double GetCategory10D(int nColorIndex, int nComponentIndex, int nBias = 0);
 
 };
 

@@ -3,6 +3,9 @@
 #include "MeteModel.h"
 #include "LayerLayout.h"
 #include "VarAnalysis.h"
+#include "ColorMap.h"
+
+#include <QDebug>
 
 ClusterLayer::ClusterLayer()
 {
@@ -81,8 +84,8 @@ void ClusterLayer::drawVarChart() {
 		glVertex2d(_pLayout->_dbVarChartLeft + i*_pLayout->_dbVarHLayer, _pLayout->_dbVarChartBottom);
 		glEnd();
 		char buf[10];
-		sprintf_s(buf, "%d", i);
-		_pCB->DrawText(buf, _pLayout->_dbVarChartLeft + i*_pLayout->_dbVarHLayer, _pLayout->_dbVarChartBottom - dbVarVLayer/2.0);
+		sprintf_s(buf, "%d%%", i);
+		_pCB->DrawText(buf, _pLayout->_dbVarChartLeft + i*_pLayout->_dbVarHLayer, _pLayout->_dbVarChartBottom - dbVarVLayer);
 	}
 
 
@@ -129,7 +132,7 @@ void ClusterLayer::drawVarChart() {
 
 void ClusterLayer::drawPCAPoints() {
 
-	glPointSize(3.0f);
+	glPointSize(5.0f);
 
 
 	int nUncertaintyAreas = std::min(_pModel->GetUncertaintyAreas(), _nUncertaintyRegions);
@@ -157,8 +160,8 @@ void ClusterLayer::drawPCAPoints() {
 
 		// draw border
 
-		// set color according to the color of the spatial cluster
-		SetGroupColor(clusterIndex);
+		// set color according to the color of the uncertain region
+		SetRegionColor(clusterIndex);
 
 		glBegin(GL_LINE_LOOP);
 		glVertex3f(dbX - (_pLayout->_dbPCAChartRadius - _pLayout->_dbSpace), dbY - (_pLayout->_dbPCAChartRadius - _pLayout->_dbSpace), 0);
@@ -172,7 +175,7 @@ void ClusterLayer::drawPCAPoints() {
 		for (size_t i = 0, length = vecPoints[clusterIndex].size(); i < length; i++)
 		{
 			int nZ = vecPoints[clusterIndex][i].z;
-			SetGroupColor(nZ);
+			SetClusterColor(nZ);
 			glVertex3f(dbX + vecPoints[clusterIndex][i].x*dbScale, dbY + vecPoints[clusterIndex][i].y*dbScale, 0);
 		}
 		glEnd();
@@ -180,49 +183,57 @@ void ClusterLayer::drawPCAPoints() {
 }
 
 void ClusterLayer::drawClusterBars() {
-	const ClusterResult* pCR = _pModel->GetClusterResults();
-	if (pCR->_nK == 0) return;
-
-	int nUncertaintyAreas = std::min(_pModel->GetUncertaintyAreas(), _nUncertaintyRegions);
-
-	double arrBaseY[50];			// the y position of the element in the first cluster
 
 	double dbBarLen = _pLayout->_dbPCAChartRadius / 2.0;		// length of the bar
-	for (size_t nIndex = 0; nIndex < nUncertaintyAreas; nIndex++)
-	{
+	double arrBaseY[50];			// the y position of the element in the first cluster
+
+	// 0.get cluster results and uncertainty regions
+	const ClusterResult* pCR = _pModel->GetClusterResults();
+	if (pCR->_nK == 0) return;
+	int nUncertaintyAreas = std::min(_pModel->GetUncertaintyAreas(), _nUncertaintyRegions);
+
+	
+	// 1.draw 
+	for (size_t nIndex = 0; nIndex < nUncertaintyAreas; nIndex++){ // for each uncertain region
+
 		double dbY = _pLayout->_dbBarChartBottom + _pLayout->_dbSpace;
 		double dbX0 = _pLayout->_dbBarChartLeft + nIndex * 2 * _pLayout->_dbPCAChartRadius - dbBarLen;
 		double dbX1 = _pLayout->_dbBarChartLeft + nIndex * 2 * _pLayout->_dbPCAChartRadius + dbBarLen;
 		double dbX2 = _pLayout->_dbBarChartLeft + nIndex * 2 * _pLayout->_dbPCAChartRadius + 3 * dbBarLen;
+
 		// draw the link
 		if (nIndex>0)
 		{
-			for (size_t i = 0; i < pCR[nIndex]._nK; i++)
-			{
-				for (size_t j = 0; j < pCR[nIndex]._vecItems[i].size(); j++) {
-					SetGroupColor(i);
-
+			for (size_t i = 0; i < pCR[nIndex]._nK; i++){	// for each cluster
+				SetClusterColor(i);
+				for (size_t j = 0; j < pCR[nIndex]._vecItems[i].size(); j++) { // for each member in this cluster
+					int nMember = pCR[nIndex]._vecItems[i][j];
+					SetClusterColor(_pModel->GetClusterResultOfFocusedRegion()->_arrLabels[nMember]);
 					glBegin(GL_LINES);
 					glVertex3f(dbX0, arrBaseY[pCR[nIndex]._vecItems[i][j]], 0);
 					glVertex3f(dbX1, dbY, 0);
 					glEnd();
+					// change y position
 					dbY += _pLayout->_dbSpace;
 				}
 				dbY += _pLayout->_dbSpaceII;
 			}
 		}
 		dbY = _pLayout->_dbBarChartBottom + _pLayout->_dbSpace;
-		// draw this region
-		for (size_t i = 0; i < pCR[nIndex]._nK; i++)
-		{
-			SetGroupColor(i);
 
-			for (size_t j = 0; j < pCR[nIndex]._vecItems[i].size(); j++) {
+		// draw this region
+		for (size_t i = 0; i < pCR[nIndex]._nK; i++){	// for each cluster
+			SetClusterColor(i);
+			for (size_t j = 0; j < pCR[nIndex]._vecItems[i].size(); j++) {	// for each member in this cluster
+				int nMember = pCR[nIndex]._vecItems[i][j];
+				SetClusterColor(_pModel->GetClusterResultOfFocusedRegion()->_arrLabels[nMember]);
 				glBegin(GL_LINES);
 				glVertex3f(dbX1, dbY, 0);
 				glVertex3f(dbX2, dbY, 0);
 				glEnd();
+				// record y for drawing link with the next region
 				arrBaseY[pCR[nIndex]._vecItems[i][j]] = dbY;
+				// change the y position
 				dbY += _pLayout->_dbSpace;
 			}
 			dbY += _pLayout->_dbSpaceII;
@@ -259,23 +270,37 @@ void ClusterLayer::drawUCAreaRelation() {
 	}
 
 	// draw lines
-	SetGroupColor(_nFocusedCluster);
+
+	glLineWidth(3.0);
+
+	SetClusterColor(_nFocusedCluster);
+//	qDebug() << "Spatial Region Relationship";
 	for (size_t i = 0; i < nUncertaintyAreas; i++)
 	{
 		for (size_t j = 0; j < i; j++)
 		{
-			glLineWidth(_pModel->GetRegionSimilarity(i, j, _nFocusedCluster));
-			glBegin(GL_LINES);
-			glVertex3f(arrNodePosition[i].x, arrNodePosition[i].y, 0);
-			glVertex3f(arrNodePosition[j].x, arrNodePosition[j].y, 0);
-			glEnd();
+			int nSimilarity = _pModel->GetRegionSimilarity(i, j, _nFocusedCluster);
+//			qDebug() << nSimilarity;
+			if (nSimilarity>0)
+			{
+				double dbOpacity = nSimilarity / 25.0;// 50.0;
+				glColor4f(ColorMap::GetCategory10D(_nFocusedCluster, 0)
+					, ColorMap::GetCategory10D(_nFocusedCluster, 1)
+					, ColorMap::GetCategory10D(_nFocusedCluster, 2)
+					, dbOpacity);
+
+				glBegin(GL_LINES);
+				glVertex3f(arrNodePosition[i].x, arrNodePosition[i].y, 0);
+				glVertex3f(arrNodePosition[j].x, arrNodePosition[j].y, 0);
+				glEnd();
+			}
 		}
 	}
 
 	// draw nodes
 	for (size_t i = 0; i < nUncertaintyAreas; i++)
 	{
-		SetGroupColor(i);
+		SetRegionColor(i);
 		drawCircle(arrNodePosition[i].x, arrNodePosition[i].y, dbNodeRadius, true);
 	}
 

@@ -65,8 +65,10 @@ private:
 
 
 protected:
-	// set group color
-	void SetGroupColor(int nIndex);
+	// set cluster color
+	void SetClusterColor(int nIndex);
+	// set region color
+	void SetRegionColor(int nIndex);
 
 protected:
 	MeteModel* _pModel = NULL;

@@ -5,6 +5,8 @@
 #include <QSpinBox>
 #include <QComboBox>
 
+#include <QDebug>
+
 DisplayCtrlWidget::DisplayCtrlWidget(QWidget *parent)
 	: QWidget(parent)
 {
@@ -23,8 +25,10 @@ void DisplayCtrlWidget::createWidgets() {
 	_pCombBgFunction->addItem("Mean", 0);
 	_pCombBgFunction->addItem("Variance", 1);
 	_pCombBgFunction->addItem("Cluster", 2);
-	_pCombBgFunction->addItem("Threshold", 3);
+	_pCombBgFunction->addItem("VarThreshold", 3);
 	_pCombBgFunction->addItem("Smoothed", 4);
+	_pCombBgFunction->addItem("DipValue", 5);
+	_pCombBgFunction->addItem("DipValueThreshold", 6);
 
 	_pSpinBoxSmooth = new QSpinBox;
 	_pSpinBoxSmooth->setRange(1, 10);
@@ -44,6 +48,12 @@ void DisplayCtrlWidget::createWidgets() {
 	_pSpinBoxFocusedCluster->setValue(0);
 	_pSpinBoxFocusedCluster->setSingleStep(1);
 
+	_pSpinBoxFocusedRegion = new QSpinBox;
+	_pSpinBoxFocusedRegion->setRange(0, 5);
+	_pSpinBoxFocusedRegion->setAlignment(Qt::AlignVCenter | Qt::AlignRight);
+	_pSpinBoxFocusedRegion->setValue(0);
+	_pSpinBoxFocusedRegion->setSingleStep(1);
+
 }
 
 void DisplayCtrlWidget::createLayout() {
@@ -53,6 +63,7 @@ void DisplayCtrlWidget::createLayout() {
 	layout->addRow(tr("Smooth:"), _pSpinBoxSmooth);
 	layout->addRow(tr("Areas:"), _pSpinBoxAreas);
 	layout->addRow(tr("Focused Cluster:"), _pSpinBoxFocusedCluster);
+	layout->addRow(tr("Focused Region:"), _pSpinBoxFocusedRegion);
 	setLayout(layout);
 }
 
@@ -61,6 +72,7 @@ void DisplayCtrlWidget::createConnections() {
 	connect(_pSpinBoxSmooth, SIGNAL(valueChanged(int)), this, SLOT(updateSmooth(int)));
 	connect(_pSpinBoxAreas, SIGNAL(valueChanged(int)), this, SLOT(updateUncertaintyAreas(int)));
 	connect(_pSpinBoxFocusedCluster, SIGNAL(valueChanged(int)), this, SLOT(updateFocusedCluster(int)));
+	connect(_pSpinBoxFocusedRegion, SIGNAL(valueChanged(int)), this, SLOT(updateFocusedRegion(int)));
 }
 
 void DisplayCtrlWidget::updateBgFunction(int nBgFunction)
@@ -83,3 +95,8 @@ void DisplayCtrlWidget::updateFocusedCluster(int nFocusedCluster) {
 	emit focusedClusterChanged(nFocusedCluster);
 }
 
+void DisplayCtrlWidget::updateFocusedRegion(int nFocusedRegion) {
+//	qDebug() << "updateFocusedRegion";
+
+	emit focusedRegionChanged(nFocusedRegion);
+}

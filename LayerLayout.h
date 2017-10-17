@@ -17,6 +17,10 @@ public:
 	double _dbTop = 0.9;
 	double _dbHeight = _dbTop - _dbBottom;
 
+	// color bar
+	double _dbColorBarLeft = _dbRight + .03;
+	double _dbColorBarRight = _dbRight + .06;
+
 
 	// variance chart
 	int _nVarHLayers = 100;												// Horizontal layers of the chart

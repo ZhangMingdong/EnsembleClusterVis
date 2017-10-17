@@ -191,6 +191,7 @@ int ColorMap::s_arrCategoryColor20[20][3] = {
 	{ 158, 218, 229 }
 };
 
+double ColorMap::s_arrThreshold[3] = { 23, 190, 207 };
 
 double ColorMap::s_arrSelfDefinedColor20[20][3] = {
 	{ 1, 0, 0 },			// R
@@ -228,7 +229,28 @@ double ColorMap::GetCategory20D(int nColorIndex, int nComponentIndex) {
 	return s_arrCategoryColor20[nColorIndex][nComponentIndex] / 255.0;
 }
 
+// get 10 colors in category20: 0~255
+int ColorMap::GetCategory10I(int nColorIndex, int nComponentIndex, int nBias) {
+	return s_arrCategoryColor20[nColorIndex * 2 + nBias][nComponentIndex];
+}
+
+// get 10 colors in category20: 0.0~1.0
+double ColorMap::GetCategory10D(int nColorIndex, int nComponentIndex, int nBias) {
+	return s_arrCategoryColor20[nColorIndex * 2 + nBias][nComponentIndex] / 255.0;
+}
+
 
 double ColorMap::GetRGB(int nColorIndex, int nComponentIndex) {
 	return s_arrSelfDefinedColor20[nColorIndex][nComponentIndex];
+}
+
+
+double ColorMap::GetThresholdColorD(int nComponentIndex)
+{
+	return s_arrThreshold[nComponentIndex] / 255.0;
+}
+
+int ColorMap::GetThresholdColorI(int nComponentIndex)
+{
+	return s_arrThreshold[nComponentIndex];
 }

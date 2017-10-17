@@ -5,6 +5,8 @@
 #include "def.h"
 #include "LayerLayout.h"
 
+#include "SpatialCluster.h"
+
 
 #include <QDebug>
 
@@ -130,8 +132,7 @@ void EnsembleLayer::draw(DisplayStates states){
 		glPushMatrix();
 		glEnable(GL_TEXTURE_2D);
 		glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
-
-		glBindTexture(GL_TEXTURE_2D, texID[0]);
+		glBindTexture(GL_TEXTURE_2D, _uiTexID[0]);
 
 		glTranslatef(biasFocusX, biasFocusY, 0);			// 位置偏移
 		glScalef(scaleFocusX, scaleFocusY, 0);				// 改变尺寸
@@ -145,58 +146,20 @@ void EnsembleLayer::draw(DisplayStates states){
 
 		glEnd();
 
+		glDisable(GL_TEXTURE_2D);
 		glPopMatrix();
 
 		// color bar
-		glBindTexture(GL_TEXTURE_2D, texID[1]);
-		glBegin(GL_QUADS);
-		glTexCoord2f(0.0f, 0.0f); glVertex2f(_pLayout->_dbRight+.03, _pLayout->_dbBottom);
-		glTexCoord2f(1.0f, 0.0f); glVertex2f(_pLayout->_dbRight+.06, _pLayout->_dbBottom);
-		glTexCoord2f(1.0f, 1.0f); glVertex2f(_pLayout->_dbRight+.06, _pLayout->_dbTop);
-		glTexCoord2f(0.0f, 1.0f); glVertex2f(_pLayout->_dbRight+.03, _pLayout->_dbTop);
-		glEnd();
-		glDisable(GL_TEXTURE_2D);
-
-		// border
-		glBegin(GL_LINE_LOOP);
-		glVertex2f(_pLayout->_dbRight + .03, _pLayout->_dbBottom);
-		glVertex2f(_pLayout->_dbRight + .06, _pLayout->_dbBottom);
-		glVertex2f(_pLayout->_dbRight + .06, _pLayout->_dbTop);
-		glVertex2f(_pLayout->_dbRight + .03, _pLayout->_dbTop);
-		glEnd();
-		ColorMap* colormap = ColorMap::GetInstance();
-		int nLen = colormap->GetLength();
-		int nStep = colormap->GetStep();
-		// scale
-		for (int i = 1; i < nLen; i++)
-		{
-			glBegin(GL_LINES);
-			glVertex2f(_pLayout->_dbRight + .06, _pLayout->_dbBottom + (_pLayout->_dbTop - _pLayout->_dbBottom)*i / (nLen-1));
-			glVertex2f(_pLayout->_dbRight + .05, _pLayout->_dbBottom + (_pLayout->_dbTop - _pLayout->_dbBottom)*i / (nLen-1));
-			glEnd();
-			// draw text
-
-			char buf[10];
-			sprintf_s(buf, "%d", i*nStep);
-// 			font.PrintText(buf, _pLayout->_dbRight + .06, _pLayout->_dbBottom + (_pLayout->_dbTop - _pLayout->_dbBottom)*i / 8);
-			_pCB->DrawText(buf, _pLayout->_dbRight + .063, _pLayout->_dbBottom + (_pLayout->_dbTop - _pLayout->_dbBottom)*i / (nLen-1));
-		}
+		drawColorBar();
 	}
 
 	glTranslatef(biasX, biasY, 0);				// 移动到指定位置
-
 	
-//	if (!_pModel->GetFilter())
-//		glScalef(.5, .5, 1);						// 变换大小
-//	glScalef(2, 2, 0);
-
-
 	glTranslatef(-(_pModel->GetW()-1)*_fScaleW/2, -(_pModel->GetH() - 1)*_fScaleH / 2, 0);		// 移动到中间
-
 
 	glScalef(_fScaleW, _fScaleH, 0);
 
-	// draw contour line
+
 	if (states._bShowContourLineMin)
 	{
 		glColor4f(1, 1, 0.0, 1.0);
@@ -211,21 +174,32 @@ void EnsembleLayer::draw(DisplayStates states){
 		glColor4f(1.0, 0.0, 1.0, .5);
 		drawContourLine(_pModel->GetContourMean());
 	}
-	// show contour line
 	if (states._bShowContourLine)
 	{
-		QList<QList<ContourLine>> contoursBrushed = _pModel->GetContourBrushed();
-		QList<QList<ContourLine>> contoursNotBrushed = _pModel->GetContourNotBrushed();
-		glColor4f(.8, 0.2, 0.0, .8);
-		for (int i = 0; i < contoursBrushed.size(); i++)
-		{
-			drawContourLine(contoursBrushed[i]);
+		bool bBrush = false;
+		if (bBrush) {
+			QList<QList<ContourLine>> contoursBrushed = _pModel->GetContourBrushed();
+			QList<QList<ContourLine>> contoursNotBrushed = _pModel->GetContourNotBrushed();
+			glColor4f(.8, 0.2, 0.0, .8);
+			for (int i = 0; i < contoursBrushed.size(); i++)
+			{
+				drawContourLine(contoursBrushed[i]);
+			}
+			glColor4f(.2, 0.8, 0.0, .2);
+			for (int i = 0; i < contoursNotBrushed.size(); i++)
+			{
+				drawContourLine(contoursNotBrushed[i]);
+			}
 		}
-		glColor4f(.2, 0.8, 0.0, .2);
-		for (int i = 0; i < contoursNotBrushed.size(); i++)
-		{
-			drawContourLine(contoursNotBrushed[i]);
-		}
+		else {
+			QList<QList<ContourLine>> contours = _pModel->GetContour();
+			const ClusterResult* pCR=_pModel->GetClusterResultOfFocusedRegion();
+			for (int i = 0; i < contours.size(); i++)
+			{
+//				SetGroupColor(pCR->_arrLabels[i]);
+				drawContourLine(contours[i]);
+			}
+		}		
 	}
 	if (states._bShowGradientE)
 	{
@@ -235,7 +209,6 @@ void EnsembleLayer::draw(DisplayStates states){
 			glCallList(_gllistG + i * 3 + 1);
 		}
 	}
-
 	// union
 	if (states._bShowUnionE)
 	{
@@ -243,7 +216,7 @@ void EnsembleLayer::draw(DisplayStates states){
 		// render each area
 		if (g_bShowUncertaintyOnly) {
 
-			glColor4f(1, 1, 1, .5);
+			glColor4f(0, 1, 0, .5);
 			glCallList(_gllist + 1);
 		}
 		else
@@ -256,21 +229,17 @@ void EnsembleLayer::draw(DisplayStates states){
 }
 
 void EnsembleLayer::ReloadTexture() {
-
-	// Enable texturing
-	// 	generateBackground();
-	// 	glEnable(GL_TEXTURE_2D);
 //	_dataTexture = _pModel->generateTexture();
 //	_dataTexture = _pModel->generateTextureGridCluster();
 //	_dataTexture = _pModel->generateTextureRange(0);
 //	_dataTexture = _pModel->generateTextureMean();
 //	_dataTexture = _pModel->generateTextureDiscreteSummary();
 	_dataTexture = _pModel->generateTextureNew();
-	//	_dataTexture = _pModel->generateTextureSDF();
-	glGenTextures(1, &texID[0]);
-	glBindTexture(GL_TEXTURE_2D, texID[0]);
-	// 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	// 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+//	_dataTexture = _pModel->generateTextureSDF();
+
+	glBindTexture(GL_TEXTURE_2D, _uiTexID[0]);
+// 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+// 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
@@ -281,60 +250,17 @@ void EnsembleLayer::ReloadTexture() {
 }
 
 void EnsembleLayer::init(){
+	// 0.generate texture
+	glGenTextures(2, &_uiTexID[0]);
+
+	// 1.load texture
 	ReloadTexture();
-	// color bar
-	ColorMap* colormap=ColorMap::GetInstance();
-	int nLen = colormap->GetLength();
-	int nStep = colormap->GetStep();
-	int nColorBarW = 1;
-	int nColorBarH = (nLen-1)*10+1;
-	_colorbarTexture = new GLubyte[nColorBarH * 4];
-	for (int i = 0; i < nColorBarH; i++)
-	{
-		MYGLColor color = colormap->GetColor(i/10.0*nStep);
-		// using transparency and the blue tunnel
-		_colorbarTexture[4 * i + 0] = color._rgb[0];
-		_colorbarTexture[4 * i + 1] = color._rgb[1];
-		_colorbarTexture[4 * i + 2] = color._rgb[2];
-		_colorbarTexture[4 * i + 3] = (GLubyte)255;
-	}
-	glGenTextures(1, &texID[1]);
-	glBindTexture(GL_TEXTURE_2D, texID[1]);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-// 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-// 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
 
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, nColorBarW, nColorBarH, 0, GL_RGBA, GL_UNSIGNED_BYTE, _colorbarTexture);
-	// ~build texture
+	// 2.generate color bar
+	generateColorBarTexture();
 
-
-	// initialize tess
-	_gllist = glGenLists(3);					// generate the display lists
-	_gllistG = glGenLists(g_gradient_l * 3);	// generate the display lists
-
-
-	_tobj = gluNewTess();
-	gluTessCallback(_tobj, GLU_TESS_VERTEX,
-		(void(__stdcall*)())glVertex3dv);
-	gluTessCallback(_tobj, GLU_TESS_BEGIN,
-		(void(__stdcall*)())beginCallback);
-	gluTessCallback(_tobj, GLU_TESS_END,
-		(void(__stdcall*)())endCallback);
-	gluTessCallback(_tobj, GLU_TESS_ERROR,
-		(void(__stdcall*)())errorCallback);
-
-
-
-	tessSegmentation(_gllist, _pModel->GetUncertaintyArea());
-
-	QList<QList<UnCertaintyArea*> > listAreas = _pModel->GetUncertaintyAreaG();
-	for (size_t i = 0, len = listAreas.length(); i < len; i++)
-	{
-		tessSegmentation(_gllistG + i * 3, listAreas[i]);
-	}
+	// 3.initialize tess
+	buildTess();
 }
 
 void EnsembleLayer::drawContourLine(const QList<ContourLine>& contours){
@@ -385,6 +311,11 @@ void EnsembleLayer::tessSegmentation(GLuint gllist, QList<UnCertaintyArea*> area
 			}
 		}
 	}
+	/*
+		state==-1: negative
+		state==0:  uncertain
+		state==1:  positive
+	*/
 	for (int state = -1; state < 2; state++)
 	{
 		glNewList(gllist + 1 + state, GL_COMPILE);
@@ -434,6 +365,7 @@ void EnsembleLayer::tessSegmentation(GLuint gllist, QList<UnCertaintyArea*> area
 		}
 		delete[]contourBuffer[i];
 	}
+
 	delete[]contourBuffer;
 }
 
@@ -441,5 +373,177 @@ void EnsembleLayer::Brush(int nLeft, int nRight, int nTop, int nBottom) {
 	_pModel->Brush(nLeft, nRight, nTop, nBottom);
 }
 
+void EnsembleLayer::drawColorBar() {
+	// border
+	glColor3f(0, 0, 0);		// black
+	glBegin(GL_LINE_LOOP);
+	glVertex2f(_pLayout->_dbColorBarLeft, _pLayout->_dbBottom);
+	glVertex2f(_pLayout->_dbColorBarRight, _pLayout->_dbBottom);
+	glVertex2f(_pLayout->_dbColorBarRight, _pLayout->_dbTop);
+	glVertex2f(_pLayout->_dbColorBarLeft, _pLayout->_dbTop);
+	glEnd();
+	MeteModel::enumBackgroundFunction bgFun = _pModel->GetBgFunction();
+	switch (bgFun)
+	{
+	case MeteModel::bg_mean:
+	case MeteModel::bg_vari:
+	case MeteModel::bg_vari_smooth:
+	{
+		// scale
+		ColorMap* colormap = ColorMap::GetInstance();
+		int nLen = colormap->GetLength();
+		int nStep = colormap->GetStep();
+		for (int i = 0; i < nLen; i++)
+		{
+			glBegin(GL_LINES);
+			glVertex2f(_pLayout->_dbColorBarRight, _pLayout->_dbBottom + (_pLayout->_dbTop - _pLayout->_dbBottom)*i / (nLen - 1));
+			glVertex2f(_pLayout->_dbColorBarRight-.01, _pLayout->_dbBottom + (_pLayout->_dbTop - _pLayout->_dbBottom)*i / (nLen - 1));
+			glEnd();
+			// draw text
+
+			char buf[10];
+			sprintf_s(buf, "%d", i*nStep);
+			_pCB->DrawText(buf, _pLayout->_dbColorBarRight + .02, _pLayout->_dbBottom + (_pLayout->_dbTop - _pLayout->_dbBottom)*i / (nLen - 1) - .01);
+		}
+		// colors
+		glEnable(GL_TEXTURE_2D);
+		glBindTexture(GL_TEXTURE_2D, _uiTexID[1]);
+		glBegin(GL_QUADS);
+		glTexCoord2f(0.1f, 0.0f); glVertex2f(_pLayout->_dbColorBarLeft, _pLayout->_dbBottom);
+		glTexCoord2f(0.9f, 0.0f); glVertex2f(_pLayout->_dbColorBarRight, _pLayout->_dbBottom);
+		glTexCoord2f(0.9f, 1.0f); glVertex2f(_pLayout->_dbColorBarRight, _pLayout->_dbTop);
+		glTexCoord2f(0.1f, 1.0f); glVertex2f(_pLayout->_dbColorBarLeft, _pLayout->_dbTop);
+		glEnd();
+		glDisable(GL_TEXTURE_2D);
+	}
+		break;
+	case MeteModel::bg_cluster:
+	{
+		const std::vector<UncertaintyRegion> vecR = _pModel->GetUncertaintyRegions();
+		int nRegions = _pModel->GetUncertaintyAreas();
+		int nLen = 0;
+		for (size_t i = 0; i < nRegions; i++)
+		{
+			nLen += vecR[i]._nArea;
+		}
+		// draw
+
+		char buf[20];
+		double dbTop = _pLayout->_dbTop;		
+		int nLenAccumulate = 0;
+		for (size_t i = 0; i < nRegions; i++)
+		{
+			nLenAccumulate+= vecR[i]._nArea;
+			double dbBottom = _pLayout->_dbTop-_pLayout->_dbHeight*nLenAccumulate / nLen;
+			double dbMid = (dbTop + dbBottom) / 2.0;
+			SetRegionColor(i);
+			glBegin(GL_QUADS);
+			glVertex2f(_pLayout->_dbColorBarLeft, dbBottom);
+			glVertex2f(_pLayout->_dbColorBarRight, dbBottom);
+			glVertex2f(_pLayout->_dbColorBarRight, dbTop);
+			glVertex2f(_pLayout->_dbColorBarLeft, dbTop);
+			glEnd();
+
+			glColor3f(0, 0, 0);
+			sprintf_s(buf, "%.2f%%", vecR[i]._nArea*100.0/nLen);
+			_pCB->DrawText(buf, _pLayout->_dbColorBarRight + .02, dbMid);
+
+			dbTop = dbBottom;
+		}
+	}
+		break;
+	case MeteModel::bg_varThreshold:
+	case MeteModel::bg_dipValueThreshold:
+	{
+		int nLen = _pModel->GetGridLength();
+		int nTLen = _pModel->GetThresholdedGridLength();
+		double dbMid = _pLayout->_dbTop-_pLayout->_dbHeight*nTLen / nLen;
+		glColor3f(ColorMap::GetThresholdColorD(0), ColorMap::GetThresholdColorD(1), ColorMap::GetThresholdColorD(2));
+		glBegin(GL_QUADS);
+		glVertex2f(_pLayout->_dbColorBarLeft, dbMid);
+		glVertex2f(_pLayout->_dbColorBarRight, dbMid);
+		glVertex2f(_pLayout->_dbColorBarRight, _pLayout->_dbTop);
+		glVertex2f(_pLayout->_dbColorBarLeft, _pLayout->_dbTop);
+		glEnd();
+
+		glColor3f(0, 0, 0);
+		int nPercentage = nTLen * 100 / nLen;
+		char buf[10];
+		sprintf_s(buf, "%d%%", nPercentage);
+		_pCB->DrawText(buf, _pLayout->_dbColorBarRight + .02, (_pLayout->_dbTop + dbMid) / 2.0);
 
 
+		sprintf_s(buf, "%d%%", 100-nPercentage);
+		_pCB->DrawText(buf, _pLayout->_dbColorBarRight + .02, (_pLayout->_dbBottom + dbMid) / 2.0);
+
+	}
+		break;
+	default:
+		break;
+	}
+}
+
+// generate the texture for the color bar
+void EnsembleLayer::generateColorBarTexture() {
+	// 1.generate color bar data
+	ColorMap* colormap = ColorMap::GetInstance();
+	int nLen = colormap->GetLength();
+	int nStep = colormap->GetStep();
+	int nColorBarW = 1;
+	int nColorBarH = (nLen - 1) * 10 + 1;
+	_colorbarTexture = new GLubyte[nColorBarH*nColorBarW * 4];
+	for (int i = 0; i < nColorBarH; i++)
+	{
+		MYGLColor color = colormap->GetColor(i / 10.0*nStep);
+		for (size_t j = 0; j < nColorBarW; j++)
+		{
+			int nIndex = nColorBarW*i + j;
+			_colorbarTexture[4 * nIndex + 0] = color._rgb[0];
+			_colorbarTexture[4 * nIndex + 1] = color._rgb[1];
+			_colorbarTexture[4 * nIndex + 2] = color._rgb[2];
+			_colorbarTexture[4 * nIndex + 3] = (GLubyte)255;
+		}
+	}
+	// 2.build texture
+	glBindTexture(GL_TEXTURE_2D, _uiTexID[1]);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+// 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+// 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, nColorBarW, nColorBarH, 0, GL_RGBA, GL_UNSIGNED_BYTE, _colorbarTexture);
+	// ~build texture
+}
+
+// build the tess for uncertainty regions
+void EnsembleLayer::buildTess() {
+	_gllist = glGenLists(3);					// generate the display lists
+	_gllistG = glGenLists(g_gradient_l * 3);	// generate the display lists
+
+
+	_tobj = gluNewTess();
+	gluTessCallback(_tobj, GLU_TESS_VERTEX,
+		(void(__stdcall*)())glVertex3dv);
+	gluTessCallback(_tobj, GLU_TESS_BEGIN,
+		(void(__stdcall*)())beginCallback);
+	gluTessCallback(_tobj, GLU_TESS_END,
+		(void(__stdcall*)())endCallback);
+	gluTessCallback(_tobj, GLU_TESS_ERROR,
+		(void(__stdcall*)())errorCallback);
+
+
+	// 4.tess the areas
+	tessSegmentation(_gllist, _pModel->GetUncertaintyArea());
+	/*
+	QList<QList<UnCertaintyArea*> > listAreas = _pModel->GetUncertaintyAreaG();
+	for (size_t i = 0, len = listAreas.length(); i < len; i++)
+	{
+	tessSegmentation(_gllistG + i * 3, listAreas[i]);
+	}
+	*/
+}
+
+	
