@@ -66,6 +66,7 @@ protected:
 	virtual void readDataFromText();
 	// read the dip value
 	virtual void readDipValue(char* strFileName);
+	virtual void readDipValueG(char* strFileName);
 
 	// read data from text file for global area, set the left line according to the right line.
 	virtual void readDataFromTextG();

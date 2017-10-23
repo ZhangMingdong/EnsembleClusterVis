@@ -46,22 +46,6 @@ const int g_gradient_l = 15;
 
 
 
-const int g_temperatureLen = 1;
-
-
-// new switch
-const bool g_bClustering = false;			// whether do clustering (PCA+AHC)
-const bool g_bSpatialClustering = false;	// whether do spatial clustering (DBSCAN)
-
-const double g_fThreshold = 273.16 - 15;
-//const double g_fThreshold = 2.0;
-const int g_nMinPts = 110;
-const double g_dbEps = 6;
-
-//const bool g_bGlobalArea = true;
-const bool g_bGlobalArea = false;
-
-
 const bool g_bSubArea = false;
 
 // whether calculate matrix for new data or use stored one
@@ -69,8 +53,6 @@ const bool g_bNewData = false;
 
 const int g_nClusters = 6;
 
-// time steps in the data file
-const int g_nTimeStep = 0;
 
 
 
@@ -87,22 +69,13 @@ enum enumMeteModel
 	, PRE_KMA
 	, PRE_NCEP
 	, T2_ECMWF
-	, T2_Reanalysis
+	, PRE_ECMWF_2017
 };
 
-// used model
-//const enumMeteModel g_usedModel = PRE_CMA;
-//const enumMeteModel g_usedModel = PRE_CPTEC;
-//const enumMeteModel g_usedModel = PRE_ECCC;
-//const enumMeteModel g_usedModel = PRE_ECMWF;
-//const enumMeteModel g_usedModel = PRE_JMA;
-//const enumMeteModel g_usedModel = PRE_KMA;
-//const enumMeteModel g_usedModel = PRE_NCEP;
-const enumMeteModel g_usedModel = T2_ECMWF;
-//const enumMeteModel g_usedModel = T2_Reanalysis;
+
 
 // just use white to show the uncertainty area
-const bool g_bShowUncertaintyOnly = true;
+const bool g_bShowUncertaintyOnly = false;
 
 // calculate the uncertainty band based on the signed distance function, otherwise calculate directly
 const bool g_bSDFBand = false;
@@ -113,9 +86,6 @@ const int g_nConfidenceEllipseIndex = -1;
 // the Mahalanobis distance used in calculating the confidence ellipse
 const double g_dbMDis = 2.0;
 
-// whether use ensemble model
-const bool g_bEnsembleModel = false;
-
 
 
 // 2017/09/14
@@ -123,3 +93,27 @@ const int g_nEnsembles = 50;					// number of ensemble members
 const int g_nUncertaintyAreaMax = 6;			// max number of uncertainty area
 const int g_nClusterMax = 10;					// max number of clusters
 
+
+// 2017/10/17
+# define GLOBAL_PRE
+
+#ifdef GLOBAL_PRE			
+const double g_fThreshold = 2.0;
+const bool g_bGlobalArea = true;
+
+// used model
+//const enumMeteModel g_usedModel = PRE_CMA;
+//const enumMeteModel g_usedModel = PRE_CPTEC;
+//const enumMeteModel g_usedModel = PRE_ECCC;
+//const enumMeteModel g_usedModel = PRE_ECMWF;
+//const enumMeteModel g_usedModel = PRE_JMA;
+//const enumMeteModel g_usedModel = PRE_KMA;
+//const enumMeteModel g_usedModel = PRE_NCEP;
+const enumMeteModel g_usedModel = PRE_ECMWF_2017;
+
+#else
+const double g_fThreshold = 273.16 - 15;
+const bool g_bGlobalArea = false;
+const enumMeteModel g_usedModel = T2_ECMWF;
+
+#endif

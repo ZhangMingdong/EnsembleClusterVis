@@ -24,9 +24,7 @@
 #include "DBSCANClustering.h"
 
 
-#include "EnsembleModel.h"
-#include "ReanalysisModel.h"
-#include "ContourBandDepthModel.h"
+
 
 #include "SpatialCluster.h"
 
@@ -137,10 +135,13 @@ void MeteModel::InitModel(int nEnsembleLen, int nWidth, int nHeight, int nFocusX
 		}
 	}
 	// read dip value (temp)
-//	readDipValue("../../data/t2-2007-2017-jan-144 and 240h-50(1Degree, single timestep,skip 3)_dipValue.txt");
-//	readDipValue("../../data/t2-2007-2017-jan-144 and 240h-50(1Degree, single timestep)_dipValue.txt");
+#ifdef GLOBAL_PRE
+//	readDipValueG("../../data/data10/pre-mod-ecmwf-20160802-00-96_dipValue.txt");
+	readDipValueG("../../data/data10/pre-mod-jma-20160802-00-96_dipValue.txt");
+#else
+	//	readDipValue("../../data/t2-2007-2017-jan-144 and 240h-50(1Degree, single timestep,skip 3)_dipValue.txt");
 	readDipValue("../../data/t2-2007-2017-jan-144 and 240h-50(1Degree, single timestep)_dipValue_P.txt");
-
+#endif
 	// 4.statistic
 	_pData->DoStatistic();
 
@@ -170,39 +171,25 @@ void MeteModel::InitModel(int nEnsembleLen, int nWidth, int nHeight, int nFocusX
 }
 
 void MeteModel::readDataFromText() {
-	int nTimeStep = g_nTimeStep;
-
 	QFile file(_strFile);
 
 	if (!file.open(QIODevice::ReadOnly)) {
 		QMessageBox::information(0, "error", file.errorString());
 	}
 
-	int nCount = 0;
 	QTextStream in(&file);
-	int tt = 0;
-	while (!in.atEnd()) {
-		// every time step
-		for (size_t t = 0; t <= nTimeStep; t++)
+
+	// every ensemble member
+	for (int i = 0; i < _nEnsembleLen; i++)
+	{
+		// skip first line
+		QString line = in.readLine();
+		// every grid
+		for (int j = 0; j < _nLen; j++)
 		{
-			// every ensemble member
-			for (int i = 0; i < _nEnsembleLen; i++)
-			{
-				QString line = in.readLine();
-				// every grid
-				for (int j = 0; j < _nLen; j++)
-				{
-					QString line = in.readLine();
-					nCount++;
-					if (t == nTimeStep)
-						_pData->SetData(i, j, line.toFloat());
-					int r = j / _nWidth;
-					int c = j%_nWidth;
-				}
-			}
+			QString line = in.readLine();
+			_pData->SetData(i, j, line.toFloat());
 		}
-		tt++;
-		if(tt ==1) break;		// use the second data
 	}
 
 	file.close();
@@ -232,10 +219,35 @@ void MeteModel::readDipValue(char* strFileName) {
 	file.close();
 }
 
+void MeteModel::readDipValueG(char* strFileName) {
+
+	QFile file(strFileName);
+
+	if (!file.open(QIODevice::ReadOnly)) {
+		QMessageBox::information(0, "error", file.errorString());
+	}
+
+
+	QTextStream in(&file);
+	int nWidth = _nWidth - 1;
+	for (size_t i = 0; i < _nHeight; i++)
+	{
+		for (size_t j = 0; j < nWidth; j++)
+		{
+			QString line = in.readLine();
+			double dbDipValue = line.toFloat() * 10;
+			_pData->SetDipValue(i*_nWidth+j, dbDipValue);
+			if (j==0)
+			{
+				_pData->SetDipValue(i*_nWidth + _nWidth-1, dbDipValue);
+			}
+		}
+	}
+
+	file.close();
+}
+
 void MeteModel::readDataFromTextG() {
-
-	int nTimeStep = g_nTimeStep;
-
 	QFile file(_strFile);
 
 	if (!file.open(QIODevice::ReadOnly)) {
@@ -243,38 +255,34 @@ void MeteModel::readDataFromTextG() {
 	}
 
 	QTextStream in(&file);
-	int tt = 0;
+
 
 	int nWidth = _nWidth - 1;				// width of a scalar field in the file
 	int nLen = nWidth*_nHeight;				// length of a scalar field in the file
-	while (!in.atEnd()) {
-		// every time step
-		for (size_t t = 0; t <= nTimeStep; t++)
+
+	int nStep = 2;
+	for (size_t t = 0; t < nStep; t++)
+	{
+		// every ensemble member
+		for (int i = 0; i < _nEnsembleLen; i++)
 		{
-			// every ensemble member
-			for (int i = 0; i < _nEnsembleLen; i++)
+			QString line = in.readLine();
+			// every grid
+			for (int j = 0; j < nLen; j++)
 			{
 				QString line = in.readLine();
-				// every grid
-				for (int j = 0; j < nLen; j++)
+				int r = j / nWidth;
+				int c = j % nWidth;
+				int nIndex = r*_nWidth + c + 1;
+				_pData->SetData(i, nIndex, line.toFloat());
+				if (c == nWidth - 1)
 				{
-					QString line = in.readLine();
-					if (t == nTimeStep) {
-						int r = j / nWidth;
-						int c = j % nWidth;
-						int nIndex = r*_nWidth + c+1;
-						_pData->SetData(i, nIndex, line.toFloat());
-						if (c==nWidth-1)
-						{
-							int nIndex = r*_nWidth;
-							_pData->SetData(i, nIndex, line.toFloat());
-						}
-					}
+					int nIndex = r*_nWidth;
+					_pData->SetData(i, nIndex, line.toFloat());
 				}
 			}
 		}
-		tt++;
-		if (tt == 1) break;		// use the second data
+
 	}
 
 	file.close();
@@ -613,226 +621,142 @@ QList<QList<ContourLine>> MeteModel::GetContour()
 }
 
 MeteModel* MeteModel::CreateModel() {
-	if (g_bEnsembleModel) {
+	MeteModel* pModel = NULL;
+	int nWidth = g_globalW;
+	int nHeight = g_globalH;
 
-		MeteModel* pModel = NULL;
-		int nWidth = g_globalW;
-		int nHeight = g_globalH;
+	int nFocusX = 0;
+	int nFocusY = 0;
+	int nFocusW = nWidth;
+	int nFocusH = nHeight;
 
-		int nFocusX = 0;
-		int nFocusY = 0;
-		int nFocusW = nWidth;
-		int nFocusH = nHeight;
-
-		int nWest;
-		int nEast;
-		int nNorth;
-		int nSouth;
-		int nFocusWest;
-		int nFocusEast;
-		int nFocusNorth;
-		int nFocusSouth;
+	int nWest;
+	int nEast;
+	int nNorth;
+	int nSouth;
+	int nFocusWest;
+	int nFocusEast;
+	int nFocusNorth;
+	int nFocusSouth;
 
 
 
-		if (g_bGlobalArea)
-		{
-			nFocusX = 0;
-			nFocusY = 0;
-			nFocusW = nWidth;
-			nFocusH = nHeight;
-		}
-		else {
-
-			nWidth = 31;
-			nHeight = 31;
-
-			if (g_bSubArea)
-			{
-				nFocusX = 0;
-				nFocusY = 40;
-				nFocusW = 31;
-				nFocusH = 11;
-				nWest = 60;
-				nEast = 150;
-				nSouth = 10;
-				nNorth = 60;
-
-
-				nFocusWest = 60;
-				nFocusEast = 90;
-				nFocusSouth = 50;
-				nFocusNorth = 60;
-			}
-			else {
-				nFocusX = 0;
-				nFocusY = 0;
-				nFocusW = nWidth;
-				nFocusH = nHeight;
-				nWest = 100;
-				nEast = 130;
-				nSouth = 20;
-				nNorth = 50;
-				nFocusWest = 100;
-				nFocusEast = 130;
-				nFocusSouth = 20;
-				nFocusNorth = 50;
-			}
-
-		}
-
-
-
-		pModel = new EnsembleModel();
-		pModel->InitModel(50, nWidth, nHeight, nFocusX, nFocusY, nFocusW, nFocusH
-			//				, "../../data/t2-mod-ecmwf-20160105-00-72-216.txt", false
-			//				, "../../data/t2-2007-2017-jan-120h-50.txt", false
-			//, "../../data/t2-2007-2017-jan-144 and 240h-50.txt", false
-			, "../../data/t2-mod-ecmwf-200701-00-360.txt", false
-			, nWest, nEast, nSouth, nNorth
-			, nFocusWest, nFocusEast, nFocusSouth, nFocusNorth);
-
-		return pModel;
+	if (g_bGlobalArea)
+	{
+		nFocusX = 0;
+		nFocusY = 0;
+		nFocusW = nWidth;
+		nFocusH = nHeight;
 	}
 	else {
-		// old codes
-		MeteModel* pModel = NULL;
-		int nWidth = g_globalW;
-		int nHeight = g_globalH;
 
-		int nFocusX = 0;
-		int nFocusY = 0;
-		int nFocusW = nWidth;
-		int nFocusH = nHeight;
-
-		int nWest;
-		int nEast;
-		int nNorth;
-		int nSouth;
-		int nFocusWest;
-		int nFocusEast;
-		int nFocusNorth;
-		int nFocusSouth;
-
-
-
-		if (g_bGlobalArea)
+		nWidth = 91;
+		nHeight = 51;
+		if (g_bSubArea)
 		{
+			nFocusX = 0;
+			nFocusY = 40;
+			nFocusW = 31;
+			nFocusH = 11;
+			nWest = 60;
+			nEast = 150;
+			nSouth = 10;
+			nNorth = 60;
+
+
+			nFocusWest = 60;
+			nFocusEast = 90;
+			nFocusSouth = 50;
+			nFocusNorth = 60;
+		}
+		else {
 			nFocusX = 0;
 			nFocusY = 0;
 			nFocusW = nWidth;
 			nFocusH = nHeight;
+			nWest = 60;
+			nEast = 150;
+			nSouth = 10;
+			nNorth = 60;
+			nFocusWest = 60;
+			nFocusEast = 150;
+			nFocusSouth = 10;
+			nFocusNorth = 60;
+		}
+
+	}
+
+
+
+
+	bool bNewData = true;
+
+	switch (g_usedModel)
+	{
+	case PRE_CMA:
+		pModel = new MeteModel();
+		pModel->InitModel(14, nWidth, nHeight, nFocusX, nFocusY, nFocusW, nFocusH, "../../data/data10/pre-mod-cma-20160802-00-96.txt"); break;
+	case PRE_CPTEC:
+		pModel = new MeteModel();
+		pModel->InitModel(14, nWidth, nHeight, nFocusX, nFocusY, nFocusW, nFocusH, "../../data/data10/pre-mod-cptec-20160802-00-96.txt"); break;
+	case PRE_ECCC:
+		pModel = new MeteModel();
+		pModel->InitModel(20, nWidth, nHeight, nFocusX, nFocusY, nFocusW, nFocusH, "../../data/data10/pre-mod-eccc-20160802-00-96.txt"); break;
+	case PRE_ECMWF:
+		pModel = new MeteModel();
+		pModel->InitModel(50, nWidth, nHeight, nFocusX, nFocusY, nFocusW, nFocusH, "../../data/data10/pre-mod-ecmwf-20160802-00-96.txt"); break;
+	case PRE_JMA:
+		pModel = new MeteModel();
+		pModel->InitModel(26, nWidth, nHeight, nFocusX, nFocusY, nFocusW, nFocusH, "../../data/data10/pre-mod-jma-20160802-00-96.txt"); break;
+	case PRE_KMA:
+		pModel = new MeteModel();
+		pModel->InitModel(24, nWidth, nHeight, nFocusX, nFocusY, nFocusW, nFocusH, "../../data/data10/pre-mod-kma-20160802-00-96.txt"); break;
+	case PRE_NCEP:
+		pModel = new MeteModel();
+		pModel->InitModel(20, nWidth, nHeight, nFocusX, nFocusY, nFocusW, nFocusH, "../../data/data10/pre-mod-ncep-20160802-00-96.txt"); break;
+	case T2_ECMWF:
+		nWidth = 91;
+		nHeight = 51;
+		nFocusW = 91;
+		nFocusH = 51;
+		pModel = new MeteModel();
+		pModel->InitModel(50, nWidth, nHeight, nFocusX, nFocusY, nFocusW, nFocusH
+			//				, "../../data/t2-2007-2017-jan-144 and 240h-50(1Degree).txt", false
+			, "../../data/t2-2007-2017-jan-144 and 240h-50(1Degree, single timestep).txt", false
+			//				, "../../data/t2-2007-2017-jan-144 and 240h-50(1Degree, single timestep,skip 3).txt", false
+			, nWest, nEast, nSouth, nNorth
+			, nFocusWest, nFocusEast, nFocusSouth, nFocusNorth);
+		/*
+		pModel = new ContourBandDepthModel();
+		if (bNewData) {
+		pModel->InitModel(50, nWidth, nHeight, nFocusX, nFocusY, nFocusW, nFocusH
+		//				, "../../data/t2-mod-ecmwf-20160105-00-72-216.txt", false
+		//				, "../../data/t2-2007-2017-jan-120h-50.txt", false				// 这个区域小一点
+		, "../../data/t2-2007-2017-jan-144 and 240h-50.txt", false
+		, nWest, nEast, nSouth, nNorth
+		, nFocusWest, nFocusEast, nFocusSouth, nFocusNorth);
 		}
 		else {
 
-			nWidth = 91;
-			nHeight = 51;
-			if (g_bSubArea)
-			{
-				nFocusX = 0;
-				nFocusY = 40;
-				nFocusW = 31;
-				nFocusH = 11;
-				nWest = 60;
-				nEast = 150;
-				nSouth = 10;
-				nNorth = 60;
-
-
-				nFocusWest = 60;
-				nFocusEast = 90;
-				nFocusSouth = 50;
-				nFocusNorth = 60;
-			}
-			else {
-				nFocusX = 0;
-				nFocusY = 0;
-				nFocusW = nWidth;
-				nFocusH = nHeight;
-				nWest = 60;
-				nEast = 150;
-				nSouth = 10;
-				nNorth = 60;
-				nFocusWest = 60;
-				nFocusEast = 150;
-				nFocusSouth = 10;
-				nFocusNorth = 60;
-			}
-
+		pModel->InitModel(50, nWidth, nHeight, nFocusX, nFocusY, nFocusW, nFocusH
+		, "../../data/t2_mod_20080101-96h.dat", true
+		, nWest, nEast, nSouth, nNorth
+		, nFocusWest, nFocusEast, nFocusSouth, nFocusNorth, g_bFilter);
 		}
+		*/
+		break;
+	case PRE_ECMWF_2017:
+		pModel = new MeteModel();
+		pModel->InitModel(50, nWidth, nHeight, nFocusX, nFocusY, nFocusW, nFocusH, "../../data/Pre_20171016_0-360-by-6.txt"); 
+//		pModel->InitModel(50, nWidth, nHeight, nFocusX, nFocusY, nFocusW, nFocusH, "../../data/Pre_20170701_0-360-by-6.txt"); 
+		
+		break;
 
-
-
-
-		bool bNewData = true;
-
-		switch (g_usedModel)
-		{
-		case PRE_CMA:
-			pModel = new EnsembleModel();
-			pModel->InitModel(14, nWidth, nHeight, nFocusX, nFocusY, nFocusW, nFocusH, "../../data/data10/pre-mod-cma-20160802-00-96.txt"); break;
-		case PRE_CPTEC:
-			pModel = new EnsembleModel();
-			pModel->InitModel(14, nWidth, nHeight, nFocusX, nFocusY, nFocusW, nFocusH, "../../data/data10/pre-mod-cptec-20160802-00-96.txt"); break;
-		case PRE_ECCC:
-			pModel = new EnsembleModel();
-			pModel->InitModel(20, nWidth, nHeight, nFocusX, nFocusY, nFocusW, nFocusH, "../../data/data10/pre-mod-eccc-20160802-00-96.txt"); break;
-		case PRE_ECMWF:
-			pModel = new MeteModel();
-			pModel->InitModel(50, nWidth, nHeight, nFocusX, nFocusY, nFocusW, nFocusH, "../../data/data10/pre-mod-ecmwf-20160802-00-96.txt"); break;
-		case PRE_JMA:
-			pModel = new EnsembleModel();
-			pModel->InitModel(26, nWidth, nHeight, nFocusX, nFocusY, nFocusW, nFocusH, "../../data/data10/pre-mod-jma-20160802-00-96.txt"); break;
-		case PRE_KMA:
-			pModel = new EnsembleModel();
-			pModel->InitModel(24, nWidth, nHeight, nFocusX, nFocusY, nFocusW, nFocusH, "../../data/data10/pre-mod-kma-20160802-00-96.txt"); break;
-		case PRE_NCEP:
-			pModel = new EnsembleModel();
-			pModel->InitModel(20, nWidth, nHeight, nFocusX, nFocusY, nFocusW, nFocusH, "../../data/data10/pre-mod-ncep-20160802-00-96.txt"); break;
-		case T2_ECMWF:
-			nWidth = 91;
-			nHeight = 51;
-			nFocusW = 91;
-			nFocusH = 51;
-			pModel = new MeteModel();
-			pModel->InitModel(50, nWidth, nHeight, nFocusX, nFocusY, nFocusW, nFocusH
-//				, "../../data/t2-2007-2017-jan-144 and 240h-50(1Degree).txt", false
-				, "../../data/t2-2007-2017-jan-144 and 240h-50(1Degree, single timestep).txt", false
-//				, "../../data/t2-2007-2017-jan-144 and 240h-50(1Degree, single timestep,skip 3).txt", false
-				, nWest, nEast, nSouth, nNorth
-				, nFocusWest, nFocusEast, nFocusSouth, nFocusNorth);
-			/*
-			pModel = new ContourBandDepthModel();
-			if (bNewData) {
-				pModel->InitModel(50, nWidth, nHeight, nFocusX, nFocusY, nFocusW, nFocusH
-					//				, "../../data/t2-mod-ecmwf-20160105-00-72-216.txt", false
-					//				, "../../data/t2-2007-2017-jan-120h-50.txt", false				// 这个区域小一点
-					, "../../data/t2-2007-2017-jan-144 and 240h-50.txt", false
-					, nWest, nEast, nSouth, nNorth
-					, nFocusWest, nFocusEast, nFocusSouth, nFocusNorth);
-			}
-			else {
-
-				pModel->InitModel(50, nWidth, nHeight, nFocusX, nFocusY, nFocusW, nFocusH
-					, "../../data/t2_mod_20080101-96h.dat", true
-					, nWest, nEast, nSouth, nNorth
-					, nFocusWest, nFocusEast, nFocusSouth, nFocusNorth, g_bFilter);
-			}
-			*/
-			break;
-		case T2_Reanalysis:
-			pModel = new ReanalysisModel();
-			pModel->InitModel(1209, nWidth, nHeight, nFocusX, nFocusY, nFocusW, nFocusH
-				, "../../data/t2_obs_1979-2017_1_china.txt", false
-				, nWest, nEast, nSouth, nNorth
-				, nFocusWest, nFocusEast, nFocusSouth, nFocusNorth);
-			break;
-		defaut:
-			break;
-		}
-
-		return pModel;
+	defaut:
+		break;
 	}
+
+	return pModel;
 }
 
 void MeteModel::generatePCAPoint(UncertaintyRegion& cluster, std::vector<DPoint3>& points) {
