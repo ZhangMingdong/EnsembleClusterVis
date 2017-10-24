@@ -642,24 +642,30 @@ void MyGLWidget::setUncertaintyAreas(int nUCAreas) {
 
 void MyGLWidget::updateMinPts(int minPts) {
 	qDebug() << "set minpts";
+	/*
 	if(_pModelE)
 		_pModelE->SetMinPts(minPts);
 
 	onTextureReloaded();
+	*/
 }
 
 void MyGLWidget::updateEps(double eps) {
 	qDebug() << "set eps";
+	/*
 	if (_pModelE)
 		_pModelE->SetEps(eps);
 
-	onTextureReloaded();
+	onTextureReloaded(); 
+	*/
 }
+
 void MyGLWidget::updateVarSmooth(int nSmooth) {
 	if (_pModelE)
 		_pModelE->SetSmooth(nSmooth);
 	onTextureReloaded();
 }
+
 void MyGLWidget::updateBgFunction(int nBgFunction) {
 	if (_pModelE)
 		_pModelE->SetBgFunction((MeteModel::enumBackgroundFunction)nBgFunction);
@@ -686,4 +692,10 @@ void MyGLWidget::updateFocusedRegion(int nFocusedRegion) {
 	_pModelE->SetFocusedRegion(nFocusedRegion);
 
 	updateGL();
+}
+
+void MyGLWidget::updateEOF(int nEOF) {
+	if (_pModelE)
+		_pModelE->SetEOF(nEOF);
+	onTextureReloaded();
 }

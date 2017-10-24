@@ -155,12 +155,9 @@ void MeteModel::InitModel(int nEnsembleLen, int nWidth, int nHeight, int nFocusX
 		_listContour.push_back(contour);
 	}
 
-
-
-
-		generator.Generate(_pData->GetUMin(), _listContourMinE, g_fThreshold, _nWidth, _nHeight, _nFocusX, _nFocusY, _nFocusW, _nFocusH);
-		generator.Generate(_pData->GetUMax(), _listContourMaxE, g_fThreshold, _nWidth, _nHeight, _nFocusX, _nFocusY, _nFocusW, _nFocusH);
-		generator.Generate(_pData->GetMean(), _listContourMeanE, g_fThreshold, _nWidth, _nHeight, _nFocusX, _nFocusY, _nFocusW, _nFocusH);
+	generator.Generate(_pData->GetUMin(), _listContourMinE, g_fThreshold, _nWidth, _nHeight, _nFocusX, _nFocusY, _nFocusW, _nFocusH);
+	generator.Generate(_pData->GetUMax(), _listContourMaxE, g_fThreshold, _nWidth, _nHeight, _nFocusX, _nFocusY, _nFocusW, _nFocusH);
+	generator.Generate(_pData->GetMean(), _listContourMeanE, g_fThreshold, _nWidth, _nHeight, _nFocusX, _nFocusY, _nFocusW, _nFocusH);
 
 
 	generateContourImp(_listContourMinE, _listContourMaxE, _listUnionAreaE);
@@ -429,17 +426,31 @@ void MeteModel::buildTextureClusteredVariance() {
 
 // generate texture of colormap of mean or variance
 void MeteModel::buildTextureColorMap() {
-	const double* pData;
+	const double* pData;	// color map
+	ColorMap* colormap;
 	switch (_bgFunction)
 	{
 	case MeteModel::bg_mean:
-		pData = _pData->GetMean();
+		pData = _pData->GetMean(); 
+		colormap = ColorMap::GetInstance();
+//		colormap = ColorMap::GetInstance(ColorMap::CP_T);
 		break;
 	case MeteModel::bg_vari:
 		pData = _pData->GetVari();
+		colormap = ColorMap::GetInstance();
+		break;
+	case MeteModel::bg_vari_smooth:
+		pData = _pData->GetVari(_nSmooth);
+		colormap = ColorMap::GetInstance();
 		break;
 	case MeteModel::bg_dipValue:
 		pData = _pData->GetDipValue();
+		colormap = ColorMap::GetInstance();
+		break;
+	case MeteModel::bg_EOF:
+		pData = _pData->GetEOF(_nEOF-1);
+//		colormap = ColorMap::GetInstance();
+		colormap = ColorMap::GetInstance(ColorMap::CP_EOF);
 		break;
 	default:
 		break;
@@ -447,19 +458,8 @@ void MeteModel::buildTextureColorMap() {
 
 	_dataTexture = new GLubyte[4 * _nFocusLen];
 
-	ofstream output("variance.txt");
-	output << (_bgFunction == bg_mean ? "mean" : "variance") << endl;
-	for (int i = _nFocusY, iLen = _nFocusY + _nFocusH; i < iLen; i++) {
-		for (int j = _nFocusX, jLen = _nFocusX + _nFocusW; j < jLen; j++) {
-
-			int nIndex = i*_nWidth + j;
-			int nIndexFocus = (i - _nFocusY)*_nFocusW + j - _nFocusX;
-			output << j << "\t" << i << "\t" << pData[nIndex] << endl;
-		}
-	}
-
-	// color map
-	ColorMap* colormap = ColorMap::GetInstance();
+	double dbMax = -1000;
+	double dbMin = 1000;
 	for (int i = _nFocusY, iLen = _nFocusY + _nFocusH; i < iLen; i++) {
 		for (int j = _nFocusX, jLen = _nFocusX + _nFocusW; j < jLen; j++) {
 
@@ -471,33 +471,12 @@ void MeteModel::buildTextureColorMap() {
 			_dataTexture[4 * nIndexFocus + 1] = color._rgb[1];
 			_dataTexture[4 * nIndexFocus + 2] = color._rgb[2];
 			_dataTexture[4 * nIndexFocus + 3] = (GLubyte)255;
-
+			if (pData[nIndex] > dbMax) dbMax = pData[nIndex];
+			if (pData[nIndex] < dbMin) dbMin = pData[nIndex];
 		}
 	}
-}
-
-// generate texture of smoothed variance
-void MeteModel::buildTextureSmoothedVariance()
-{
-	const double* pData = _pData->GetVari(_nSmooth);
-	_dataTexture = new GLubyte[4 * _nFocusLen];
-
-	// color map
-	ColorMap* colormap = ColorMap::GetInstance();
-	for (int i = _nFocusY, iLen = _nFocusY + _nFocusH; i < iLen; i++) {
-		for (int j = _nFocusX, jLen = _nFocusX + _nFocusW; j < jLen; j++) {
-
-			int nIndex = i*_nWidth + j;
-			int nIndexFocus = (i - _nFocusY)*_nFocusW + j - _nFocusX;
-			MYGLColor color = colormap->GetColor(pData[nIndex]);
-			// using transparency and the blue tunnel
-			_dataTexture[4 * nIndexFocus + 0] = color._rgb[0];
-			_dataTexture[4 * nIndexFocus + 1] = color._rgb[1];
-			_dataTexture[4 * nIndexFocus + 2] = color._rgb[2];
-			_dataTexture[4 * nIndexFocus + 3] = (GLubyte)255;
-
-		}
-	}
+	qDebug() << "Max: " << dbMax;
+	qDebug() << "Min: " << dbMin;
 }
 
 vector<double> MeteModel::GetVariance() {
@@ -553,6 +532,8 @@ void MeteModel::readData() {
 }
 
 void MeteModel::initializeModel() {
+	// EOF
+	_pData->DoEOF();
 }
 
 void MeteModel::Brush(int nLeft, int nRight, int nTop, int nBottom) {
@@ -864,12 +845,19 @@ void MeteModel::SetSmooth(int nSmooth) {
 	regenerateTexture();
 }
 
+void MeteModel::SetEOF(int nEOF) {
+	if (nEOF == _nEOF) return;
+	_nEOF = nEOF;
+	regenerateTexture();
+}
 void MeteModel::regenerateTexture() {
 	switch (_bgFunction)
 	{
 	case MeteModel::bg_mean:
 	case MeteModel::bg_vari:
+	case MeteModel::bg_vari_smooth:
 	case MeteModel::bg_dipValue:
+	case MeteModel::bg_EOF:
 		buildTextureColorMap();
 		break;
 	case MeteModel::bg_cluster:
@@ -881,9 +869,6 @@ void MeteModel::regenerateTexture() {
 		break;
 	case MeteModel::bg_dipValueThreshold:
 		buildTextureThresholdDipValue();
-		break;
-	case MeteModel::bg_vari_smooth:
-		buildTextureSmoothedVariance();
 		break;
 	default:
 		break;

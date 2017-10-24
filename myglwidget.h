@@ -159,6 +159,7 @@ public slots:
 	void updateUncertaintyAreas(int nAreas);
 	void updateFocusedCluster(int nFocusedCluster);
 	void updateFocusedRegion(int nFocusedRegion);
+	void updateEOF(int nEOF);
 private:
 	// vector of layers to render
 	std::vector<MeteLayer*> _vecLayers;

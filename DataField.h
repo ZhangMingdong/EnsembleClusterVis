@@ -1,5 +1,6 @@
 #pragma once
 #include <QList>
+#include "def.h"
 /*
 	represent a data field
 	Mingdong
@@ -23,11 +24,14 @@ private:
 	int _nH;						// height
 	int _nL;						// number of ensemble members
 	int _nSmooth = 0;				// level of smooth
+	int _nEOF = 0;					// level of EOF
+	double* _gridEOF[g_nEOFLen];	// eof fields
 public:
 	// get the l'th layer
 	const double* GetLayer(int l);
 	// get variance, nSmooth: level of smooth
 	const double* GetVari(int nSmooth=0);
+	const double* GetEOF(int nSeq=0);
 	const double* GetDipValue();
 	const double* GetMean();
 	const double* GetUMax();
@@ -45,6 +49,9 @@ public:
 	void DoStatistic();
 	// generate clustered data using the labels
 	void GenerateClusteredData(const QList<int> listClusterLens, const int* arrLabels, QList<DataField*>& arrData);
+
+	// perform eof analysis
+	void DoEOF();
 private:
 	// smooth the variance to level nSmooth
 	void smoothVar(int nSmooth);

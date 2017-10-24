@@ -95,7 +95,7 @@ const int g_nClusterMax = 10;					// max number of clusters
 
 
 // 2017/10/17
-# define GLOBAL_PRE
+// # define GLOBAL_PRE
 
 #ifdef GLOBAL_PRE			
 const double g_fThreshold = 2.0;
@@ -117,3 +117,6 @@ const bool g_bGlobalArea = false;
 const enumMeteModel g_usedModel = T2_ECMWF;
 
 #endif
+
+// 2017/10/23
+const int g_nEOFLen = 10;

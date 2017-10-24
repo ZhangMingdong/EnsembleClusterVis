@@ -247,6 +247,7 @@ void EnsembleLayer::ReloadTexture() {
 
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, _pModel->GetFocusW(), _pModel->GetFocusH(), 0, GL_RGBA, GL_UNSIGNED_BYTE, _dataTexture);
 
+	generateColorBarTexture();
 }
 
 void EnsembleLayer::init(){
@@ -388,11 +389,14 @@ void EnsembleLayer::drawColorBar() {
 	case MeteModel::bg_mean:
 	case MeteModel::bg_vari:
 	case MeteModel::bg_vari_smooth:
+	case MeteModel::bg_dipValue:
+	case MeteModel::bg_EOF:
 	{
 		// scale
-		ColorMap* colormap = ColorMap::GetInstance();
+		ColorMap* colormap = bgFun== MeteModel::bg_EOF?ColorMap::GetInstance(ColorMap::CP_EOF): ColorMap::GetInstance();
 		int nLen = colormap->GetLength();
 		int nStep = colormap->GetStep();
+		int nMin = colormap->GetMin();
 		for (int i = 0; i < nLen; i++)
 		{
 			glBegin(GL_LINES);
@@ -402,7 +406,7 @@ void EnsembleLayer::drawColorBar() {
 			// draw text
 
 			char buf[10];
-			sprintf_s(buf, "%d", i*nStep);
+			sprintf_s(buf, "%d", nMin+i*nStep);
 			_pCB->DrawText(buf, _pLayout->_dbColorBarRight + .02, _pLayout->_dbBottom + (_pLayout->_dbTop - _pLayout->_dbBottom)*i / (nLen - 1) - .01);
 		}
 		// colors
@@ -486,15 +490,18 @@ void EnsembleLayer::drawColorBar() {
 // generate the texture for the color bar
 void EnsembleLayer::generateColorBarTexture() {
 	// 1.generate color bar data
-	ColorMap* colormap = ColorMap::GetInstance();
+	MeteModel::enumBackgroundFunction bgFun = _pModel->GetBgFunction();
+	ColorMap* colormap = bgFun == MeteModel::bg_EOF ? ColorMap::GetInstance(ColorMap::CP_EOF) : ColorMap::GetInstance();
 	int nLen = colormap->GetLength();
 	int nStep = colormap->GetStep();
+	int nMin = colormap->GetMin();
 	int nColorBarW = 1;
 	int nColorBarH = (nLen - 1) * 10 + 1;
 	_colorbarTexture = new GLubyte[nColorBarH*nColorBarW * 4];
 	for (int i = 0; i < nColorBarH; i++)
 	{
-		MYGLColor color = colormap->GetColor(i / 10.0*nStep);
+//		MYGLColor color = colormap->GetColor(i / 10.0*nStep);
+		MYGLColor color = colormap->GetColor(nMin+i*nStep/10.0);
 		for (size_t j = 0; j < nColorBarW; j++)
 		{
 			int nIndex = nColorBarW*i + j;

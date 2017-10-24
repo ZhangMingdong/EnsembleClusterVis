@@ -94,7 +94,8 @@ public:
 		bg_varThreshold,		// thresholded variance
 		bg_vari_smooth,			// smooth variance
 		bg_dipValue,			// variance of variance
-		bg_dipValueThreshold	// thresholded dip value
+		bg_dipValueThreshold,	// thresholded dip value
+		bg_EOF					// EOF
 	};
 protected:
 	// using which background function
@@ -154,11 +155,12 @@ protected:
 
 	double _dbVarThreshold = 1.5;	// threshold of the variance
 
-	int _nMinPts = 1;
-	double _dbEps = 10.0;
+
 
 	// smooth level 1~5
 	int _nSmooth = 1;	
+	// EOF: 1~5
+	int _nEOF = 1;
 
 	// data of the texture
 	GLubyte* _dataTexture = NULL;
@@ -195,10 +197,7 @@ private:
 
 	// generate texture of colormap of mean or variance
 	void buildTextureColorMap();
-
-	// generate texture of smoothed variance
-	void buildTextureSmoothedVariance();
-
+	
 	// generate PCA points from a spatial cluster
 	void generatePCAPoint(UncertaintyRegion& cluster, std::vector<DPoint3>& points);
 
@@ -227,10 +226,10 @@ public:
 	void SetVarThreshold(double dbThreshold);
 	double GetVarThreshold() { return _dbVarThreshold; }
 
-	void SetMinPts(int minPts) { _nMinPts = _nMinPts; }
-	void SetEps(double dbEps) { _dbEps = dbEps; }
+
 
 	void SetSmooth(int nSmooth);
+	void SetEOF(int nEOF);
 
 	// get the cluster similarity between two uncertainty regions
 

@@ -6,6 +6,7 @@
 #include <QComboBox>
 
 #include <QDebug>
+#include "def.h"
 
 DisplayCtrlWidget::DisplayCtrlWidget(QWidget *parent)
 	: QWidget(parent)
@@ -29,6 +30,7 @@ void DisplayCtrlWidget::createWidgets() {
 	_pCombBgFunction->addItem("Smoothed", 4);
 	_pCombBgFunction->addItem("DipValue", 5);
 	_pCombBgFunction->addItem("DipValueThreshold", 6);
+	_pCombBgFunction->addItem("EOF", 7);
 
 	_pSpinBoxSmooth = new QSpinBox;
 	_pSpinBoxSmooth->setRange(1, 10);
@@ -54,6 +56,13 @@ void DisplayCtrlWidget::createWidgets() {
 	_pSpinBoxFocusedRegion->setValue(0);
 	_pSpinBoxFocusedRegion->setSingleStep(1);
 
+
+	_pSpinBoxEOF = new QSpinBox;
+	_pSpinBoxEOF->setRange(1, g_nEOFLen);
+	_pSpinBoxEOF->setAlignment(Qt::AlignVCenter | Qt::AlignRight);
+	_pSpinBoxEOF->setValue(1);
+	_pSpinBoxEOF->setSingleStep(1);
+
 }
 
 void DisplayCtrlWidget::createLayout() {
@@ -64,6 +73,7 @@ void DisplayCtrlWidget::createLayout() {
 	layout->addRow(tr("Areas:"), _pSpinBoxAreas);
 	layout->addRow(tr("Focused Cluster:"), _pSpinBoxFocusedCluster);
 	layout->addRow(tr("Focused Region:"), _pSpinBoxFocusedRegion);
+	layout->addRow(tr("EOF:"), _pSpinBoxEOF);
 	setLayout(layout);
 }
 
@@ -73,6 +83,7 @@ void DisplayCtrlWidget::createConnections() {
 	connect(_pSpinBoxAreas, SIGNAL(valueChanged(int)), this, SLOT(updateUncertaintyAreas(int)));
 	connect(_pSpinBoxFocusedCluster, SIGNAL(valueChanged(int)), this, SLOT(updateFocusedCluster(int)));
 	connect(_pSpinBoxFocusedRegion, SIGNAL(valueChanged(int)), this, SLOT(updateFocusedRegion(int)));
+	connect(_pSpinBoxEOF, SIGNAL(valueChanged(int)), this, SLOT(updateEOF(int)));
 }
 
 void DisplayCtrlWidget::updateBgFunction(int nBgFunction)
@@ -99,4 +110,10 @@ void DisplayCtrlWidget::updateFocusedRegion(int nFocusedRegion) {
 //	qDebug() << "updateFocusedRegion";
 
 	emit focusedRegionChanged(nFocusedRegion);
+}
+
+void DisplayCtrlWidget::updateEOF(int nEOF) {
+	//	qDebug() << "updateFocusedRegion";
+
+	emit EOFChanged(nEOF);
 }

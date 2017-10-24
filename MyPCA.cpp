@@ -449,17 +449,24 @@ void MyPCA::DoPCA(const double* arrInput, double* arrOutput, int n, int mI,int m
 			(*_pD)[i][j] = arrInput[i*_nCol + j] - _arrDataMean[j];
 		}
 	}
-	cout << "to calculate matrix" << endl;
-	// 2.PCA
-	if (bNewData)
+	if (true)
 	{
 		calculateMatrices();
-		writeMatrices();
 	}
 	else {
-		readMatrices();
+		// old codes, write the matrix
+		cout << "to calculate matrix" << endl;
+		// 2.PCA
+		if (bNewData)
+		{
+			calculateMatrices();
+			writeMatrices();
+		}
+		else {
+			readMatrices();
+		}
+		cout << "finished calculate matrix" << endl;
 	}
-	cout << "finished calculate matrix" << endl;
 
 	// 3.projection
 	Array2D<double> final_data(_nRow, nPCALen);							// projected data
@@ -480,7 +487,7 @@ void MyPCA::DoPCA(const double* arrInput, double* arrOutput, int n, int mI,int m
 		for (size_t j = 0; j < mO; j++)
 		{
 			arrOutput[i*mO + j] = final_data[i][j];
-			cout << arrOutput[i*mO + j] << endl;
+//			cout << arrOutput[i*mO + j] << endl;
 		}
 	}
 }

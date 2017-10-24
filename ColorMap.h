@@ -20,8 +20,9 @@ public:
 	{
 		CP_Perception	// perception color, support value 0~16, using 9 colors
 		, CP_RB			// red/blue color, support value -10~10, using 2 colors only
-		, CP_RainBow		// rainbow color, support value -9~9, using 7 colors 
+		, CP_RainBow	// rainbow color, support value -9~9, using 7 colors 
 		, CP_12			// 12 colors
+		, CP_EOF		// EOF, -30~30
 		, CP_Length		// length of color pallet
 	};
 public:
@@ -38,11 +39,13 @@ public:
 	~ColorMap();
 	int GetLength() { return _nLen; }
 	int GetStep() { return _nStep; }
+	int GetMin() { return _nMin; }
 private:
 	MYGLColor* _pColors;		// list of color
-	double* _pValues;		// list of value
-	int _nLen;				// length of color mapping
+	double* _pValues;			// list of value
+	int _nLen;					// length of color mapping
 	int _nStep;
+	int _nMin = 0;
 private:
 	MYGLColor interpolateColor(MYGLColor color0, MYGLColor color1, double fBias0, double fBias1);
 
