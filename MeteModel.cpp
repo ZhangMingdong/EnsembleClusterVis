@@ -727,8 +727,8 @@ MeteModel* MeteModel::CreateModel() {
 			//, "../../data/t2-2007-2017-jan-144 and 240h-50(1Degree, single timestep).txt", false
 			//				, "../../data/t2-2007-2017-jan-144 and 240h-50(1Degree, single timestep,skip 3).txt", false
 			//, "../../data/t2-mod-ecmwf-200701-00-360.txt", false
-			//, "../../data/t2-mod-ecmwf-20160105-00-72-216.txt", false
-			, "../../data/t2-mod-ecmwf-20160105-00-216.txt", false
+			, "../../data/t2-mod-ecmwf-20160105-00-72-216.txt", false
+			//, "../../data/t2-mod-ecmwf-20160105-00-216.txt", false
 			, nWest, nEast, nSouth, nNorth
 			, nFocusWest, nFocusEast, nFocusSouth, nFocusNorth);
 		/*

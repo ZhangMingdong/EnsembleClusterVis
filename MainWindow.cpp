@@ -9,6 +9,8 @@
 #include <QDockWidget>
 
 
+
+
 #include "MainWindow.h"
 #include "myglwidget.h"
 #include "MeteModel.h"
@@ -40,6 +42,10 @@ MainWindow::~MainWindow(){
 
 MainWindow::MainWindow()
 {
+
+
+	// finished read config file
+
 	resize(QSize(800, 600));
 
 	_pModel = MeteModel::CreateModel();

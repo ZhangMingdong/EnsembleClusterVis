@@ -97,28 +97,12 @@ const int g_nIsoValuesLen = 5;					// length of array of isovalues
 // 2017/10/17
 //# define GLOBAL_PRE
 
-#ifdef GLOBAL_PRE			
-const double g_fThreshold = 2.0;
-const bool g_bGlobalArea = true;
-const int g_arrIsoValues[5] = { 1,2,3,4,5 };
+extern double g_fThreshold;
+extern bool g_bGlobalArea;
+extern enumMeteModel g_usedModel;
+extern double g_arrIsoValues[5];
 
-// used model
-//const enumMeteModel g_usedModel = PRE_CMA;
-//const enumMeteModel g_usedModel = PRE_CPTEC;
-//const enumMeteModel g_usedModel = PRE_ECCC;
-//const enumMeteModel g_usedModel = PRE_ECMWF;
-//const enumMeteModel g_usedModel = PRE_JMA;
-//const enumMeteModel g_usedModel = PRE_KMA;
-//const enumMeteModel g_usedModel = PRE_NCEP;
-const enumMeteModel g_usedModel = PRE_ECMWF_2017;
-
-#else
-const double g_fThreshold = 273.16 - 15;
-const bool g_bGlobalArea = false;
-const enumMeteModel g_usedModel = T2_ECMWF;
-const int g_arrIsoValues[5] = { 273.16-20,273.16-10,273.16,273.16+10,273.16+20 };
-
-#endif
 
 // 2017/10/23
 const int g_nEOFLen = 10;
+
