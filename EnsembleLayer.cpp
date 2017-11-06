@@ -192,6 +192,7 @@ void EnsembleLayer::draw(DisplayStates states){
 			}
 		}
 		else {
+			glColor4f(.8, 0.2, 0.0, .8);
 			QList<QList<ContourLine>> contours = _pModel->GetContour();
 			const ClusterResult* pCR=_pModel->GetClusterResultOfFocusedRegion();
 			for (int i = 0; i < contours.size(); i++)
@@ -394,6 +395,12 @@ void EnsembleLayer::drawColorBar() {
 	{
 		// scale
 		ColorMap* colormap = bgFun== MeteModel::bg_EOF?ColorMap::GetInstance(ColorMap::CP_EOF): ColorMap::GetInstance();
+
+		// for temperature data
+		if (bgFun == MeteModel::bg_mean&&g_usedModel == T2_ECMWF)
+		{
+			colormap = ColorMap::GetInstance(ColorMap::CP_T2);
+		}
 		int nLen = colormap->GetLength();
 		int nStep = colormap->GetStep();
 		int nMin = colormap->GetMin();
@@ -492,6 +499,11 @@ void EnsembleLayer::generateColorBarTexture() {
 	// 1.generate color bar data
 	MeteModel::enumBackgroundFunction bgFun = _pModel->GetBgFunction();
 	ColorMap* colormap = bgFun == MeteModel::bg_EOF ? ColorMap::GetInstance(ColorMap::CP_EOF) : ColorMap::GetInstance();
+	// for temperature data
+	if (bgFun==MeteModel::bg_mean&&g_usedModel == T2_ECMWF)
+	{
+		colormap = ColorMap::GetInstance(ColorMap::CP_T2);
+	}
 	int nLen = colormap->GetLength();
 	int nStep = colormap->GetStep();
 	int nMin = colormap->GetMin();

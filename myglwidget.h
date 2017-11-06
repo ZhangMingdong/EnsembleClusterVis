@@ -160,6 +160,7 @@ public slots:
 	void updateFocusedCluster(int nFocusedCluster);
 	void updateFocusedRegion(int nFocusedRegion);
 	void updateEOF(int nEOF);
+	void updateMember(int nMember);
 private:
 	// vector of layers to render
 	std::vector<MeteLayer*> _vecLayers;

@@ -3,8 +3,10 @@
 #include "def.h"
 /*
 	represent a data field
-	Mingdong
-	before 2017/06/26
+	author: Mingdong
+	2017/06/26
+	functionality: provide grid related informations
+	2017/10/24
 */
 class DataField
 {

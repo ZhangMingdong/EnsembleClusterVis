@@ -699,3 +699,9 @@ void MyGLWidget::updateEOF(int nEOF) {
 		_pModelE->SetEOF(nEOF);
 	onTextureReloaded();
 }
+
+void MyGLWidget::updateMember(int nMember) {
+	if (_pModelE)
+		_pModelE->SetMember(nMember);
+	onTextureReloaded();
+}

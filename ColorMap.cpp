@@ -145,6 +145,31 @@ ColorMap* ColorMap::GetInstance(Enum_Color_Pallet cp) {
 			_pInstance[cp]->_pColors[5] = MYGLColor(255, 165, 0);
 			_pInstance[cp]->_pColors[6] = MYGLColor(255, 0, 0);
 			break;
+		case ColorMap::CP_T2:
+			_pInstance[cp]->_nLen = 7;
+			_pInstance[cp]->_nStep = 15;					// for mean
+			_pInstance[cp]->_nMin = 230;
+
+			_pInstance[cp]->_pValues = new double[_pInstance[cp]->_nLen];
+			_pInstance[cp]->_pColors = new MYGLColor[_pInstance[cp]->_nLen];
+
+
+			_pInstance[cp]->_pValues[0] = 230;
+			_pInstance[cp]->_pValues[1] = 245;
+			_pInstance[cp]->_pValues[2] = 260;
+			_pInstance[cp]->_pValues[3] = 275;
+			_pInstance[cp]->_pValues[4] = 290;
+			_pInstance[cp]->_pValues[5] = 305;
+			_pInstance[cp]->_pValues[6] = 320;
+
+			_pInstance[cp]->_pColors[0] = MYGLColor(87, 0, 255);
+			_pInstance[cp]->_pColors[1] = MYGLColor(0, 0, 255);
+			_pInstance[cp]->_pColors[2] = MYGLColor(0, 255, 255);
+			_pInstance[cp]->_pColors[3] = MYGLColor(0, 255, 0);
+			_pInstance[cp]->_pColors[4] = MYGLColor(255, 255, 0);
+			_pInstance[cp]->_pColors[5] = MYGLColor(255, 165, 0);
+			_pInstance[cp]->_pColors[6] = MYGLColor(255, 0, 0);
+			break;
 		case ColorMap::CP_Length:
 			break;
 		default:

@@ -104,7 +104,6 @@ void MeteModel::InitModel(int nEnsembleLen, int nWidth, int nHeight, int nFocusX
 
 	_nFocusLen = _nFocusW*_nFocusH;
 
-
 	_nWest = nWest;
 	_nEast = nEast;
 	_nSouth = nSouth;
@@ -147,21 +146,26 @@ void MeteModel::InitModel(int nEnsembleLen, int nWidth, int nHeight, int nFocusX
 
 
 	// 5.generate features
-	ContourGenerator generator;
 	for (size_t i = 0; i < _nEnsembleLen; i++)
 	{
+		// spaghetti
 		QList<ContourLine> contour;
-		generator.Generate(_pData->GetLayer(i), contour, g_fThreshold, _nWidth, _nHeight, _nFocusX, _nFocusY, _nFocusW, _nFocusH);
+		_generator.Generate(_pData->GetLayer(i), contour, g_fThreshold, _nWidth, _nHeight, _nFocusX, _nFocusY, _nFocusW, _nFocusH);
 		_listContour.push_back(contour);
+		// for each member
+		for (size_t j = 0; j < g_nIsoValuesLen; j++)
+		{
+			QList<ContourLine> contour;
+			_generator.Generate(_pData->GetLayer(i), contour, g_arrIsoValues[j], _nWidth, _nHeight, _nFocusX, _nFocusY, _nFocusW, _nFocusH);
+			_listMemberContour[i].push_back(contour);
+		}
 	}
 
-	generator.Generate(_pData->GetUMin(), _listContourMinE, g_fThreshold, _nWidth, _nHeight, _nFocusX, _nFocusY, _nFocusW, _nFocusH);
-	generator.Generate(_pData->GetUMax(), _listContourMaxE, g_fThreshold, _nWidth, _nHeight, _nFocusX, _nFocusY, _nFocusW, _nFocusH);
-	generator.Generate(_pData->GetMean(), _listContourMeanE, g_fThreshold, _nWidth, _nHeight, _nFocusX, _nFocusY, _nFocusW, _nFocusH);
-
+	_generator.Generate(_pData->GetUMin(), _listContourMinE, g_fThreshold, _nWidth, _nHeight, _nFocusX, _nFocusY, _nFocusW, _nFocusH);
+	_generator.Generate(_pData->GetUMax(), _listContourMaxE, g_fThreshold, _nWidth, _nHeight, _nFocusX, _nFocusY, _nFocusW, _nFocusH);
+	_generator.Generate(_pData->GetMean(), _listContourMeanE, g_fThreshold, _nWidth, _nHeight, _nFocusX, _nFocusY, _nFocusW, _nFocusH);
 
 	generateContourImp(_listContourMinE, _listContourMaxE, _listUnionAreaE);
-
 
 	// specializaed initialization
 	initializeModel();
@@ -191,7 +195,6 @@ void MeteModel::readDataFromText() {
 
 	file.close();
 }
-
 
 void MeteModel::readDipValue(char* strFileName) {
 
@@ -257,7 +260,7 @@ void MeteModel::readDataFromTextG() {
 	int nWidth = _nWidth - 1;				// width of a scalar field in the file
 	int nLen = nWidth*_nHeight;				// length of a scalar field in the file
 
-	int nStep = 2;
+	int nStep = 4;
 	for (size_t t = 0; t < nStep; t++)
 	{
 		// every ensemble member
@@ -285,7 +288,6 @@ void MeteModel::readDataFromTextG() {
 	file.close();
 }
 
-
 void MeteModel::calculateSDF(const double* arrData, double* arrSDF, int nW, int nH, double isoValue, QList<ContourLine> contour) {
 	for (size_t i = 0; i < nH; i++)
 	{
@@ -311,7 +313,6 @@ void MeteModel::calculateSDF(const double* arrData, double* arrSDF, int nW, int 
 		}
 	}
 }
-
 
 void MeteModel::buildTextureThresholdVariance() {
 	const double* pData = _bgFunction == bg_mean ? _pData->GetMean() : _pData->GetVari(_nSmooth);
@@ -341,7 +342,6 @@ void MeteModel::buildTextureThresholdVariance() {
 		}
 	}
 }
-
 
 void MeteModel::buildTextureThresholdDipValue() {
 	double dbThreshold = 7;
@@ -431,9 +431,19 @@ void MeteModel::buildTextureColorMap() {
 	switch (_bgFunction)
 	{
 	case MeteModel::bg_mean:
-		pData = _pData->GetMean(); 
-		colormap = ColorMap::GetInstance();
+
+		if (g_usedModel == T2_ECMWF)
+			colormap = ColorMap::GetInstance(ColorMap::CP_T2);
+		else
+			colormap = ColorMap::GetInstance();
 //		colormap = ColorMap::GetInstance(ColorMap::CP_T);
+		if (_nMember)
+		{
+			pData = _pData->GetLayer(_nMember - 1);
+		}
+		else {
+			pData = _pData->GetMean();
+		}
 		break;
 	case MeteModel::bg_vari:
 		pData = _pData->GetVari();
@@ -598,7 +608,18 @@ QList<QList<ContourLine>> MeteModel::GetContourNotBrushed()
 
 QList<QList<ContourLine>> MeteModel::GetContour()
 {
-	return _listContour;
+	if (_bgFunction==bg_EOF)
+	{
+		return _listContourEOF;
+	}
+	else 
+	{
+		if (_nMember)
+		{
+			return _listMemberContour[_nMember - 1];
+		}
+		return _listContour;
+	}
 }
 
 MeteModel* MeteModel::CreateModel() {
@@ -703,8 +724,11 @@ MeteModel* MeteModel::CreateModel() {
 		pModel = new MeteModel();
 		pModel->InitModel(50, nWidth, nHeight, nFocusX, nFocusY, nFocusW, nFocusH
 			//				, "../../data/t2-2007-2017-jan-144 and 240h-50(1Degree).txt", false
-			, "../../data/t2-2007-2017-jan-144 and 240h-50(1Degree, single timestep).txt", false
+			//, "../../data/t2-2007-2017-jan-144 and 240h-50(1Degree, single timestep).txt", false
 			//				, "../../data/t2-2007-2017-jan-144 and 240h-50(1Degree, single timestep,skip 3).txt", false
+			//, "../../data/t2-mod-ecmwf-200701-00-360.txt", false
+			//, "../../data/t2-mod-ecmwf-20160105-00-72-216.txt", false
+			, "../../data/t2-mod-ecmwf-20160105-00-216.txt", false
 			, nWest, nEast, nSouth, nNorth
 			, nFocusWest, nFocusEast, nFocusSouth, nFocusNorth);
 		/*
@@ -848,6 +872,20 @@ void MeteModel::SetSmooth(int nSmooth) {
 void MeteModel::SetEOF(int nEOF) {
 	if (nEOF == _nEOF) return;
 	_nEOF = nEOF;
+
+	_listContourEOF.clear();
+	for (int i = -10; i <= 10; i += 20)
+	{
+		QList<ContourLine> contour;
+		_generator.Generate(_pData->GetEOF(_nEOF-1), contour, i, _nWidth, _nHeight, _nFocusX, _nFocusY, _nFocusW, _nFocusH);
+		_listContourEOF.push_back(contour);
+	}
+	regenerateTexture();
+}
+
+
+void MeteModel::SetMember(int nMember) {
+	_nMember = nMember;
 	regenerateTexture();
 }
 void MeteModel::regenerateTexture() {
@@ -951,7 +989,6 @@ void MeteModel::SetFocusedRegion(int nRegion) {
 
 	alignClusters();
 }
-
 
 // align the cluster results
 void MeteModel::alignClusters() {

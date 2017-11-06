@@ -93,13 +93,14 @@ const int g_nEnsembles = 50;					// number of ensemble members
 const int g_nUncertaintyAreaMax = 6;			// max number of uncertainty area
 const int g_nClusterMax = 10;					// max number of clusters
 
-
+const int g_nIsoValuesLen = 5;					// length of array of isovalues
 // 2017/10/17
-// # define GLOBAL_PRE
+//# define GLOBAL_PRE
 
 #ifdef GLOBAL_PRE			
 const double g_fThreshold = 2.0;
 const bool g_bGlobalArea = true;
+const int g_arrIsoValues[5] = { 1,2,3,4,5 };
 
 // used model
 //const enumMeteModel g_usedModel = PRE_CMA;
@@ -115,6 +116,7 @@ const enumMeteModel g_usedModel = PRE_ECMWF_2017;
 const double g_fThreshold = 273.16 - 15;
 const bool g_bGlobalArea = false;
 const enumMeteModel g_usedModel = T2_ECMWF;
+const int g_arrIsoValues[5] = { 273.16-20,273.16-10,273.16,273.16+10,273.16+20 };
 
 #endif
 

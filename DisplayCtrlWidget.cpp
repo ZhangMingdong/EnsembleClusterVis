@@ -63,6 +63,12 @@ void DisplayCtrlWidget::createWidgets() {
 	_pSpinBoxEOF->setValue(1);
 	_pSpinBoxEOF->setSingleStep(1);
 
+	_pSpinBoxMember = new QSpinBox;
+	_pSpinBoxMember->setRange(0, g_nEnsembles);
+	_pSpinBoxMember->setAlignment(Qt::AlignVCenter | Qt::AlignRight);
+	_pSpinBoxMember->setValue(0);
+	_pSpinBoxMember->setSingleStep(1);
+
 }
 
 void DisplayCtrlWidget::createLayout() {
@@ -74,6 +80,7 @@ void DisplayCtrlWidget::createLayout() {
 	layout->addRow(tr("Focused Cluster:"), _pSpinBoxFocusedCluster);
 	layout->addRow(tr("Focused Region:"), _pSpinBoxFocusedRegion);
 	layout->addRow(tr("EOF:"), _pSpinBoxEOF);
+	layout->addRow(tr("Member:"), _pSpinBoxMember);
 	setLayout(layout);
 }
 
@@ -84,6 +91,7 @@ void DisplayCtrlWidget::createConnections() {
 	connect(_pSpinBoxFocusedCluster, SIGNAL(valueChanged(int)), this, SLOT(updateFocusedCluster(int)));
 	connect(_pSpinBoxFocusedRegion, SIGNAL(valueChanged(int)), this, SLOT(updateFocusedRegion(int)));
 	connect(_pSpinBoxEOF, SIGNAL(valueChanged(int)), this, SLOT(updateEOF(int)));
+	connect(_pSpinBoxMember, SIGNAL(valueChanged(int)), this, SLOT(updateMember(int)));
 }
 
 void DisplayCtrlWidget::updateBgFunction(int nBgFunction)
@@ -116,4 +124,9 @@ void DisplayCtrlWidget::updateEOF(int nEOF) {
 	//	qDebug() << "updateFocusedRegion";
 
 	emit EOFChanged(nEOF);
+}
+void DisplayCtrlWidget::updateMember(int nMember) {
+	//	qDebug() << "updateFocusedRegion";
+
+	emit MemberChanged(nMember);
 }

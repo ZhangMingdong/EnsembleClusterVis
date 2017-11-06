@@ -23,6 +23,7 @@ public:
 		, CP_RainBow	// rainbow color, support value -9~9, using 7 colors 
 		, CP_12			// 12 colors
 		, CP_EOF		// EOF, -30~30
+		, CP_T2			// T2, 200~300
 		, CP_Length		// length of color pallet
 	};
 public:
