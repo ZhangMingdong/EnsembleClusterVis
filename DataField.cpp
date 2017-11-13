@@ -208,13 +208,16 @@ void DataField::DoStatistic() {
 }
 
 void DataField::GenerateClusteredData(const QList<int> listClusterLens, const int* arrLabels, QList<DataField*>& arrData) {
+	// number of clusters
 	int nClusters = listClusterLens.length();
+	// generate data field according to the length of element in each cluster
 	QList<int> listCurrentIndex;
 	for (size_t i = 0; i < nClusters; i++)
 	{
 		arrData.push_back(new DataField(_nW, _nH, listClusterLens[i]));
 		listCurrentIndex.push_back(0);
 	}
+	// set data for each new field
 	int nLen = _nW*_nH;
 	for (size_t i = 0; i < _nL; i++)
 	{
@@ -225,6 +228,7 @@ void DataField::GenerateClusteredData(const QList<int> listClusterLens, const in
 		}
 		listCurrentIndex[nLabel]++;
 	}
+	// do statistic for each new field
 	for (size_t i = 0; i < nClusters; i++)
 	{
 		arrData[i]->DoStatistic();
@@ -300,3 +304,4 @@ void DataField::DoEOF() {
 	delete[] arrInput;
 	delete[] arrOutput;
 }
+

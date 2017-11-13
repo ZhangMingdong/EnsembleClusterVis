@@ -61,7 +61,7 @@ void CostLineLayer::readCostline(){
 	for (uint32_t x = 0; x < pShapes->num_records; ++x) {
 		const SFShapeRecord* record = pShapes->records[x];
 		SFPolyLine* polyline = get_polyline_shape(pShapefile, record);
-		printf("Polyline %d: num_parts = %d, num_points = %d\n", x, polyline->num_parts, polyline->num_points);
+//		printf("Polyline %d: num_parts = %d, num_points = %d\n", x, polyline->num_parts, polyline->num_points);
 		/* Do things with the polygon. */
 		glBegin(GL_LINE_STRIP);
 		for (int i = 0; i < polyline->num_points; i++)

@@ -65,10 +65,41 @@ double PointToSegDist(double x, double y, double x1, double y1, double x2, doubl
 
 MeteModel::MeteModel()
 {
+
+	_nWidth = g_nWidth;
+	_nHeight = g_nHeight;
+	_nFocusX = g_nFocusX;
+	_nFocusY = g_nFocusY;
+	_nFocusW = g_nFocusW;
+	_nFocusH = g_nFocusH;
+	_nWest = g_nWest;
+	_nEast = g_nEast;
+	_nNorth = g_nNorth;
+	_nSouth = g_nSouth;
+	_nFocusWest = g_nWest;
+	_nFocusEast = g_nEast;
+	_nFocusNorth = g_nNorth;
+	_nFocusSouth = g_nSouth;
+
+	_nLen = _nWidth*_nHeight;
+	_nFocusLen = _nFocusW*_nFocusH;
+
+	_bufObs = new double[_nLen];
+
+	_gridErr = new double[_nLen];
+	readObsData();
 }
 
 MeteModel::~MeteModel()
 {
+	if (_gridErr)
+	{
+		delete[]_gridErr;
+	}
+	if (_bufObs)
+	{
+		delete[]_bufObs;
+	}
 	if (_pData)
 	{
 		delete _pData;
@@ -145,6 +176,10 @@ void MeteModel::InitModel(int nEnsembleLen, int nWidth, int nHeight, int nFocusX
 	_pData->DoStatistic();
 
 
+	// ensemble clustering
+	doEnsCluster();
+
+
 	// 5.generate features
 	for (size_t i = 0; i < _nEnsembleLen; i++)
 	{
@@ -152,7 +187,7 @@ void MeteModel::InitModel(int nEnsembleLen, int nWidth, int nHeight, int nFocusX
 		QList<ContourLine> contour;
 		_generator.Generate(_pData->GetLayer(i), contour, g_fThreshold, _nWidth, _nHeight, _nFocusX, _nFocusY, _nFocusW, _nFocusH);
 		_listContour.push_back(contour);
-		// for each member
+		// for each isovalue
 		for (size_t j = 0; j < g_nIsoValuesLen; j++)
 		{
 			QList<ContourLine> contour;
@@ -160,10 +195,25 @@ void MeteModel::InitModel(int nEnsembleLen, int nWidth, int nHeight, int nFocusX
 			_listMemberContour[i].push_back(contour);
 		}
 	}
+	// foreach ensemble cluster
+	for (size_t i = 0; i < g_nEnsClusterLen; i++)
+	{
+		// for each isovalue
+		for (size_t j = 0; j < g_nIsoValuesLen; j++)
+		{
+			QList<ContourLine> contour;
+			_generator.Generate(_arrEnsClusterData[i]->GetMean(), contour, g_arrIsoValues[j], _nWidth, _nHeight, _nFocusX, _nFocusY, _nFocusW, _nFocusH);
+			_listEnsClusterContour[i].push_back(contour);
+		}
+	}
 
 	_generator.Generate(_pData->GetUMin(), _listContourMinE, g_fThreshold, _nWidth, _nHeight, _nFocusX, _nFocusY, _nFocusW, _nFocusH);
 	_generator.Generate(_pData->GetUMax(), _listContourMaxE, g_fThreshold, _nWidth, _nHeight, _nFocusX, _nFocusY, _nFocusW, _nFocusH);
-	_generator.Generate(_pData->GetMean(), _listContourMeanE, g_fThreshold, _nWidth, _nHeight, _nFocusX, _nFocusY, _nFocusW, _nFocusH);
+
+	for (size_t j = 0; j < g_nIsoValuesLen; j++)
+	{
+		_generator.Generate(_pData->GetMean(), _listContourMeanE, g_arrIsoValues[j], _nWidth, _nHeight, _nFocusX, _nFocusY, _nFocusW, _nFocusH);
+	}
 
 	generateContourImp(_listContourMinE, _listContourMaxE, _listUnionAreaE);
 
@@ -315,7 +365,7 @@ void MeteModel::calculateSDF(const double* arrData, double* arrSDF, int nW, int 
 }
 
 void MeteModel::buildTextureThresholdVariance() {
-	const double* pData = _bgFunction == bg_mean ? _pData->GetMean() : _pData->GetVari(_nSmooth);
+	const double* pData = _pData->GetVari(_nSmooth);
 	_nThresholdedGridPoints = 0;
 	// color map
 	ColorMap* colormap = ColorMap::GetInstance();
@@ -381,21 +431,14 @@ bool ClusterComparison(UncertaintyRegion c1, UncertaintyRegion c2) {
 // generate texture of clustered variance
 void MeteModel::buildTextureClusteredVariance() {
 	// 1.find uncertainty regions and sort them according to the areas
-	const double* pData = _pData->GetVari(_nSmooth);
-	SpatialCluster cluster;
-	_vecRegions.clear();
-	cluster.DoCluster(pData, _nWidth, _nHeight, _dbVarThreshold, _vecRegions);
-	sort(_vecRegions.begin(), _vecRegions.end(), ClusterComparison);
+
+	generateRegions();
 
 	// cluster in each region
-	regionCluster();
+//	regionCluster();
 
 	// align them
-	alignClusters();
-
-
-
-
+//	alignClusters();
 
 	// 6.Generate texture
 	// 6.1.initialize the texture
@@ -424,6 +467,77 @@ void MeteModel::buildTextureClusteredVariance() {
 	}
 }
 
+void MeteModel::generateRegions() {
+	_vecRegions.clear();
+	/*
+	// regions according to uncertainty
+	const double* pData = _pData->GetVari(_nSmooth);
+	SpatialCluster cluster;
+	cluster.DoCluster(pData, _nWidth, _nHeight, _dbVarThreshold, _vecRegions);
+	sort(_vecRegions.begin(), _vecRegions.end(), ClusterComparison);
+	if (_vecRegions.size()<_nUncertaintyRegions)
+		_nUncertaintyRegions = _vecRegions.size();
+
+		*/
+
+	/*
+	// generate six region left up corner
+	for (size_t i = 0; i < 6; i++)
+	{
+		UncertaintyRegion region;
+		for (size_t j = 0; j < 11; j++)
+		{
+			for (size_t k = 0; k < 11; k++) {
+				region._vecPoints.push_back(IPoint2(41 + j, 10 * i + k));
+			}
+		}
+		region._nArea = 121;
+		_vecRegions.push_back(region);
+	}
+	*/
+	// hierarchical clustering
+
+//	CLUSTER::Clustering* pClusterer = new CLUSTER::KMeansClustering();
+	CLUSTER::Clustering* pClusterer = new CLUSTER::AHCClustering();
+	// 1.parameters setting
+	int nN = _nLen;							// number of data items
+	int nK = 6;							// number of clusters
+	int nM = 1;								// dimension
+	// 2.input data
+	int* arrLabels = new int[nN];
+	double* arrBuf = new double[nN * nM];
+	for (size_t i = 0; i < nN; i++)
+	{
+		arrBuf[i] = _pData->GetMean()[i];
+	}
+	// 3.clustering
+	pClusterer->DoCluster(nN, nM, nK, arrBuf, arrLabels);
+	delete arrBuf;
+	// 4.counting each cluster
+	for (size_t i = 0; i < nK; i++)
+	{
+		UncertaintyRegion region;
+		_vecRegions.push_back(region);
+	}
+
+	for (size_t i = 0; i < nN; i++) {
+		int nW = i%_nWidth;
+		int nH = i / _nWidth;
+		_vecRegions[arrLabels[i]]._vecPoints.push_back(IPoint2(nH, nW));
+	}
+	/*
+	for (size_t i = 0; i < _nHeight; i++)
+	{
+		for (size_t j = 0; j < _nWidth; j++)
+		{
+			int nIndex = i*_nWidth + j;
+			_vecRegions[arrLabels[nIndex]]._vecPoints.push_back(IPoint2(i, j));
+		}
+	}
+	*/
+	delete[] arrLabels;
+}
+
 // generate texture of colormap of mean or variance
 void MeteModel::buildTextureColorMap() {
 	const double* pData;	// color map
@@ -431,13 +545,22 @@ void MeteModel::buildTextureColorMap() {
 	switch (_bgFunction)
 	{
 	case MeteModel::bg_mean:
+	case MeteModel::bg_Obs:
 
 		if (g_usedModel == T2_ECMWF)
 			colormap = ColorMap::GetInstance(ColorMap::CP_T2);
 		else
 			colormap = ColorMap::GetInstance();
 //		colormap = ColorMap::GetInstance(ColorMap::CP_T);
-		if (_nMember)
+		if (_bgFunction== MeteModel::bg_Obs)
+		{
+			pData = _bufObs;
+		}
+		else if (_nEnsCluster)
+		{
+			pData = _arrEnsClusterData[_nEnsCluster-1]->GetMean();
+		}
+		else if (_nMember)
 		{
 			pData = _pData->GetLayer(_nMember - 1);
 		}
@@ -462,11 +585,58 @@ void MeteModel::buildTextureColorMap() {
 //		colormap = ColorMap::GetInstance();
 		colormap = ColorMap::GetInstance(ColorMap::CP_EOF);
 		break;
+	case MeteModel::bg_err:
+		{
+			const double* _pBiasBuf;
+
+
+			if (_nEnsCluster)
+			{
+				_pBiasBuf = _arrEnsClusterData[_nEnsCluster - 1]->GetMean();
+			}
+			else if (_nMember)
+			{
+				_pBiasBuf = _pData->GetLayer(_nMember - 1);
+			}
+			else {
+				_pBiasBuf = _pData->GetMean();
+			}
+			double dbAccum= 0;
+			for (size_t i = 0; i < _nLen; i++)
+			{
+				int nRow = i / _nWidth;
+				int nCol = i% _nWidth;
+
+
+//				if (nRow>_nHeight - 11 && nCol<10)
+					_gridErr[i] = _pBiasBuf[i] - _bufObs[i];
+//				else _gridErr[i] = -20;
+
+
+//				if (nRow>_nHeight-11 && nCol<10)
+//					dbAccum += abs(_gridErr[i]);
+			}
+			// accumulate errors for the given region
+			for (size_t i = 0; i < g_nClusterRegionR; i++)
+			{
+				for (size_t j = 0; j < g_nClusterRegionR; j++)
+				{
+					int nRow = g_nClusterRegionY + i;
+					int nCol = g_nClusterRegionX + j;
+					int nIndex = nRow*+_nWidth + nCol;
+					dbAccum += abs(_gridErr[nIndex]);
+				}
+
+			}
+			qDebug() << dbAccum;
+			pData = _gridErr;
+			colormap = ColorMap::GetInstance(ColorMap::CP_EOF);
+		}
+		break;
 	default:
 		break;
 	}
 
-	_dataTexture = new GLubyte[4 * _nFocusLen];
 
 	double dbMax = -1000;
 	double dbMin = 1000;
@@ -485,8 +655,8 @@ void MeteModel::buildTextureColorMap() {
 			if (pData[nIndex] < dbMin) dbMin = pData[nIndex];
 		}
 	}
-	qDebug() << "Max: " << dbMax;
-	qDebug() << "Min: " << dbMin;
+//	qDebug() << "Max: " << dbMax;
+//	qDebug() << "Min: " << dbMin;
 }
 
 vector<double> MeteModel::GetVariance() {
@@ -544,6 +714,9 @@ void MeteModel::readData() {
 void MeteModel::initializeModel() {
 	// EOF
 	_pData->DoEOF();
+
+
+
 }
 
 void MeteModel::Brush(int nLeft, int nRight, int nTop, int nBottom) {
@@ -614,82 +787,35 @@ QList<QList<ContourLine>> MeteModel::GetContour()
 	}
 	else 
 	{
-		if (_nMember)
+		if (_nEnsCluster)
+		{
+			return _listEnsClusterContour[_nEnsCluster - 1];
+		}
+		else if (_nMember)
 		{
 			return _listMemberContour[_nMember - 1];
 		}
-		return _listContour;
+		else return _listContour;
 	}
 }
 
 MeteModel* MeteModel::CreateModel() {
 	MeteModel* pModel = NULL;
-	int nWidth = g_globalW;
-	int nHeight = g_globalH;
-
-	int nFocusX = 0;
-	int nFocusY = 0;
-	int nFocusW = nWidth;
-	int nFocusH = nHeight;
-
-	int nWest;
-	int nEast;
-	int nNorth;
-	int nSouth;
-	int nFocusWest;
-	int nFocusEast;
-	int nFocusNorth;
-	int nFocusSouth;
-
-
-
-	if (g_bGlobalArea)
-	{
-		nFocusX = 0;
-		nFocusY = 0;
-		nFocusW = nWidth;
-		nFocusH = nHeight;
-	}
-	else {
-
-		nWidth = 91;
-		nHeight = 51;
-		if (g_bSubArea)
-		{
-			nFocusX = 0;
-			nFocusY = 40;
-			nFocusW = 31;
-			nFocusH = 11;
-			nWest = 60;
-			nEast = 150;
-			nSouth = 10;
-			nNorth = 60;
-
-
-			nFocusWest = 60;
-			nFocusEast = 90;
-			nFocusSouth = 50;
-			nFocusNorth = 60;
-		}
-		else {
-			nFocusX = 0;
-			nFocusY = 0;
-			nFocusW = nWidth;
-			nFocusH = nHeight;
-			nWest = 60;
-			nEast = 150;
-			nSouth = 10;
-			nNorth = 60;
-			nFocusWest = 60;
-			nFocusEast = 150;
-			nFocusSouth = 10;
-			nFocusNorth = 60;
-		}
-
-	}
-
-
-
+	int nWidth = g_nWidth;
+	int nHeight		= g_nHeight		;
+	int nFocusX		= g_nFocusX		;
+	int nFocusY		= g_nFocusY		;
+	int nFocusW		= g_nFocusW		;
+	int nFocusH		= g_nFocusH		;
+	int nWest		= g_nWest		;
+	int nEast		= g_nEast		;
+	int nNorth		= g_nNorth		;
+	int nSouth		= g_nSouth		;
+	int nFocusWest	= g_nWest	;
+	int nFocusEast	= g_nEast	;
+	int nFocusNorth	= g_nNorth;
+	int nFocusSouth	= g_nSouth;
+	
 
 	bool bNewData = true;
 
@@ -717,18 +843,15 @@ MeteModel* MeteModel::CreateModel() {
 		pModel = new MeteModel();
 		pModel->InitModel(20, nWidth, nHeight, nFocusX, nFocusY, nFocusW, nFocusH, "../../data/data10/pre-mod-ncep-20160802-00-96.txt"); break;
 	case T2_ECMWF:
-		nWidth = 91;
-		nHeight = 51;
-		nFocusW = 91;
-		nFocusH = 51;
 		pModel = new MeteModel();
 		pModel->InitModel(50, nWidth, nHeight, nFocusX, nFocusY, nFocusW, nFocusH
-			//				, "../../data/t2-2007-2017-jan-144 and 240h-50(1Degree).txt", false
+			//, "../../data/t2-2007-2017-jan-144 and 240h-50(1Degree).txt", false
 			//, "../../data/t2-2007-2017-jan-144 and 240h-50(1Degree, single timestep).txt", false
-			//				, "../../data/t2-2007-2017-jan-144 and 240h-50(1Degree, single timestep,skip 3).txt", false
+			//, "../../data/t2-2007-2017-jan-144 and 240h-50(1Degree, single timestep,skip 3).txt", false
 			//, "../../data/t2-mod-ecmwf-200701-00-360.txt", false
-			, "../../data/t2-mod-ecmwf-20160105-00-72-216.txt", false
+			//, "../../data/t2-mod-ecmwf-20160105-00-72-216.txt", false
 			//, "../../data/t2-mod-ecmwf-20160105-00-216.txt", false
+			, g_strFileName,false
 			, nWest, nEast, nSouth, nNorth
 			, nFocusWest, nFocusEast, nFocusSouth, nFocusNorth);
 		/*
@@ -752,7 +875,9 @@ MeteModel* MeteModel::CreateModel() {
 		break;
 	case PRE_ECMWF_2017:
 		pModel = new MeteModel();
-		pModel->InitModel(50, nWidth, nHeight, nFocusX, nFocusY, nFocusW, nFocusH, "../../data/Pre_20171016_0-360-by-6.txt"); 
+
+		pModel->InitModel(50, nWidth, nHeight, nFocusX, nFocusY, nFocusW, nFocusH, g_strFileName);
+//		pModel->InitModel(50, nWidth, nHeight, nFocusX, nFocusY, nFocusW, nFocusH, "../../data/Pre_20171016_0-360-by-6.txt"); 
 //		pModel->InitModel(50, nWidth, nHeight, nFocusX, nFocusY, nFocusW, nFocusH, "../../data/Pre_20170701_0-360-by-6.txt"); 
 		
 		break;
@@ -883,19 +1008,31 @@ void MeteModel::SetEOF(int nEOF) {
 	regenerateTexture();
 }
 
-
 void MeteModel::SetMember(int nMember) {
 	_nMember = nMember;
 	regenerateTexture();
 }
+
+void MeteModel::SetEnsCluster(int nEnsClusterr) {
+	_nEnsCluster = nEnsClusterr;
+	regenerateTexture();
+}
+
 void MeteModel::regenerateTexture() {
+	if (!_dataTexture)
+	{
+		_dataTexture = new GLubyte[4 * _nFocusLen];
+	}
+
 	switch (_bgFunction)
 	{
 	case MeteModel::bg_mean:
+	case MeteModel::bg_Obs:
 	case MeteModel::bg_vari:
 	case MeteModel::bg_vari_smooth:
 	case MeteModel::bg_dipValue:
 	case MeteModel::bg_EOF:
+	case MeteModel::bg_err:
 		buildTextureColorMap();
 		break;
 	case MeteModel::bg_cluster:
@@ -928,7 +1065,6 @@ void MeteModel::SetUncertaintyAreas(int nAreas)
 
 GLubyte* MeteModel::generateTextureNew() {
 	if (!_dataTexture) {
-		_dataTexture = new GLubyte[4 * _nFocusLen];
 		regenerateTexture();
 	}
 	return _dataTexture;
@@ -1020,4 +1156,117 @@ void MeteModel::alignClusters() {
 
 	// 5.calculate the similarity between different uncertainty regions
 	calculateSimilarity();
+}
+
+void MeteModel::doEnsCluster() {
+	CLUSTER::Clustering* pClusterer = new CLUSTER::KMeansClustering();
+	// 1.parameters setting
+	int nN = _nEnsembleLen;					// number of data items
+	int nK = g_nEnsClusterLen;				// number of clusters
+	/*
+	int nM = _nLen;							// dimension
+	// 2.input data
+	double* arrBuf = new double[nN * nM];
+	for (size_t i = 0; i < nN; i++)
+	{
+		for (size_t j = 0; j < nM; j++)
+		{
+			arrBuf[i * nM + j] = _pData->GetData(i, j);
+		}
+	}
+	*/
+	int nM = g_nClusterRegionR*g_nClusterRegionR;							// dimension
+	// 2.input data
+	double* arrBuf = new double[nN * nM];
+	for (size_t i = 0; i < nN; i++)
+	{
+		for (size_t j = 0; j < g_nClusterRegionR; j++)
+		{
+			for (size_t k = 0; k < g_nClusterRegionR; k++) {
+				arrBuf[i * nM + j * g_nClusterRegionR + k] = _pData->GetData(i,g_nClusterRegionY+j,g_nClusterRegionX+k);
+			}
+		}
+	}
+	// 3.clustering
+	pClusterer->DoCluster(nN, nM, nK, arrBuf, _arrLabels);
+	delete arrBuf;
+	// 4.counting each cluster
+	int arrLens[g_nEnsClusterLen];
+	for (size_t i = 0; i < g_nEnsClusterLen; i++)
+	{
+		arrLens[i] = 0;
+	}
+
+	for (size_t i = 0; i < _nEnsembleLen; i++)
+	{
+		arrLens[_arrLabels[i]]++;
+	}
+
+
+	QList<int> listLen;
+	for (size_t i = 0; i < g_nEnsClusterLen; i++)
+	{
+		listLen.append(arrLens[i]);
+	}
+	// 5.postprocess the clustered data
+	_pData->GenerateClusteredData(listLen, _arrLabels, _arrEnsClusterData);
+
+	// 6.output labels
+	for (size_t i = 0; i < g_nEnsClusterLen; i++)
+	{
+		for (size_t j = 0; j < _nEnsembleLen; j++)
+		{
+			if (_arrLabels[j] == i) qDebug() << j;
+		}
+		qDebug()<<"\n";
+	}
+}
+
+void MeteModel::readObsData() {
+	int nBias = g_nBiasY * 31 + g_nBiasD;
+	QFile file(g_strObsFileName);
+
+	if (!file.open(QIODevice::ReadOnly)) {
+		for (int j = 0; j < _nLen; j++)
+		{
+			_bufObs[j] = 0;
+		}
+		QMessageBox::information(0, "error", file.errorString());
+		return;
+	}	
+
+	QTextStream in(&file);
+
+	// every ensemble member
+	for (int i = 0; i < nBias; i++)
+	{
+		// skip first line
+		QString line = in.readLine();
+		// every grid
+		for (int j = 0; j < _nLen; j++)
+		{
+			QString line = in.readLine();
+		}
+	}
+	// skip first line
+	QString line = in.readLine();
+	/*
+	// every grid
+	for (int j = 0; j < _nLen; j++)
+	{
+		QString line = in.readLine();
+		_bufObs[j] = line.toFloat();
+	}
+	*/
+	// observation is upside down
+	// every grid
+	for (size_t i = 0; i < _nHeight; i++)
+	{
+		for (size_t j = 0; j < _nWidth; j++) {
+			QString line = in.readLine();
+			int index = (_nHeight - i - 1)*_nWidth + j;
+			_bufObs[index] = line.toFloat();
+		}
+	}
+	file.close();
 }

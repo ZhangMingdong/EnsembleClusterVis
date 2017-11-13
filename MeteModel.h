@@ -19,6 +19,24 @@ class MeteModel
 public:
 	MeteModel();
 	virtual ~MeteModel();
+
+protected:
+	int _nWidth;
+	int _nHeight;
+	int _nLen;								// _nWidth*_nHeight
+	int _nFocusX;
+	int _nFocusY;
+	int _nFocusW;
+	int _nFocusH;
+	int _nFocusLen;							//_nFocusW*_nFocusH
+	int _nWest;
+	int _nEast;
+	int _nSouth;
+	int _nNorth;
+	int _nFocusWest;
+	int _nFocusEast;
+	int _nFocusSouth;
+	int _nFocusNorth;
 public:
 	// initialize the model
 	virtual void InitModel(int nEnsembleLen, int nWidth, int nHeight, int nFocusX, int nFocusY, int nFocusW, int nFocusH
@@ -42,6 +60,9 @@ public:
 	virtual int GetFocusEast() { return _nFocusEast; }
 	virtual int GetFocusSouth() { return _nFocusSouth; }
 	virtual int GetFocusNorth() { return _nFocusNorth; }
+	virtual int GetEnsembleLen() { return _nEnsembleLen; }
+
+	virtual DataField* GetData() { return _pData; }
 
 	virtual QList<ContourLine> GetContourMin(){ return _listContourMinE; }
 	virtual QList<ContourLine> GetContourMax(){ return _listContourMaxE; }
@@ -97,7 +118,9 @@ public:
 		bg_vari_smooth,			// smooth variance
 		bg_dipValue,			// variance of variance
 		bg_dipValueThreshold,	// thresholded dip value
-		bg_EOF					// EOF
+		bg_EOF,					// EOF
+		bg_Obs,					// obs
+		bg_err					// error
 	};
 protected:
 	// using which background function
@@ -109,24 +132,10 @@ protected:
 	bool _bBinaryFile;				// whether read binary file	
 
 	// 1.raw data
-	DataField* _pData=0;					// the data		
+	DataField* _pData=0;					// the data	
+	double* _bufObs = 0;					// observation data
 	int _nEnsembleLen;						// number of ensemble members
-	int _nWidth;
-	int _nHeight;	
-	int _nLen;								// _nWidth*_nHeight
-	int _nFocusX;
-	int _nFocusY;
-	int _nFocusW;
-	int _nFocusH;
-	int _nFocusLen;							//_nFocusW*_nFocusH
-	int _nWest;
-	int _nEast;
-	int _nSouth;
-	int _nNorth;
-	int _nFocusWest;
-	int _nFocusEast;
-	int _nFocusSouth;
-	int _nFocusNorth;
+
 
 	// 2.basic contours and areas
 	ContourGenerator _generator;
@@ -137,6 +146,7 @@ protected:
 	QList<ContourLine> _listContourMeanE;				// list of contours of mean of E
 	QList<QList<ContourLine>> _listContour;				// list of contours of ensemble members
 	QList<QList<ContourLine>> _listMemberContour[g_nEnsembles];			// list of contours of each ensemble member
+	QList<QList<ContourLine>> _listEnsClusterContour[g_nEnsClusterLen];			// list of contours of each ensemble cluster
 	QList<QList<ContourLine>> _listContourBrushed;		// list of brushed contours of ensemble members
 	QList<QList<ContourLine>> _listContourNotBrushed;	// list of not brushed contours of ensemble members
 
@@ -154,7 +164,8 @@ protected:
 	double _dbVarThreshold = 1.5;				// threshold of the variance	
 	int _nSmooth = 1;							// smooth level 1~5	
 	int _nEOF = 1;								// EOF: 1~5
-	int _nMember = 0;
+	int _nMember = 0;							// current focused member
+	int _nEnsCluster = 0;						// current ensemble cluster
 	
 	GLubyte* _dataTexture = NULL;				// data of the texture
 	
@@ -175,9 +186,17 @@ protected:
 	// index of the focused region
 	int _nFocusedRegion = 0;
 
+	// 4.cluster the ensemble member directly
+	QList<DataField*> _arrEnsClusterData;	// data of each cluster
+	int _arrLabels[g_nEnsembles];	// labels of each member
+
+	double* _gridErr;				// error field
 private:
 	// generate texture of clustered variance
 	void buildTextureClusteredVariance();
+
+	// generate regions for clustering in each region
+	void generateRegions();
 
 	// generate texture use threshold var
 	void buildTextureThresholdVariance();
@@ -209,6 +228,17 @@ private:
 
 	// align the cluster results
 	void alignClusters();
+
+
+	/*
+		ensemble clustering
+		2017/11/07
+	*/
+	void doEnsCluster();
+
+
+	// read observation data
+	void readObsData();
 public:
 	// interface of the creation of model
 	static MeteModel* CreateModel();
@@ -230,6 +260,7 @@ public:
 	void SetSmooth(int nSmooth);
 	void SetEOF(int nEOF);
 	void SetMember(int nMember);
+	void SetEnsCluster(int nEnsCluster);
 
 	// get the cluster similarity between two uncertainty regions
 

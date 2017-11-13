@@ -49,11 +49,19 @@ public:
 	double GetData(int l, int r, int c);
 	const double* GetData() { return _pBuf; }
 	void DoStatistic();
-	// generate clustered data using the labels
+	/*
+		generate clustered data using the labels
+		params:
+			listClusterLens: length of each cluster
+			arrLabels: cluster labels of each cluster member
+			arrData: return generate data for each cluster
+		written before, used 2017/11/07
+	*/
 	void GenerateClusteredData(const QList<int> listClusterLens, const int* arrLabels, QList<DataField*>& arrData);
 
 	// perform eof analysis
 	void DoEOF();
+
 private:
 	// smooth the variance to level nSmooth
 	void smoothVar(int nSmooth);

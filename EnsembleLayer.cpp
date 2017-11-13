@@ -171,7 +171,7 @@ void EnsembleLayer::draw(DisplayStates states){
 	}
 	if (states._bShowContourLineMean)
 	{
-		glColor4f(1.0, 0.0, 1.0, .5);
+		glColor4f(0.0, 0.0, 1.0, 1.0);
 		drawContourLine(_pModel->GetContourMean());
 	}
 	if (states._bShowContourLine)
@@ -388,19 +388,35 @@ void EnsembleLayer::drawColorBar() {
 	switch (bgFun)
 	{
 	case MeteModel::bg_mean:
+	case MeteModel::bg_Obs:
+	case MeteModel::bg_err:
 	case MeteModel::bg_vari:
 	case MeteModel::bg_vari_smooth:
 	case MeteModel::bg_dipValue:
 	case MeteModel::bg_EOF:
 	{
-		// scale
-		ColorMap* colormap = bgFun== MeteModel::bg_EOF?ColorMap::GetInstance(ColorMap::CP_EOF): ColorMap::GetInstance();
-
-		// for temperature data
-		if (bgFun == MeteModel::bg_mean&&g_usedModel == T2_ECMWF)
+		ColorMap* colormap;
+		switch (bgFun)
 		{
-			colormap = ColorMap::GetInstance(ColorMap::CP_T2);
+		case MeteModel::bg_mean:
+		case MeteModel::bg_Obs:
+			if (g_usedModel == T2_ECMWF)
+			{
+				colormap = ColorMap::GetInstance(ColorMap::CP_T2);
+			}
+			else {
+				colormap = ColorMap::GetInstance();
+			}
+			break;
+		case MeteModel::bg_err:
+			colormap = ColorMap::GetInstance(ColorMap::CP_EOF);
+			break;
+		default:
+			colormap = ColorMap::GetInstance();
+			break;
+
 		}
+
 		int nLen = colormap->GetLength();
 		int nStep = colormap->GetStep();
 		int nMin = colormap->GetMin();
@@ -498,12 +514,29 @@ void EnsembleLayer::drawColorBar() {
 void EnsembleLayer::generateColorBarTexture() {
 	// 1.generate color bar data
 	MeteModel::enumBackgroundFunction bgFun = _pModel->GetBgFunction();
-	ColorMap* colormap = bgFun == MeteModel::bg_EOF ? ColorMap::GetInstance(ColorMap::CP_EOF) : ColorMap::GetInstance();
-	// for temperature data
-	if (bgFun==MeteModel::bg_mean&&g_usedModel == T2_ECMWF)
+
+	ColorMap* colormap;
+	switch (bgFun)
 	{
-		colormap = ColorMap::GetInstance(ColorMap::CP_T2);
+	case MeteModel::bg_mean:
+	case MeteModel::bg_Obs:
+		if (g_usedModel == T2_ECMWF)
+		{
+			colormap = ColorMap::GetInstance(ColorMap::CP_T2);
+		}
+		else {
+			colormap = ColorMap::GetInstance();
+		}
+		break;
+	case MeteModel::bg_err:
+		colormap = ColorMap::GetInstance(ColorMap::CP_EOF);
+		break;
+	default:
+		colormap = ColorMap::GetInstance();
+		break;
+
 	}
+
 	int nLen = colormap->GetLength();
 	int nStep = colormap->GetStep();
 	int nMin = colormap->GetMin();
