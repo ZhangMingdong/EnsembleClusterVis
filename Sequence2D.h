@@ -15,7 +15,6 @@ struct EpsilonEvent {
 	}
 };
 
-
 struct Group {
 	std::vector<int> _member;	// members
 	int _nS;					// start time
@@ -32,6 +31,23 @@ struct Group {
 		return false;
 	}
 };
+
+struct DBEpsilonEvent {
+	int _nType = 0;		// 0:merge,1:split
+	double _dbTime = 0;
+	int _nIndex1 = 0;
+	int _nIndex2 = 0;
+	DBEpsilonEvent(int nType, double dbTime, int nIndex1, int nIndex2) :_nType(nType), _dbTime(dbTime), _nIndex1(nIndex1), _nIndex2(nIndex2) {
+
+	}
+};
+
+struct DBGroup {
+	std::vector<int> _member;	// members
+	double _dbS;				// start time
+	double _dbE;				// end time
+};
+
 // pair of index and value
 struct IndexAndValue {
 	int _nIndex = 0;
@@ -73,6 +89,7 @@ public:
 	int GetGroupSize();
 	Group GetGroup(int nIndex);
 	double GetValue(int nSeq, int nIndex);
+	double GetDBValue(double dbTime, int nIndex);
 	// detect the trend from the root
 	void TrendDetectRootOnly();
 	// detect the trend
@@ -134,5 +151,50 @@ private:
 	// generate group from a event pair
 	void generateGroupFromEventPair(EpsilonEvent eS, EpsilonEvent eE,std::vector<std::vector<IndexAndValue>> vecOrderedIndex);
 
+// ===========double time step
+
+private:
+	std::vector<DBGroup> _vecDBGroups;
+	std::vector<DBEpsilonEvent> _vecStartDBEvents;
+	std::vector<DBEpsilonEvent> _vecEndDBEvents;
+
+	// find all the events
+	void FindDBEvents();
+	// detect trend based on the found events
+	void TrendDetectBasedOnDBEvents();
+	// generate group from a event pair
+	void generateGroupFromDBEventPair(DBEpsilonEvent eS, DBEpsilonEvent eE, std::vector<std::vector<IndexAndValue>> vecOrderedIndex);
+
+	// get the time of epsilon
+	double getEventTime(int nTime1, int nTime2, int nIndex1, int nIndex2);
+
+	// get value of nIndex at time dbTime
+	double getValue(int nIndex, double dbTime);
+	// add a new group
+	void addDBGroup(DBGroup g);
+	// print the calculated groups
+	void printDBGroup();
+public:
+	// detect the trend
+	void TrendDetectDB();
+	int GetDBGroupSize();
+	DBGroup GetDBGroup(int nIndex);
+
+// ===========improved algorithm
+public:
+	// detect the trend
+	void TrendDetectDBImproved();
+private:
+	// detect trend based on the found events
+	void TrendDetectBasedOnDBEventsImproved();
+
+	// generate group from a event pair
+	void generateGroupFromDBEventPairImproved(DBEpsilonEvent eS, DBEpsilonEvent eE, std::vector<std::vector<IndexAndValue>>& vecOrderedIndex);
+
+	// split the arrange ment
+	// bTop==true: keep the members on above
+	// bTop==false: keep the members on bellow
+	void splitArrangement(int nTime,int nRank, std::vector<std::vector<IndexAndValue>>& vecOrderedIndex, bool bTop);
+	void splitArrangement(std::vector<int> vecRank, int nRank, std::vector<std::vector<IndexAndValue>>& vecOrderedIndex, bool bTop);
 };
 

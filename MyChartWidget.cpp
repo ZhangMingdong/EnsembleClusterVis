@@ -70,10 +70,12 @@ void MyChartWidget::paint() {
 	drawGridLines();
 
 	// draw selected group
-	drawSelectedGroup();
+//	drawSelectedGroup();
+	drawSelectedDBGroup();
 
 	// draww abstracted groups
-	drawGroups();
+//	drawGroups();
+	drawDBGroups();
 
 	glPopMatrix();
 }
@@ -90,44 +92,29 @@ void MyChartWidget::SetModelE(MeteModel* pModelE) {
 	generateSequences();
 
 	// detect the trends
-	_pSequence->TrendDetect();
 //	_pSequence->TrendDetectRootOnly();
+//	_pSequence->TrendDetect();
+//	_pSequence->TrendDetectDB();
+	_pSequence->TrendDetectDBImproved();
 }
 
 void MyChartWidget::mouseDoubleClickEvent(QMouseEvent *event) {
 	_nCurrentGroup++;
-	_nCurrentGroup %= _pSequence->GetGroupSize();
-	updateGL();
-}
-
-void MyChartWidget::drawGroups() {
-	for (size_t i = 0; i < _pSequence->GetGroupSize(); i++)
+	if (_pSequence->GetGroupSize())
 	{
-		Group g = _pSequence->GetGroup(i);
-		glColor4f(0, 1, 1, .5);
-		double dbSize = g._member.size();
-		glLineWidth(dbSize);
-
-		glBegin(GL_LINE_STRIP);
-		for (size_t k = g._nS; k <= g._nE; k++)
-		{
-			double dbY = 0;
-			for (size_t j = 0; j < g._member.size(); j++)
-			{
-				dbY += _pSequence->GetValue(g._member[j],k);
-			}
-
-			glVertex3f(k, dbY / dbSize, 0);
-		}
-		glEnd();
+		_nCurrentGroup %= _pSequence->GetGroupSize();
 	}
+	else {
+		_nCurrentGroup %= _pSequence->GetDBGroupSize();
+	}
+	updateGL();
 }
 
 void MyChartWidget::generateSequences() {
 	int nWidth = _pModelE->GetW();
 	int nHeight = _pModelE->GetH();
 	int nEns = _pModelE->GetEnsembleLen();
-	nEns = 10;
+	nEns = 30;
 	// calculate the max and min height
 	double dbMin = 1000;
 	double dbMax = 0;
@@ -150,9 +137,34 @@ void MyChartWidget::generateSequences() {
 		_pSequence->AddSequence(seq);
 	}
 
-	double dbEpsilon = (dbMax - dbMin) *.05;
+//	double dbEpsilon = (dbMax - dbMin) *.03;
+
+	double dbEpsilon = 1.3;
 
 	_pSequence->Init(nWidth, dbMin, dbMax, dbEpsilon);
+}
+
+void MyChartWidget::drawGroups() {
+	for (size_t i = 0; i < _pSequence->GetGroupSize(); i++)
+	{
+		Group g = _pSequence->GetGroup(i);
+		glColor4f(0, 1, 1, .5);
+		double dbSize = g._member.size();
+		glLineWidth(dbSize);
+
+		glBegin(GL_LINE_STRIP);
+		for (size_t k = g._nS; k <= g._nE; k++)
+		{
+			double dbY = 0;
+			for (size_t j = 0; j < g._member.size(); j++)
+			{
+				dbY += _pSequence->GetValue(g._member[j], k);
+			}
+
+			glVertex3f(k, dbY / dbSize, 0);
+		}
+		glEnd();
+	}
 }
 
 void MyChartWidget::drawSelectedGroup() {
@@ -199,6 +211,13 @@ void MyChartWidget::drawGridLines() {
 		glVertex2d(i, _pSequence->GetMin());
 		glVertex2d(i, _pSequence->GetMax());
 	}
+	glColor4f(0, 0, 0,.2);
+	// vertical lines
+	for (size_t i = 0; i < nLen; i ++)
+	{
+		glVertex2d(i, _pSequence->GetMin());
+		glVertex2d(i, _pSequence->GetMax());
+	}
 	glEnd();
 }
 
@@ -212,6 +231,100 @@ void MyChartWidget::drawSpaghetti() {
 		{
 			glVertex3f(j, _pSequence->GetValue(i, j), 0);
 		}
+		glEnd();
+	}
+}
+
+void MyChartWidget::drawDBGroups() {
+	for (size_t i = 0; i < _pSequence->GetDBGroupSize(); i++)
+	{
+		DBGroup g = _pSequence->GetDBGroup(i);
+		int nS = g._dbS;
+		int nE = g._dbE;
+		glColor4f(0, 1, 1, .5);
+		double dbSize = g._member.size();
+		glLineWidth(dbSize);
+
+
+		bool bFirstSeg = false;
+		if (g._dbS - nS >.001) {
+			bFirstSeg = true;
+			nS++;
+		}
+
+		glBegin(GL_LINE_STRIP);
+		// first segment		
+		if (bFirstSeg)
+		{
+			double dbY = 0;
+			for (size_t j = 0; j < g._member.size(); j++)
+			{
+				dbY += _pSequence->GetDBValue(g._dbS, g._member[j]);
+			}
+
+			glVertex3f(g._dbS, dbY / dbSize, 0);
+		}
+		// the segments of full timesteps
+		for (size_t k = nS; k <= nE; k++)
+		{
+			double dbY = 0;
+			for (size_t j = 0; j < g._member.size(); j++)
+			{
+				dbY += _pSequence->GetValue(g._member[j], k);
+			}
+
+			glVertex3f(k, dbY / dbSize, 0);
+		}
+
+		// last segment
+		if (g._dbE - nE >.001) {
+			double dbY = 0;
+			for (size_t j = 0; j < g._member.size(); j++)
+			{
+				dbY += _pSequence->GetDBValue(g._dbE, g._member[j]);
+			}
+
+			glVertex3f(g._dbE, dbY / dbSize, 0);
+		}
+		glEnd();
+	}
+}
+
+void MyChartWidget::drawSelectedDBGroup() {
+	glColor3f(0, 1, 0);
+	glLineWidth(2.0f);
+	glColor3f(0, 1, 0);
+	DBGroup g = _pSequence->GetDBGroup(_nCurrentGroup);
+	int nS = g._dbS;
+	int nE = g._dbE;
+	bool bFirstSeg = false;
+
+	if (g._dbS - nS >.001) {
+		bFirstSeg = true;
+		nS++;
+	}
+
+	for (size_t j = 0; j < g._member.size(); j++)
+	{
+		//		cout << g._member[j] << endl;
+
+		glBegin(GL_LINE_STRIP);
+
+		// first segment
+		if (bFirstSeg)
+		{
+			glVertex3f(g._dbS, _pSequence->GetDBValue(g._dbS, g._member[j]), 0);
+		}
+		// the segments of full timesteps
+		for (size_t k = nS; k <= nE; k++)
+		{
+			glVertex3f(k, _pSequence->GetValue(g._member[j], k), 0);
+		}
+		// last segment
+		if (g._dbE - nE >.001) {
+			glVertex3f(g._dbE, _pSequence->GetDBValue(g._dbE, g._member[j]), 0);
+		}
+
 		glEnd();
 	}
 }

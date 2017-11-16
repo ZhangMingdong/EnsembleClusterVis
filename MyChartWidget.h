@@ -41,9 +41,14 @@ protected:
 
 	// draw all the groups
 	void drawGroups();
-
+	// draw the selected groups
 	void drawSelectedGroup();
 	void drawGridLines();
 	void drawSpaghetti();
+
+	// draw all the groups
+	void drawDBGroups();
+	// draw the selected groups
+	void drawSelectedDBGroup();
 };
 
