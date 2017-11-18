@@ -401,8 +401,6 @@ double Sequence2D::GetValue(int nSeq, int nIndex) {
 	return _vecSequences[nSeq][nIndex];
 }
 
-
-
 //===============epsilon event version
 void Sequence2D::TrendDetect() {
 	SortIndices();
@@ -807,9 +805,29 @@ double Sequence2D::getValue(int nIndex, double dbTime) {
 }
 
 void Sequence2D::addDBGroup(DBGroup candidate) {
+	sort(candidate._member.begin(), candidate._member.end());
+	// check if this candidates has been added
+	bool bDuplicate = false;
+	if (candidate._dbS<.001)
+	{
+		for each (DBGroup g in _vecDBGroups)
+		{
+			if (abs(candidate._dbE - g._dbE) < .001 && candidate._member.size()==g._member.size()) {
+				bDuplicate = true;
+				for (size_t i = 0,length=g._member.size(); i < length; i++)
+				{
+					if (candidate._member[i]!=g._member[i])
+					{
+						bDuplicate = false;
+						break;
+					}
+				}
+			}
+		}
+	}
+	if (bDuplicate) return;
 	if (candidate._dbE - candidate._dbS>_nDelta && candidate._member.size()>_nM)
 	{
-		sort(candidate._member.begin(), candidate._member.end());
 		_vecDBGroups.push_back(candidate);
 	}
 }
@@ -836,6 +854,7 @@ void Sequence2D::printDBGroup() {
 		}
 		cout << endl;
 	}
+	cout << "number of groups: " << _vecDBGroups.size() << endl;
 }
 
 double Sequence2D::GetDBValue(double dbTime, int nIndex) {
@@ -864,6 +883,7 @@ void Sequence2D::TrendDetectDBImproved() {
 void Sequence2D::TrendDetectBasedOnDBEventsImproved() {
 	// sort end events
 	sort(_vecEndDBEvents.begin(), _vecEndDBEvents.end(), DBEventCompare);
+	sort(_vecStartDBEvents.begin(), _vecStartDBEvents.end(), DBEventCompare);
 
 	// search for groups
 	for each (DBEpsilonEvent startE in _vecStartDBEvents)
@@ -886,14 +906,15 @@ void Sequence2D::TrendDetectBasedOnDBEventsImproved() {
 
 
 			generateGroupFromDBEventPairImproved(startE, endE, vecOrderedIndex);
+			if (vecOrderedIndex[0].size() < _nM) break;
 		}
 	}
 }
 
 void Sequence2D::generateGroupFromDBEventPairImproved(DBEpsilonEvent eS, DBEpsilonEvent eE, vector<vector<IndexAndValue>>& vecOrderedIndex) {
-	if (abs(eS._dbTime - 1.28152) < .001&&abs(eE._dbTime - 6.92193) < .001) {
-		cout << "hehe";
-	}
+//	if (abs(eS._dbTime - 84.6999) < .001&&abs(eE._dbTime - 90) < .001) {
+//		cout << "hehe";
+//	}
 	double dbTimeS = eS._dbTime;									// time of start event
 	double dbTimeE = eE._dbTime;									// time of end event
 	int nTimeS = (int)(dbTimeS + .999);
@@ -1033,9 +1054,11 @@ void Sequence2D::generateGroupFromDBEventPairImproved(DBEpsilonEvent eS, DBEpsil
 	addDBGroup(newGroup);
 
 	// 4 split by this event
-	if (nTimeE<_nLength-1){		// if nTimeE is not the last timestep
-		int nRank1 = _vecRanks[nTimeE+1][nIndexE1];
-		int nRank2 = _vecRanks[nTimeE+1][nIndexE2];
+	if (nTimeE < _nLength - 1) 
+	{
+		nTimeE++;		// if nTimeE is not the last timestep, use next timestep
+		int nRank1 = _vecRanks[nTimeE][nIndexE1];
+		int nRank2 = _vecRanks[nTimeE][nIndexE2];
 		if (nRank1>nRank2)
 		{
 			int nTemp = nRank1;
@@ -1043,21 +1066,32 @@ void Sequence2D::generateGroupFromDBEventPairImproved(DBEpsilonEvent eS, DBEpsil
 			nRank2 = nTemp;
 		}
 
-		if (_vecRanks[nTimeE+1][nIndexS1] <= nRank1 &&
-			_vecRanks[nTimeE+1][nIndexS2] <= nRank1)
+		if (_vecRanks[nTimeE][nIndexS1] <= nRank1 &&
+			_vecRanks[nTimeE][nIndexS2] <= nRank1)
 		{
 			// both event on top of the face
-			splitArrangement(nTimeE + 1, nRank1, vecOrderedIndex, true);
+			splitArrangement(nTimeE, nRank1, vecOrderedIndex, true);
 		}
-		else if (_vecRanks[nTimeE + 1][nIndexS1] >= nRank2 &&
-			_vecRanks[nTimeE + 1][nIndexS2] >= nRank2)
+		else if (_vecRanks[nTimeE][nIndexS1] >= nRank2 &&
+			_vecRanks[nTimeE][nIndexS2] >= nRank2)
 		{
 			// both event on bottom of the face
-			splitArrangement(nTimeE + 1, nRank2, vecOrderedIndex, false);
+			splitArrangement(nTimeE, nRank2, vecOrderedIndex, false);
+		}
+		else {
+			for (size_t i = 0, length = vecOrderedIndex.size(); i < length; i++)
+			{
+				vecOrderedIndex[i].clear();
+			}
+		}
+	}
+	else {
+		for (size_t i = 0, length = vecOrderedIndex.size(); i < length; i++)
+		{
+			vecOrderedIndex[i].clear();
 		}
 	}
 }
-
 
 void Sequence2D::splitArrangement(int nTime,int nRank, std::vector<std::vector<IndexAndValue>>& vecOrderedIndex, bool bTop) {
 
@@ -1072,7 +1106,6 @@ void Sequence2D::splitArrangement(int nTime,int nRank, std::vector<std::vector<I
 		}
 	}
 }
-
 
 void Sequence2D::splitArrangement(vector<int> vecRank, int nRank, std::vector<std::vector<IndexAndValue>>& vecOrderedIndex, bool bTop) {
 

@@ -114,7 +114,7 @@ void MyChartWidget::generateSequences() {
 	int nWidth = _pModelE->GetW();
 	int nHeight = _pModelE->GetH();
 	int nEns = _pModelE->GetEnsembleLen();
-	nEns = 30;
+//	nEns = 30;
 	// calculate the max and min height
 	double dbMin = 1000;
 	double dbMax = 0;
