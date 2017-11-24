@@ -8,10 +8,8 @@
 #include "ContourGenerator.h"
 #include "def.h"
 
-
-
-
-class MyGLWidget;
+class MyMapWidget;
+class MyChartWidget;
 class MeteModel;
 
 class DisplayCtrlWidget;
@@ -40,9 +38,8 @@ private:	// action
 	QAction *viewShowClusterBSAction;		// show cluster of Bayesian variance statistics
 	QAction *viewShowClusterBVAction;		// show cluster of Bayesian variance
 private:		// widget
-	MyGLWidget *_view3D;
-
-
+	MyMapWidget *_view3D;
+	MyChartWidget *_viewChart;
 	// control widget
 	DisplayCtrlWidget * _pDisplayCtrlWidget;
 

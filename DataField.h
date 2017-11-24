@@ -1,9 +1,12 @@
 #pragma once
 #include <QList>
+#include "def.h"
 /*
 	represent a data field
-	Mingdong
-	before 2017/06/26
+	author: Mingdong
+	2017/06/26
+	functionality: provide grid related informations
+	2017/10/24
 */
 class DataField
 {
@@ -23,11 +26,14 @@ private:
 	int _nH;						// height
 	int _nL;						// number of ensemble members
 	int _nSmooth = 0;				// level of smooth
+	int _nEOF = 0;					// level of EOF
+	double* _gridEOF[g_nEOFLen];	// eof fields
 public:
 	// get the l'th layer
 	const double* GetLayer(int l);
 	// get variance, nSmooth: level of smooth
 	const double* GetVari(int nSmooth=0);
+	const double* GetEOF(int nSeq=0);
 	const double* GetDipValue();
 	const double* GetMean();
 	const double* GetUMax();
@@ -43,8 +49,19 @@ public:
 	double GetData(int l, int r, int c);
 	const double* GetData() { return _pBuf; }
 	void DoStatistic();
-	// generate clustered data using the labels
+	/*
+		generate clustered data using the labels
+		params:
+			listClusterLens: length of each cluster
+			arrLabels: cluster labels of each cluster member
+			arrData: return generate data for each cluster
+		written before, used 2017/11/07
+	*/
 	void GenerateClusteredData(const QList<int> listClusterLens, const int* arrLabels, QList<DataField*>& arrData);
+
+	// perform eof analysis
+	void DoEOF();
+
 private:
 	// smooth the variance to level nSmooth
 	void smoothVar(int nSmooth);

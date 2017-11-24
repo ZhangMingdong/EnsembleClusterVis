@@ -312,105 +312,6 @@ MyPCA::~MyPCA()
 	if (_pD) delete _pD;
 }
 
-void MyPCA::DoPCA(const double* arrInput, double* arrOutput, int n, int m, bool bNewData) {
-	// -1.release the resource, and reallocate
-	if (_arrDataMean) delete[] _arrDataMean;
-	if (_pR) delete _pR;
-	if (_pCovar_matrix) delete _pCovar_matrix;
-	if (_pEigenvalue) delete _pEigenvalue;
-	if (_pEigenvector) delete _pEigenvector;
-	_nRow = n;
-	_nCol = m;
-	_pR = new Array2D<double>(_nCol, _nCol);
-	_pCovar_matrix = new Array2D<double>(_nCol, _nCol);
-	_pEigenvalue = new Array2D<double>(_nCol, _nCol);
-	_pEigenvector = new Array2D<double>(_nCol, _nCol);
-	_pD = new Array2D<double>(_nRow, _nCol);
-
-
-	int nPCALen = _nRow - 1;
-
-	_arrDataMean = new double[_nCol];
-	// 0.calculate mean
-	for (size_t i = 0; i < _nCol; i++)
-	{
-		double fMean = 0;
-		for (size_t j = 0; j < _nRow; j++)
-		{
-			fMean += arrInput[j*_nCol + i];
-		}
-		_arrDataMean[i] = fMean / _nRow;
-	}
-	// 1.build the data struture, minus mean
-	for (int i = 0; i < _nRow; i++)
-	{
-		for (int j = 0; j < _nCol; j++)
-		{
-			(*_pD)[i][j] = arrInput[i*_nCol + j] - _arrDataMean[j];
-		}
-	}
-	// 2.PCA
-	if (bNewData)
-	{
-		calculateMatrices();
-		writeMatrices();
-	}
-	else {
-		readMatrices();
-	}
-
-	// 3.projection
-	Array2D<double> final_data(_nRow, nPCALen);							// projected data
-	Array2D<double> pca_eigenvector(nPCALen, _nCol);					// pca of eigenvector members
-	for (size_t i = _nCol - nPCALen, ii = 0; i < _nCol; i++, ii++)
-	{
-		for (size_t j = 0; j < _nCol; j++)
-		{
-			pca_eigenvector[ii][j] = (*_pEigenvector)[i][j];
-		}
-	}
-	Array2D<double> transpose_pca_eigenvector(_nCol, nPCALen);			// transposed pca of eigenvector members
-	transpose(pca_eigenvector, transpose_pca_eigenvector);
-	multiply(*_pD, transpose_pca_eigenvector, final_data);							// project the data
-
-	for (size_t i = 0; i < _nRow; i++)
-	{
-		for (size_t j = 0; j < _nRow - 1; j++)
-		{
-			arrOutput[i*nPCALen + j] = final_data[i][j];
-		}
-	}
-	// try to recover the data to check whether they are identical with the input data
-	/*
-	if (false)
-	{
-		Array2D<double> back_data(_nRow, _nCol);
-		Array2D<double> transposed_r(_nCol, _nCol);
-		transpose(*_pR, transposed_r);
-
-
-		Array2D<double> pca_data(_nRow, _nCol);
-		for (size_t i = 0; i < _nRow; i++)
-		{
-			for (size_t j = 0; j < _nCol; j++)
-			{
-				if (j < _nCol - nPCALen) pca_data[i][j] = 0;
-				else  pca_data[i][j] = final_data[i][j - (_nCol - nPCALen)];
-			}
-		}
-
-		multiply(pca_data, transposed_r, back_data);
-
-		for (size_t i = 0; i < _nRow; i++)
-		{
-			for (size_t j = 0; j < _nCol; j++)
-			{
-				arrInput[i*_nCol + j] = _arrDataMean[j] +back_data[i][j];
-			}
-		}
-	}
-	*/
-}
 
 void MyPCA::DoPCA(const double* arrInput, double* arrOutput, int n, int mI,int mO, bool bNewData) {
 	// -1.release the resource, and reallocate
@@ -449,17 +350,24 @@ void MyPCA::DoPCA(const double* arrInput, double* arrOutput, int n, int mI,int m
 			(*_pD)[i][j] = arrInput[i*_nCol + j] - _arrDataMean[j];
 		}
 	}
-	cout << "to calculate matrix" << endl;
-	// 2.PCA
-	if (bNewData)
+	if (true)
 	{
 		calculateMatrices();
-		writeMatrices();
 	}
 	else {
-		readMatrices();
+		// old codes, write the matrix
+		cout << "to calculate matrix" << endl;
+		// 2.PCA
+		if (bNewData)
+		{
+			calculateMatrices();
+			writeMatrices();
+		}
+		else {
+			readMatrices();
+		}
+		cout << "finished calculate matrix" << endl;
 	}
-	cout << "finished calculate matrix" << endl;
 
 	// 3.projection
 	Array2D<double> final_data(_nRow, nPCALen);							// projected data
@@ -475,12 +383,24 @@ void MyPCA::DoPCA(const double* arrInput, double* arrOutput, int n, int mI,int m
 	transpose(pca_eigenvector, transpose_pca_eigenvector);
 	multiply(*_pD, transpose_pca_eigenvector, final_data);							// project the data
 
+	double dbSum = 0;
+	for (size_t i = 0; i < _nCol; i++)
+	{
+		cout << (*_pEigenvalue)[i][i] << endl;
+		dbSum += (*_pEigenvalue)[i][i];
+	}
+	for (size_t i = 0; i < _nCol; i++)
+	{
+		cout << (*_pEigenvalue)[i][i]/dbSum << endl;
+	}
+
+
 	for (size_t i = 0; i < _nRow; i++)
 	{
 		for (size_t j = 0; j < mO; j++)
 		{
 			arrOutput[i*mO + j] = final_data[i][j];
-			cout << arrOutput[i*mO + j] << endl;
+//			cout << arrOutput[i*mO + j] << endl;
 		}
 	}
 }

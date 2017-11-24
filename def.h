@@ -93,27 +93,40 @@ const int g_nEnsembles = 50;					// number of ensemble members
 const int g_nUncertaintyAreaMax = 6;			// max number of uncertainty area
 const int g_nClusterMax = 10;					// max number of clusters
 
-
+const int g_nIsoValuesLen = 6;					// length of array of isovalues
 // 2017/10/17
-# define GLOBAL_PRE
+//# define GLOBAL_PRE
 
-#ifdef GLOBAL_PRE			
-const double g_fThreshold = 2.0;
-const bool g_bGlobalArea = true;
+extern double g_fThreshold;
+extern bool g_bGlobalArea;
+extern enumMeteModel g_usedModel;
+extern double g_arrIsoValues[5];
 
-// used model
-//const enumMeteModel g_usedModel = PRE_CMA;
-//const enumMeteModel g_usedModel = PRE_CPTEC;
-//const enumMeteModel g_usedModel = PRE_ECCC;
-//const enumMeteModel g_usedModel = PRE_ECMWF;
-//const enumMeteModel g_usedModel = PRE_JMA;
-//const enumMeteModel g_usedModel = PRE_KMA;
-//const enumMeteModel g_usedModel = PRE_NCEP;
-const enumMeteModel g_usedModel = PRE_ECMWF_2017;
 
-#else
-const double g_fThreshold = 273.16 - 15;
-const bool g_bGlobalArea = false;
-const enumMeteModel g_usedModel = T2_ECMWF;
+// 2017/10/23
+const int g_nEOFLen = 10;
 
-#endif
+extern int g_nWidth;
+extern int g_nHeight;
+
+extern int g_nFocusX;
+extern int g_nFocusY;
+extern int g_nFocusW;
+extern int g_nFocusH;
+
+extern int g_nWest;
+extern int g_nEast;
+extern int g_nNorth;
+extern int g_nSouth;
+extern char g_strFileName[50];
+extern char g_strObsFileName[50];
+extern int g_nBiasY;
+extern int g_nBiasD;
+
+const int g_nEnsClusterLen = 6;
+
+
+// used temply for the clustering region
+const int g_nClusterRegionX = 40;
+const int g_nClusterRegionY = 40;
+const int g_nClusterRegionR = 11;

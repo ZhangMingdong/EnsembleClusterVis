@@ -5,6 +5,8 @@
 #include <vector>
 #include <algorithm>
 
+#include "MyPCA.h"
+
 DataField::DataField(int w, int h, int l):_nW(w),_nH(h),_nL(l)
 {
 	_pBuf = new double[w*h*l];
@@ -14,6 +16,11 @@ DataField::DataField(int w, int h, int l):_nW(w),_nH(h),_nL(l)
 	_gridMean = new double[w*h];
 	_gridUMax = new double[w*h];
 	_gridUMin = new double[w*h];
+
+	for (size_t i = 0; i < g_nEOFLen; i++)
+	{
+		_gridEOF[i]= new double[w*h];
+	}
 }
 
 DataField::~DataField()
@@ -28,6 +35,10 @@ DataField::~DataField()
 	for (size_t i = 0; i < _nSmooth; i++)
 	{
 		delete[] _gridVarSmooth[i];
+	}
+	for (size_t i = 0; i < g_nEOFLen; i++)
+	{
+		delete[] _gridEOF[i];
 	}
 }
 
@@ -52,6 +63,10 @@ const double* DataField::GetVari(int nSmooth) {
 		_nSmooth = nSmooth;
 		return _gridVarSmooth[nSmooth-1];
 	}
+}
+
+const double* DataField::GetEOF(int nSeq) {
+	return _gridEOF[nSeq];
 }
 const double* DataField::GetDipValue() {
 	return _pDipBuf;
@@ -193,13 +208,16 @@ void DataField::DoStatistic() {
 }
 
 void DataField::GenerateClusteredData(const QList<int> listClusterLens, const int* arrLabels, QList<DataField*>& arrData) {
+	// number of clusters
 	int nClusters = listClusterLens.length();
+	// generate data field according to the length of element in each cluster
 	QList<int> listCurrentIndex;
 	for (size_t i = 0; i < nClusters; i++)
 	{
 		arrData.push_back(new DataField(_nW, _nH, listClusterLens[i]));
 		listCurrentIndex.push_back(0);
 	}
+	// set data for each new field
 	int nLen = _nW*_nH;
 	for (size_t i = 0; i < _nL; i++)
 	{
@@ -210,6 +228,7 @@ void DataField::GenerateClusteredData(const QList<int> listClusterLens, const in
 		}
 		listCurrentIndex[nLabel]++;
 	}
+	// do statistic for each new field
 	for (size_t i = 0; i < nClusters; i++)
 	{
 		arrData[i]->DoStatistic();
@@ -253,3 +272,36 @@ void DataField::smoothVar(int nSmooth) {
 	}
 
 }
+
+
+void DataField::DoEOF() {
+	// 1.set parameter
+	int mI = _nL;
+	int mO = g_nEOFLen;
+	int n = _nW*_nH;
+	// 2.allocate input and output buffer
+	double* arrInput = new double[mI*n];
+	double* arrOutput = new double[mO*n];
+	for (size_t i = 0; i < n; i++)
+	{
+		for (size_t j = 0; j < mI; j++) 
+		{
+			arrInput[i*mI + j] = GetData(j, i);
+		}
+	}
+	// 3.pca
+	MyPCA pca;
+	pca.DoPCA(arrInput, arrOutput, n, mI, mO, true);
+	// 4.generate points from the output
+	for (size_t i = 0; i < n; i++)
+	{
+		for (size_t j = 0; j < mO; j++)
+		{
+			_gridEOF[j][i] = arrOutput[i * mO + j];
+		}
+	}
+	// 5.release the buffer
+	delete[] arrInput;
+	delete[] arrOutput;
+}
+

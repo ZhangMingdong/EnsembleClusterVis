@@ -7,10 +7,14 @@
 #include <QSet>
 #include <QMessageBox>
 #include <QDockWidget>
+#include <QSplitter>
+
+
 
 
 #include "MainWindow.h"
-#include "myglwidget.h"
+#include "MyMapWidget.h"
+#include "MyChartWidget.h"
 #include "MeteModel.h"
 
 #include "DisplayCtrlWidget.h"
@@ -40,7 +44,10 @@ MainWindow::~MainWindow(){
 
 MainWindow::MainWindow()
 {
-	resize(QSize(800, 600));
+
+
+	// finished read config file
+	setWindowState(Qt::WindowMaximized);
 
 	_pModel = MeteModel::CreateModel();
 
@@ -74,10 +81,20 @@ MainWindow::MainWindow()
 }
 
 void MainWindow::createSceneAndView(){
-	_view3D = new MyGLWidget;
+	_view3D = new MyMapWidget;
 	_view3D->SetModelE(_pModel);
 
-	setCentralWidget(_view3D);
+	QSplitter* splitter = new QSplitter();
+	splitter->setOrientation(Qt::Vertical);
+	splitter->addWidget(_view3D);
+
+	_viewChart = new MyChartWidget;
+	_viewChart->SetModelE(_pModel);
+	splitter->addWidget(_viewChart);
+
+	setCentralWidget(splitter);
+
+	//setCentralWidget(_view3D);
 }
 
 void MainWindow::createDockWidgets() {
@@ -294,6 +311,9 @@ void MainWindow::createConnections(){
 	connect(_pDisplayCtrlWidget, SIGNAL(areasChanged(int)), _view3D, SLOT(updateUncertaintyAreas(int)));
 	connect(_pDisplayCtrlWidget, SIGNAL(focusedClusterChanged(int)), _view3D, SLOT(updateFocusedCluster(int)));
 	connect(_pDisplayCtrlWidget, SIGNAL(focusedRegionChanged(int)), _view3D, SLOT(updateFocusedRegion(int)));
+	connect(_pDisplayCtrlWidget, SIGNAL(EOFChanged(int)), _view3D, SLOT(updateEOF(int)));
+	connect(_pDisplayCtrlWidget, SIGNAL(MemberChanged(int)), _view3D, SLOT(updateMember(int)));
+	connect(_pDisplayCtrlWidget, SIGNAL(EnsClusterChanged(int)), _view3D, SLOT(updateEnsCluster(int)));
 
 
 }

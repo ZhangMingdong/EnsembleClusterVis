@@ -36,9 +36,6 @@ private:
 
 	// build the tess for uncertainty regions
 	void buildTess();
-
-
-
 private:
 	// truth texture, generated from truth data
 	const GLubyte* _dataTexture = NULL;

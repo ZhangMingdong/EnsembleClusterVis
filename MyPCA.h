@@ -14,15 +14,6 @@ public:
 	MyPCA();
 	~MyPCA();
 public:
-	/*
-		do the pca
-		n:			number of vectors
-		m:			length of the vectors
-		arrInput:	input data: n*m
-		arrOutput:	output data: n*(n-1)
-		bNewData:	weather recalculate for new data
-	*/
-	void DoPCA(const double* arrInput, double* arrOutput, int n, int m, bool bNewData = false);
 
 
 	/*
@@ -32,7 +23,7 @@ public:
 		mO:			length of the output vectors
 		arrInput:	input data: n*m
 		arrOutput:	output data: n*(n-1)
-		bNewData:	weather recalculate for new data
+		bNewData:	whether recalculate for new data
 	*/
 	void DoPCA(const double* arrInput, double* arrOutput, int n, int mI, int mO, bool bNewData = false);
 

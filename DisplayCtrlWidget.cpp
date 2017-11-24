@@ -6,6 +6,7 @@
 #include <QComboBox>
 
 #include <QDebug>
+#include "def.h"
 
 DisplayCtrlWidget::DisplayCtrlWidget(QWidget *parent)
 	: QWidget(parent)
@@ -29,6 +30,9 @@ void DisplayCtrlWidget::createWidgets() {
 	_pCombBgFunction->addItem("Smoothed", 4);
 	_pCombBgFunction->addItem("DipValue", 5);
 	_pCombBgFunction->addItem("DipValueThreshold", 6);
+	_pCombBgFunction->addItem("EOF", 7);
+	_pCombBgFunction->addItem("Obs", 8);
+	_pCombBgFunction->addItem("Error", 9);
 
 	_pSpinBoxSmooth = new QSpinBox;
 	_pSpinBoxSmooth->setRange(1, 10);
@@ -54,6 +58,25 @@ void DisplayCtrlWidget::createWidgets() {
 	_pSpinBoxFocusedRegion->setValue(0);
 	_pSpinBoxFocusedRegion->setSingleStep(1);
 
+
+	_pSpinBoxEOF = new QSpinBox;
+	_pSpinBoxEOF->setRange(1, g_nEOFLen);
+	_pSpinBoxEOF->setAlignment(Qt::AlignVCenter | Qt::AlignRight);
+	_pSpinBoxEOF->setValue(1);
+	_pSpinBoxEOF->setSingleStep(1);
+
+	_pSpinBoxMember = new QSpinBox;
+	_pSpinBoxMember->setRange(0, g_nEnsembles);
+	_pSpinBoxMember->setAlignment(Qt::AlignVCenter | Qt::AlignRight);
+	_pSpinBoxMember->setValue(0);
+	_pSpinBoxMember->setSingleStep(1);
+
+	_pSpinBoxEnsCluster = new QSpinBox;
+	_pSpinBoxEnsCluster->setRange(0, g_nEnsClusterLen);
+	_pSpinBoxEnsCluster->setAlignment(Qt::AlignVCenter | Qt::AlignRight);
+	_pSpinBoxEnsCluster->setValue(0);
+	_pSpinBoxEnsCluster->setSingleStep(1);
+
 }
 
 void DisplayCtrlWidget::createLayout() {
@@ -64,6 +87,9 @@ void DisplayCtrlWidget::createLayout() {
 	layout->addRow(tr("Areas:"), _pSpinBoxAreas);
 	layout->addRow(tr("Focused Cluster:"), _pSpinBoxFocusedCluster);
 	layout->addRow(tr("Focused Region:"), _pSpinBoxFocusedRegion);
+	layout->addRow(tr("EOF:"), _pSpinBoxEOF);
+	layout->addRow(tr("Member:"), _pSpinBoxMember);
+	layout->addRow(tr("Ens Cluster:"), _pSpinBoxEnsCluster);
 	setLayout(layout);
 }
 
@@ -73,6 +99,9 @@ void DisplayCtrlWidget::createConnections() {
 	connect(_pSpinBoxAreas, SIGNAL(valueChanged(int)), this, SLOT(updateUncertaintyAreas(int)));
 	connect(_pSpinBoxFocusedCluster, SIGNAL(valueChanged(int)), this, SLOT(updateFocusedCluster(int)));
 	connect(_pSpinBoxFocusedRegion, SIGNAL(valueChanged(int)), this, SLOT(updateFocusedRegion(int)));
+	connect(_pSpinBoxEOF, SIGNAL(valueChanged(int)), this, SLOT(updateEOF(int)));
+	connect(_pSpinBoxMember, SIGNAL(valueChanged(int)), this, SLOT(updateMember(int)));
+	connect(_pSpinBoxEnsCluster, SIGNAL(valueChanged(int)), this, SLOT(updateEnsCluster(int)));
 }
 
 void DisplayCtrlWidget::updateBgFunction(int nBgFunction)
@@ -99,4 +128,20 @@ void DisplayCtrlWidget::updateFocusedRegion(int nFocusedRegion) {
 //	qDebug() << "updateFocusedRegion";
 
 	emit focusedRegionChanged(nFocusedRegion);
+}
+
+void DisplayCtrlWidget::updateEOF(int nEOF) {
+	//	qDebug() << "updateFocusedRegion";
+
+	emit EOFChanged(nEOF);
+}
+void DisplayCtrlWidget::updateMember(int nMember) {
+	//	qDebug() << "updateFocusedRegion";
+
+	emit MemberChanged(nMember);
+}
+void DisplayCtrlWidget::updateEnsCluster(int nEnsCluster) {
+	//	qDebug() << "updateFocusedRegion";
+
+	emit EnsClusterChanged(nEnsCluster);
 }
