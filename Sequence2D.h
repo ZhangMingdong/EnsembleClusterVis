@@ -1,6 +1,7 @@
 #pragma once
 #include <unordered_map>
 #include <vector>
+#include <set>
 
 //#define REVERSE
 
@@ -16,19 +17,13 @@ struct EpsilonEvent {
 };
 
 struct Group {
-	std::vector<int> _member;	// members
+	std::set<int> _member;	// members
 	int _nS;					// start time
 	int _nE;					// end time
+	bool _bAssigned = false;
 								// check whether containing g
 	bool Contain(const Group& g) {
-		int nLen = _member.size();
-		if (g._member.size() == nLen)
-		{
-			for (size_t i = 0; i < nLen; i++)
-				if (g._member[i] != _member[i]) return false;
-			return _nS <= g._nS&&_nE >= g._nE;
-		}
-		return false;
+		return _member == g._member;
 	}
 };
 
@@ -43,9 +38,10 @@ struct DBEpsilonEvent {
 };
 
 struct DBGroup {
-	std::vector<int> _member;	// members
+	std::set<int> _member;	// members
 	double _dbS;				// start time
 	double _dbE;				// end time
+	double _dbR;				// radius of the group
 };
 
 // pair of index and value
@@ -54,7 +50,9 @@ struct IndexAndValue {
 	double _dbValue = 0;
 	IndexAndValue(int nIndex, double dbValue) :_nIndex(nIndex), _dbValue(dbValue) {};
 };
+bool IndexAndValueCompare(IndexAndValue iv1, IndexAndValue iv2);
 
+bool DBEventCompare(DBEpsilonEvent e1, DBEpsilonEvent e2);
 /*
 	class used to represent the 2d sequences and detect trends
 	mingdong
@@ -64,7 +62,7 @@ class Sequence2D
 {
 public:
 	Sequence2D();
-	~Sequence2D();
+	virtual ~Sequence2D();
 protected:
 	// the sequences, same length
 	std::vector<std::vector<double>> _vecSequences;
@@ -75,9 +73,15 @@ protected:
 	// groups
 	std::vector<Group> _vecGroups;
 	// trend detecting parameters
-	int _nM = 2;
 	double _dbEpsilon = 0;
-	int _nDelta = 5;
+//	int _nM = 2;
+//	int _nDelta = 5;
+
+//	int _nM = 1;
+//	int _nDelta = 1;
+
+	int _nM = 3;
+	int _nDelta = 3;
 
 	// hashtable of calculated trends
 	std::unordered_map<unsigned long, std::vector<int> > _hashTrends;
@@ -93,8 +97,6 @@ public:
 	// detect the trend from the root
 	void TrendDetectRootOnly();
 	// detect the trend
-	void TrendDetect();
-	// detect the trend
 	// old version, too slow
 	// 2017/11/13
 	void TrendDetect_2();
@@ -107,7 +109,7 @@ public:
 	int GetEns() { return _nEns; }
 	double GetEpsilon() { return _dbEpsilon; }
 	int GetLength() { return _nLength; }
-private:
+protected:
 	// detect the trend at a single step
 	// recursive version, only find the trend start from beginning
 	// only split, no merge
@@ -134,16 +136,14 @@ private:
 	void printGroup();
 
 //===============epsilon event version
-private:
+protected:
 	std::vector<EpsilonEvent> _vecStartEvents;
 	std::vector<EpsilonEvent> _vecEndEvents;
 	// ordered index sequence of each timestep
 	std::vector<std::vector<IndexAndValue>> _vectOrderedIndex;	
 	// in each time step, the ranks of each index in the ordered list
 	std::vector<std::vector<int>> _vecRanks;
-private:
-	// sort the indices
-	void SortIndices();
+protected:
 	// find all the events
 	void FindEvents();
 	// detect trend based on the found events
@@ -153,40 +153,24 @@ private:
 
 // ===========double time step
 
-private:
+protected:
 	std::vector<DBGroup> _vecDBGroups;
-	std::vector<DBEpsilonEvent> _vecStartDBEvents;
-	std::vector<DBEpsilonEvent> _vecEndDBEvents;
-
-	// find all the events
-	void FindDBEvents();
-	// detect trend based on the found events
-	void TrendDetectBasedOnDBEvents();
 	// generate group from a event pair
 	void generateGroupFromDBEventPair(DBEpsilonEvent eS, DBEpsilonEvent eE, std::vector<std::vector<IndexAndValue>> vecOrderedIndex);
 
 	// get the time of epsilon
 	double getEventTime(int nTime1, int nTime2, int nIndex1, int nIndex2);
 
-	// get value of nIndex at time dbTime
-	double getValue(int nIndex, double dbTime);
+	// get the two time for cross event, ordered
+	void getCrossEventTimes(double& dbTime1,double& dbTime2,int nTime1, int nTime2, int nIndex1, int nIndex2);
+
 	// add a new group
 	void addDBGroup(DBGroup g);
 	// print the calculated groups
 	void printDBGroup();
-public:
-	// detect the trend
-	void TrendDetectDB();
-	int GetDBGroupSize();
-	DBGroup GetDBGroup(int nIndex);
 
 // ===========improved algorithm
-public:
-	// detect the trend
-	void TrendDetectDBImproved();
-private:
-	// detect trend based on the found events
-	void TrendDetectBasedOnDBEventsImproved();
+protected:
 
 	// generate group from a event pair
 	void generateGroupFromDBEventPairImproved(DBEpsilonEvent eS, DBEpsilonEvent eE, std::vector<std::vector<IndexAndValue>>& vecOrderedIndex);
@@ -196,5 +180,29 @@ private:
 	// bTop==false: keep the members on bellow
 	void splitArrangement(int nTime,int nRank, std::vector<std::vector<IndexAndValue>>& vecOrderedIndex, bool bTop);
 	void splitArrangement(std::vector<int> vecRank, int nRank, std::vector<std::vector<IndexAndValue>>& vecOrderedIndex, bool bTop);
+public:
+	enum SequenceType
+	{
+		ST_Buchin,
+		ST_Van,
+		ST_Jeung
+	};
+	static Sequence2D* GenerateInstance(SequenceType type);
+	//=================used in both class=================
+protected:
+	// sort the indices
+	void sortIndices();
+	// get value of nIndex at time dbTime
+	double getValue(int nIndex, double dbTime);
+public:
+	// detect the trend
+	virtual void TrendDetectDB()=0;
+	// detect the trend
+	virtual void TrendDetect();
+	// get the event list
+	virtual std::vector<DBEpsilonEvent> GetEvents()=0;
+public:
+	int GetDBGroupSize();
+	DBGroup GetDBGroup(int nIndex);
 };
 

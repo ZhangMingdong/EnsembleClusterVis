@@ -3,9 +3,21 @@
 #include <iostream>
 #include <ctime>
 
+#include "Sequence2DBuchin.h"
+#include "Sequence2DVan.h"
+#include "Sequence2DJeung.h"
+
 using namespace std;
 
 
+// cluster comparison function, used for sort
+bool IndexAndValueCompare(IndexAndValue iv1, IndexAndValue iv2) {
+	return iv1._dbValue < iv2._dbValue;
+}
+
+bool DBEventCompare(DBEpsilonEvent e1, DBEpsilonEvent e2) {
+	return e1._dbTime < e2._dbTime;
+}
 // map a group to a unified hash number
 unsigned long hashFunc(const Group& g) {
 	unsigned long ulNum = 0;
@@ -46,6 +58,109 @@ void Sequence2D::Init(int nLength, double dbMin, double dbMax, double dbEpsilon)
 	_dbMax = dbMax;
 	_dbEpsilon = dbEpsilon;
 	_nEns = _vecSequences.size();
+
+	/*
+	// based on the first element
+	_dbMin = 1000;
+	_dbMax = -1000;
+	for (size_t i = 1; i < _nEns; i++)
+	{
+		for (size_t j = 0; j < _nLength; j++) {
+			_vecSequences[i][j] -= _vecSequences[0][j];
+			if (_vecSequences[i][j] > _dbMax) _dbMax = _vecSequences[i][j];
+			if (_vecSequences[i][j] < _dbMin) _dbMin = _vecSequences[i][j];
+		}
+	}
+	for (size_t j = 0; j < _nLength; j++) {
+		_vecSequences[0][j] = 0;
+	}
+	*/
+
+	/*
+	// based on the median element
+	vector<vector<IndexAndValue>> vectOrderedIndex;
+	// for each time steps
+	for (size_t i = 0; i < _nLength; i++)
+	{
+		// add each index and its value
+		vector<IndexAndValue> vecIndices;
+		for (size_t j = 0; j < _nEns; j++)
+		{
+			vecIndices.push_back(IndexAndValue(j, _vecSequences[j][i]));
+		}
+
+		// sort them
+		sort(vecIndices.begin(), vecIndices.end(), IndexAndValueCompare);
+
+		// add to the vector
+		vectOrderedIndex.push_back(vecIndices);
+	}
+	int nCenterIndex=0;
+	int nCenterCount = 0;
+	vector<int> vecCount;
+	for (size_t i = 0; i < _nEns; i++) vecCount.push_back(0);
+
+	for (size_t i = 0; i < _nLength; i++)
+	{
+		int nCenter1 = vectOrderedIndex[i][_nEns / 2]._nIndex;
+		int nCenter2 = vectOrderedIndex[i][_nEns / 2 + 1]._nIndex;
+		vecCount[nCenter1]++;
+		vecCount[nCenter2]++;
+		if (vecCount[nCenter1] > nCenterCount)
+		{
+			nCenterCount = vecCount[nCenter1];
+			nCenterIndex = nCenter1;
+		}
+		if (vecCount[nCenter2] > nCenterCount)
+		{
+			nCenterCount = vecCount[nCenter2];
+			nCenterIndex = nCenter2;
+		}
+		
+	}
+
+
+	_dbMin = 1000;
+	_dbMax = -1000;
+	for (size_t i = 0; i < _nEns; i++)
+	{
+		if (i!=nCenterIndex)
+		{
+			for (size_t j = 0; j < _nLength; j++) {
+				_vecSequences[i][j] -= _vecSequences[nCenterIndex][j];
+				if (_vecSequences[i][j] > _dbMax) _dbMax = _vecSequences[i][j];
+				if (_vecSequences[i][j] < _dbMin) _dbMin = _vecSequences[i][j];
+			}
+
+		}
+	}
+	for (size_t j = 0; j < _nLength; j++) {
+		_vecSequences[nCenterIndex][j] = 0;
+	}
+	*/
+
+	/*
+	// based on the mean at each timestep
+	// normalization
+	_dbMin = 1000;
+	_dbMax = -1000;
+
+	for (size_t j = 0; j < _nLength; j++) {
+		double dbMean = 0;
+		for (size_t i = 0; i < _nEns; i++)
+		{
+			dbMean+= _vecSequences[i][j];
+		}
+		dbMean /= _nEns;
+		for (size_t i = 0; i < _nEns; i++)
+		{
+			_vecSequences[i][j] -= dbMean;
+			if (_vecSequences[i][j] > _dbMax) _dbMax = _vecSequences[i][j];
+			if (_vecSequences[i][j] < _dbMin) _dbMin = _vecSequences[i][j];
+		}
+
+	}
+	*/
 }
 
 void Sequence2D::TrendDetectRootOnly() {
@@ -55,7 +170,7 @@ void Sequence2D::TrendDetectRootOnly() {
 	group0._nE = 0;
 	for (size_t i = 0; i < _nEns; i++)
 	{
-		group0._member.push_back(i);
+		group0._member.insert(i);
 	}
 
 	// start from the first step
@@ -67,13 +182,10 @@ void Sequence2D::TrendDetectRootOnly() {
 }
 
 void Sequence2D::printGroup() {
+	cout << "number of detected trends: " << _vecGroups.size() << endl;
 	for each (Group g in _vecGroups)
 	{
-#ifdef REVERSE
-		cout << _nWidth - 1 - g._nE << "\t" << _nWidth - 1 - g._nS << "\t";
-#else
-		cout <<"(" << g._nS << "," << g._nE << "):";
-#endif		
+		cout << "(" << g._nS << "," << g._nE << "):";
 		for each (int nMember in g._member)
 		{
 			cout << nMember << ",";
@@ -90,7 +202,7 @@ void Sequence2D::TrendDetect_2() {
 		group0._nS = i;
 		for (size_t i = 0; i < _nEns; i++)
 		{
-			group0._member.push_back(i);
+			group0._member.insert(i);
 		}
 
 		// start from the first step
@@ -125,7 +237,7 @@ void Sequence2D::TrendDetect_1() {
 		group0._nS = i;
 		for (size_t i = 0; i < _nEns; i++)
 		{
-			group0._member.push_back(i);
+			group0._member.insert(i);
 		}
 
 		// start from the first step
@@ -156,15 +268,6 @@ void Sequence2D::TrendDetect_1() {
 		}
 		cout << endl;
 	}
-}
-
-// cluster comparison function, used for sort
-bool IndexAndValueCompare(IndexAndValue iv1, IndexAndValue iv2) {
-	return iv1._dbValue < iv2._dbValue;
-}
-
-bool DBEventCompare(DBEpsilonEvent e1, DBEpsilonEvent e2) {
-	return e1._dbTime < e2._dbTime;
 }
 
 void Sequence2D::trendDetectStep(Group candidate, int nStep) {
@@ -198,7 +301,7 @@ void Sequence2D::trendDetectStep(Group candidate, int nStep) {
 				newCandidate._nS = candidate._nS;
 				for (size_t j = 0; j < length2; j++)
 				{
-					newCandidate._member.push_back(vecNewPointArray[i][j]._nIndex);
+					newCandidate._member.insert(vecNewPointArray[i][j]._nIndex);
 				}
 				// reset the start time of the new candidate
 				newCandidate._nS = calculateStart(newCandidate, nStep);
@@ -239,7 +342,7 @@ void Sequence2D::trendDetectStep_SplitOnly(Group candidate, int nStep) {
 				newCandidate._nS = candidate._nS;
 				for (size_t j = 0; j < length2; j++)
 				{
-					newCandidate._member.push_back(vecNewPointArray[i][j]._nIndex);
+					newCandidate._member.insert(vecNewPointArray[i][j]._nIndex);
 				}
 				// reset the start time of the new candidate
 				newCandidate._nS = calculateStart(newCandidate, nStep);
@@ -254,7 +357,6 @@ void Sequence2D::trendDetectStep_SplitOnly(Group candidate, int nStep) {
 void Sequence2D::addGroup(Group candidate) {
 	if (candidate._nE - candidate._nS>_nDelta && candidate._member.size()>_nM)
 	{
-		sort(candidate._member.begin(), candidate._member.end());
 		_vecGroups.push_back(candidate);
 	}
 }
@@ -265,9 +367,9 @@ int Sequence2D::calculateStart(Group g, int nCurrent) {
 	{
 		// 1.get the point in the new timestep
 		vector<IndexAndValue> vecNewPoints;
-		for (size_t i = 0, length = g._member.size(); i < length; i++)
+		for(int nIndex:g._member)
 		{
-			vecNewPoints.push_back(IndexAndValue(g._member[i], _vecSequences[g._member[i]][nS]));
+			vecNewPoints.push_back(IndexAndValue(nIndex, _vecSequences[nIndex][nS]));
 		}
 
 		// 2.sort them according to the value
@@ -290,9 +392,9 @@ int Sequence2D::calculateStart(Group g, int nCurrent) {
 vector<vector<IndexAndValue>> Sequence2D::generateSegments(const Group& candidate, int nStep) {
 	// 1.get the point in the new timestep
 	vector<IndexAndValue> vecNewPoints;
-	for (size_t i = 0, length = candidate._member.size(); i < length; i++)
+	for(int nIndex:candidate._member)
 	{
-		vecNewPoints.push_back(IndexAndValue(candidate._member[i], _vecSequences[candidate._member[i]][nStep]));
+		vecNewPoints.push_back(IndexAndValue(nIndex, _vecSequences[nIndex][nStep]));
 	}
 
 	// 2.sort them according to the value
@@ -359,7 +461,7 @@ void Sequence2D::startTrendDetect(vector<IndexAndValue> segment, int nStep) {
 	Group g;
 	g._nS = nStep;
 	for each (IndexAndValue iv in segment)
-		g._member.push_back(iv._nIndex);
+		g._member.insert(iv._nIndex);
 	trendDetectStep(g, nStep + 1);
 	int nLen = segment.size();
 	if (nLen < _nM + 1) return;
@@ -403,7 +505,7 @@ double Sequence2D::GetValue(int nSeq, int nIndex) {
 
 //===============epsilon event version
 void Sequence2D::TrendDetect() {
-	SortIndices();
+	sortIndices();
 
 	FindEvents();
 
@@ -411,33 +513,6 @@ void Sequence2D::TrendDetect() {
 
 	// print the result
 	printGroup();
-}
-
-void Sequence2D::SortIndices() {
-	// for each time steps
-	for (size_t i = 0; i < _nLength; i++)
-	{
-		// add each index and its value
-		vector<IndexAndValue> vecIndices;
-		for (size_t j = 0; j < _nEns; j++)
-		{
-			vecIndices.push_back(IndexAndValue(j, _vecSequences[j][i]));
-		}
-
-		// sort them
-		sort(vecIndices.begin(), vecIndices.end(), IndexAndValueCompare);
-
-		// get rank
-		vector<int> vecRank(_nEns);
-		for (size_t j = 0; j < _nEns; j++)
-		{
-			vecRank[vecIndices[j]._nIndex] = j;
-		}
-
-		// add to the vector
-		_vectOrderedIndex.push_back(vecIndices);
-		_vecRanks.push_back(vecRank);
-	}
 }
 
 void Sequence2D::FindEvents() {
@@ -580,7 +655,7 @@ void Sequence2D::generateGroupFromEventPair(EpsilonEvent eS, EpsilonEvent eE, ve
 		newGroup._nE = nTimeE;
 		for each (IndexAndValue iv in vecOrderedIndex[0])
 		{
-			newGroup._member.push_back(iv._nIndex);
+			newGroup._member.insert(iv._nIndex);
 		}
 		addGroup(newGroup);
 
@@ -590,95 +665,6 @@ void Sequence2D::generateGroupFromEventPair(EpsilonEvent eS, EpsilonEvent eE, ve
 
 
 // ===========double time step
-void Sequence2D::TrendDetectDB() {
-
-	clock_t begin = clock();
-
-	SortIndices();
-
-	FindDBEvents();
-
-	TrendDetectBasedOnDBEvents();
-
-	clock_t end = clock();
-	double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
-	// print the result
-	printDBGroup();
-
-
-	cout << "Trend Detection using time: " << elapsed_secs << endl;
-}
-
-void Sequence2D::FindDBEvents() {
-	// search each time step
-	for (size_t iStep = 0; iStep < _nLength; iStep++)
-	{
-		// check each index
-		for (size_t iSeq1 = 0; iSeq1 < _nEns - 1; iSeq1++)
-		{
-			size_t iSeq2 = iSeq1 + 1;
-			IndexAndValue iv1 = _vectOrderedIndex[iStep][iSeq1];
-			IndexAndValue iv2 = _vectOrderedIndex[iStep][iSeq2];
-			while (iv2._dbValue - iv1._dbValue<_dbEpsilon)
-			{
-				// while the two indices are directly epsilon-connected
-				// check for start event
-				if (iStep == 0)
-				{
-					// first time step
-					_vecStartDBEvents.push_back(DBEpsilonEvent(0, 0, iv1._nIndex, iv2._nIndex));
-				} 																			
-				else if(abs(_vecSequences[iv1._nIndex][iStep - 1] - _vecSequences[iv2._nIndex][iStep - 1])>_dbEpsilon)	// apart in last step
-				{
-					_vecStartDBEvents.push_back(DBEpsilonEvent(0, getEventTime(iStep-1,iStep,iv1._nIndex,iv2._nIndex), iv1._nIndex, iv2._nIndex));
-
-				}
-				// check for end event
-				if (iStep == _nLength - 1)
-				{
-					// last time step
-					_vecEndDBEvents.push_back(DBEpsilonEvent(1, _nLength - 1, iv1._nIndex, iv2._nIndex));
-				}
-				else if(abs(_vecSequences[iv1._nIndex][iStep + 1] - _vecSequences[iv2._nIndex][iStep + 1])>_dbEpsilon)	// apart in next step
-				{
-					double dbTime = getEventTime(iStep, iStep + 1, iv1._nIndex, iv2._nIndex);
-					_vecEndDBEvents.push_back(DBEpsilonEvent(1, dbTime, iv1._nIndex, iv2._nIndex));
-
-				}
-				// loop
-				iSeq2++;
-				if (iSeq2 == _nEns)
-				{
-					break;
-				}
-				else {
-					iv2 = _vectOrderedIndex[iStep][iSeq2];
-				}
-			}
-		}
-	}
-}
-
-void Sequence2D::TrendDetectBasedOnDBEvents() {
-	for each (DBEpsilonEvent startE in _vecStartDBEvents)
-	{
-		double dbTimeS = startE._dbTime;
-		for each(DBEpsilonEvent endE in _vecEndDBEvents) {
-			// check each event pair
-			double dbTimeE = endE._dbTime;
-			if (dbTimeE - dbTimeS < _nDelta) continue;
-			int nTimeS = (int)(dbTimeS + .999);
-			int nTimeE = (int)(dbTimeE);
-
-			vector<vector<IndexAndValue>> vecOrderedIndex;
-			for (size_t i = nTimeS; i <= nTimeE; i++)
-			{
-				vecOrderedIndex.push_back(_vectOrderedIndex[i]);
-			}
-			generateGroupFromDBEventPair(startE, endE, vecOrderedIndex);
-		}
-	}
-}
 
 void Sequence2D::generateGroupFromDBEventPair(DBEpsilonEvent eS, DBEpsilonEvent eE, vector<vector<IndexAndValue>> vecOrderedIndex) {
 	double dbTimeS = eS._dbTime;									// time of start event
@@ -774,7 +760,7 @@ void Sequence2D::generateGroupFromDBEventPair(DBEpsilonEvent eS, DBEpsilonEvent 
 	newGroup._dbE = dbTimeE;
 	for each (IndexAndValue iv in vecOrderedIndex[0])
 	{
-		newGroup._member.push_back(iv._nIndex);
+		newGroup._member.insert(iv._nIndex);
 	}
 	addDBGroup(newGroup);
 }
@@ -786,7 +772,8 @@ double Sequence2D::getEventTime(int nTime1, int nTime2, int nIndex1, int nIndex2
 	double dbV22 = _vecSequences[nIndex2][nTime2];
 
 	// at least one end point of seg1 is less than seg2
-	if (dbV21 < dbV11 || dbV22 < dbV12){
+	if (dbV11 - dbV21 > _dbEpsilon || dbV12-dbV22   > _dbEpsilon) {
+//	if (dbV21 < dbV11 || dbV22 < dbV12){
 		return nTime1 + (_dbEpsilon - dbV11 + dbV21) / (dbV12 - dbV11 - dbV22 + dbV21);
 	}
 	else{
@@ -795,39 +782,50 @@ double Sequence2D::getEventTime(int nTime1, int nTime2, int nIndex1, int nIndex2
 	
 }
 
-double Sequence2D::getValue(int nIndex, double dbTime) {
-	int nTime1 = (int)dbTime;
-	int nTime2 = nTime1 + 1;
-	double dbV1 = _vecSequences[nIndex][nTime1];
-	if (nTime1 == _nLength - 1) return dbV1;
-	double dbV2 = _vecSequences[nIndex][nTime2];
-	return dbV1 + (dbTime - nTime1)*(dbV2 - dbV1);
+void Sequence2D::getCrossEventTimes(double& dbTime1, double& dbTime2, int nTime1, int nTime2, int nIndex1, int nIndex2) {
+
+	double dbV11 = _vecSequences[nIndex1][nTime1];
+	double dbV12 = _vecSequences[nIndex1][nTime2];
+	double dbV21 = _vecSequences[nIndex2][nTime1];
+	double dbV22 = _vecSequences[nIndex2][nTime2];
+	dbTime1= nTime1 + (_dbEpsilon - dbV11 + dbV21) / (dbV12 - dbV11 - dbV22 + dbV21);
+	dbTime2= nTime1 + (-_dbEpsilon - dbV11 + dbV21) / (dbV12 - dbV11 - dbV22 + dbV21);
+	if (dbTime2<dbTime1)
+	{
+		double dbTemp = dbTime1;
+		dbTime1 = dbTime2;
+		dbTime2 = dbTemp;
+	}
 }
 
 void Sequence2D::addDBGroup(DBGroup candidate) {
-	sort(candidate._member.begin(), candidate._member.end());
-	// check if this candidates has been added
-	bool bDuplicate = false;
+	// check if this candidates has been added, only for the group from beginning
 	if (candidate._dbS<.001)
 	{
 		for each (DBGroup g in _vecDBGroups)
 		{
-			if (abs(candidate._dbE - g._dbE) < .001 && candidate._member.size()==g._member.size()) {
-				bDuplicate = true;
-				for (size_t i = 0,length=g._member.size(); i < length; i++)
-				{
-					if (candidate._member[i]!=g._member[i])
-					{
-						bDuplicate = false;
-						break;
-					}
-				}
-			}
+			if (abs(candidate._dbE - g._dbE)<.001 && (candidate._member == g._member))
+				return;
 		}
 	}
-	if (bDuplicate) return;
+
 	if (candidate._dbE - candidate._dbS>_nDelta && candidate._member.size()>_nM)
 	{
+		
+		// calculate radius
+		candidate._dbR = 0;
+		for (size_t i = int(candidate._dbS+.999); i < (int)candidate._dbE; i++)
+		{
+			double dbMin = 1000;
+			double dbMax = -1000;
+			for each (int nIndex in candidate._member)
+			{
+				if (_vecSequences[nIndex][i] > dbMax) dbMax = _vecSequences[nIndex][i];
+				if (_vecSequences[nIndex][i] < dbMin) dbMin = _vecSequences[nIndex][i];
+			}
+			double dbR = dbMax - dbMin;
+			if (dbR > candidate._dbR) candidate._dbR = dbR;
+		}
 		_vecDBGroups.push_back(candidate);
 	}
 }
@@ -862,54 +860,6 @@ double Sequence2D::GetDBValue(double dbTime, int nIndex) {
 }
 
 // ===========improved algorithm
-void Sequence2D::TrendDetectDBImproved() {
-
-	clock_t begin = clock();
-
-
-	SortIndices();
-
-	FindDBEvents();
-
-	TrendDetectBasedOnDBEventsImproved();
-	clock_t end = clock();
-	double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
-
-	// print the result
-	printDBGroup();
-	cout << "Trend Detection using time: " << elapsed_secs << endl;
-}
-
-void Sequence2D::TrendDetectBasedOnDBEventsImproved() {
-	// sort end events
-	sort(_vecEndDBEvents.begin(), _vecEndDBEvents.end(), DBEventCompare);
-	sort(_vecStartDBEvents.begin(), _vecStartDBEvents.end(), DBEventCompare);
-
-	// search for groups
-	for each (DBEpsilonEvent startE in _vecStartDBEvents)
-	{
-		double dbTimeS = startE._dbTime;
-		int nTimeS = (int)(dbTimeS + .999);		
-
-		// build the arrangement from the time of the start event
-		vector<vector<IndexAndValue>> vecOrderedIndex;
-		for (size_t i = nTimeS; i <_nLength; i++)
-		{
-			vecOrderedIndex.push_back(_vectOrderedIndex[i]);
-		}
-
-		for each(DBEpsilonEvent endE in _vecEndDBEvents) {
-			// check each event pair
-			double dbTimeE = endE._dbTime;
-			if (dbTimeE - dbTimeS < _nDelta) continue;
-			int nTimeE = (int)(dbTimeE);
-
-
-			generateGroupFromDBEventPairImproved(startE, endE, vecOrderedIndex);
-			if (vecOrderedIndex[0].size() < _nM) break;
-		}
-	}
-}
 
 void Sequence2D::generateGroupFromDBEventPairImproved(DBEpsilonEvent eS, DBEpsilonEvent eE, vector<vector<IndexAndValue>>& vecOrderedIndex) {
 //	if (abs(eS._dbTime - 84.6999) < .001&&abs(eE._dbTime - 90) < .001) {
@@ -1049,7 +999,7 @@ void Sequence2D::generateGroupFromDBEventPairImproved(DBEpsilonEvent eS, DBEpsil
 	newGroup._dbE = dbTimeE;
 	for each (IndexAndValue iv in vecOrderedIndex[0])
 	{
-		newGroup._member.push_back(iv._nIndex);
+		newGroup._member.insert(iv._nIndex);
 	}
 	addDBGroup(newGroup);
 
@@ -1119,4 +1069,61 @@ void Sequence2D::splitArrangement(vector<int> vecRank, int nRank, std::vector<st
 				vecOrderedIndex[ii].erase(vecOrderedIndex[ii].begin() + jj);
 		}
 	}
+}
+
+Sequence2D* Sequence2D::GenerateInstance(SequenceType type) {
+	switch (type)
+	{
+	case Sequence2D::ST_Van:
+		return new Sequence2DVan();
+		break;
+	case Sequence2D::ST_Buchin:
+		return new Sequence2DBuchin();
+		break;
+	case Sequence2D::ST_Jeung:
+		return new Sequence2DJeung();
+		break;
+	default:
+		return NULL;
+		break;
+	}
+}
+
+
+//=================used in both class=================
+
+void Sequence2D::sortIndices() {
+	// for each time steps
+	for (size_t i = 0; i < _nLength; i++)
+	{
+		// add each index and its value
+		vector<IndexAndValue> vecIndices;
+		for (size_t j = 0; j < _nEns; j++)
+		{
+			vecIndices.push_back(IndexAndValue(j, _vecSequences[j][i]));
+		}
+
+		// sort them
+		sort(vecIndices.begin(), vecIndices.end(), IndexAndValueCompare);
+
+		// get rank
+		vector<int> vecRank(_nEns);
+		for (size_t j = 0; j < _nEns; j++)
+		{
+			vecRank[vecIndices[j]._nIndex] = j;
+		}
+
+		// add to the vector
+		_vectOrderedIndex.push_back(vecIndices);
+		_vecRanks.push_back(vecRank);
+	}
+}
+
+double Sequence2D::getValue(int nIndex, double dbTime) {
+	int nTime1 = (int)dbTime;
+	int nTime2 = nTime1 + 1;
+	double dbV1 = _vecSequences[nIndex][nTime1];
+	if (nTime1 == _nLength - 1) return dbV1;
+	double dbV2 = _vecSequences[nIndex][nTime2];
+	return dbV1 + (dbTime - nTime1)*(dbV2 - dbV1);
 }
