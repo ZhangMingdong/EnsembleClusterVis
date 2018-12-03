@@ -16,6 +16,7 @@
 #include "MyMapWidget.h"
 #include "MyChartWidget.h"
 #include "MeteModel.h"
+#include "ArtificialModel.h"
 
 #include "DisplayCtrlWidget.h"
 
@@ -30,6 +31,9 @@ const QString ShowGradientE("ShowGradientE");
 const QString ShowLineChart("ShowLineChart");
 const QString ShowContourLineTruth("ShowContourLineTruth");
 const QString ShowContourLine("ShowContourLine");
+const QString ShowContourLineSorted("ShowContourLineSorted");
+const QString ShowContourLineSortedSDF("ShowContourLineSortedSDF");
+const QString ShowContourLineSDF("ShowContourLineSDF");
 const QString ShowContourLineMin("ShowContourLineMin");
 const QString ShowContourLineMax("ShowContourLineMax");
 const QString ShowContourLineMean("ShowContourLineMean");
@@ -50,6 +54,7 @@ MainWindow::MainWindow()
 	setWindowState(Qt::WindowMaximized);
 
 	_pModel = MeteModel::CreateModel();
+	//_pModel = MeteModel::CreateModel(true);
 
 	createSceneAndView();
 	createActions();
@@ -68,6 +73,9 @@ MainWindow::MainWindow()
 	viewShowLineChartAction->setChecked(settings.value(ShowLineChart, true).toBool());
 	viewShowContourLineTruthAction->setChecked(settings.value(ShowContourLineTruth, true).toBool());
 	viewShowContourLineAction->setChecked(settings.value(ShowContourLine, true).toBool());
+	viewShowContourLineSortedAction->setChecked(settings.value(ShowContourLineSorted, true).toBool());
+	viewShowContourLineSortedSDFAction->setChecked(settings.value(ShowContourLineSortedSDF, true).toBool());
+	viewShowContourLineSDFAction->setChecked(settings.value(ShowContourLineSDF, true).toBool());
 	viewShowContourLineMinAction->setChecked(settings.value(ShowContourLineMin, true).toBool());
 	viewShowContourLineMaxAction->setChecked(settings.value(ShowContourLineMax, true).toBool());
 	viewShowContourLineMeanAction->setChecked(settings.value(ShowContourLineMean, true).toBool());
@@ -84,17 +92,25 @@ void MainWindow::createSceneAndView(){
 	_view3D = new MyMapWidget;
 	_view3D->SetModelE(_pModel);
 
-	QSplitter* splitter = new QSplitter();
-	splitter->setOrientation(Qt::Vertical);
-	splitter->addWidget(_view3D);
+	bool _bChart = false;	// if show the chart
+	if (_bChart) {
+		QSplitter* splitter = new QSplitter();
+		splitter->setOrientation(Qt::Vertical);
+		splitter->addWidget(_view3D);
 
-	_viewChart = new MyChartWidget;
-	_viewChart->SetModelE(_pModel);
-	splitter->addWidget(_viewChart);
+		_viewChart = new MyChartWidget;
+		_viewChart->SetModelE(_pModel);
+		splitter->addWidget(_viewChart);
 
-	setCentralWidget(splitter);
+		setCentralWidget(splitter);
 
-	//setCentralWidget(_view3D);
+	}
+	else {
+		setCentralWidget(_view3D);
+	}
+
+
+	//
 }
 
 void MainWindow::createDockWidgets() {
@@ -189,6 +205,9 @@ void MainWindow::populateMenusAndToolBars()
 //		<< viewShowLineChartAction
 		<< viewShowContourLineTruthAction
 		<< viewShowContourLineAction
+		<< viewShowContourLineSortedAction
+		<< viewShowContourLineSDFAction
+		<< viewShowContourLineSortedSDFAction
 		<< viewShowContourLineMinAction
 		<< viewShowContourLineMaxAction
 		<< viewShowContourLineMeanAction
@@ -266,6 +285,20 @@ void MainWindow::createActions()
 	viewShowContourLineAction->setIcon(QIcon(":/images/e.png"));
 	viewShowContourLineAction->setCheckable(true);
 
+	viewShowContourLineSDFAction = new QAction(tr("Show Contour of SDF"), this);
+	viewShowContourLineSDFAction->setIcon(QIcon(":/images/e.png"));
+	viewShowContourLineSDFAction->setCheckable(true);
+
+
+	viewShowContourLineSortedAction = new QAction(tr("Show Sorted Contour of E"), this);
+	viewShowContourLineSortedAction->setIcon(QIcon(":/images/e.png"));
+	viewShowContourLineSortedAction->setCheckable(true);
+
+
+	viewShowContourLineSortedSDFAction = new QAction(tr("Show Sorted Contour of SDF"), this);
+	viewShowContourLineSortedSDFAction->setIcon(QIcon(":/images/e.png"));
+	viewShowContourLineSortedSDFAction->setCheckable(true);
+
 	viewShowContourLineMinAction = new QAction(tr("Show Contour of Min"), this);
 	viewShowContourLineMinAction->setIcon(QIcon(":/images/min.png"));
 	viewShowContourLineMinAction->setCheckable(true);
@@ -300,6 +333,9 @@ void MainWindow::createConnections(){
 	connect(viewShowLineChartAction, SIGNAL(toggled(bool)), _view3D, SLOT(viewShowLineChart(bool)));
 	connect(viewShowContourLineTruthAction, SIGNAL(toggled(bool)), _view3D, SLOT(viewShowContourLineTruth(bool)));
 	connect(viewShowContourLineAction, SIGNAL(toggled(bool)), _view3D, SLOT(viewShowContourLine(bool)));
+	connect(viewShowContourLineSortedAction, SIGNAL(toggled(bool)), _view3D, SLOT(viewShowContourLineSorted(bool)));
+	connect(viewShowContourLineSortedSDFAction, SIGNAL(toggled(bool)), _view3D, SLOT(viewShowContourLineSortedSDF(bool)));
+	connect(viewShowContourLineSDFAction, SIGNAL(toggled(bool)), _view3D, SLOT(viewShowContourLineSDF(bool)));
 	connect(viewShowContourLineMinAction, SIGNAL(toggled(bool)), _view3D, SLOT(viewShowContourLineMin(bool)));
 	connect(viewShowContourLineMaxAction, SIGNAL(toggled(bool)), _view3D, SLOT(viewShowContourLineMax(bool)));
 	connect(viewShowContourLineMeanAction, SIGNAL(toggled(bool)), _view3D, SLOT(viewShowContourLineMean(bool)));
@@ -314,6 +350,7 @@ void MainWindow::createConnections(){
 	connect(_pDisplayCtrlWidget, SIGNAL(EOFChanged(int)), _view3D, SLOT(updateEOF(int)));
 	connect(_pDisplayCtrlWidget, SIGNAL(MemberChanged(int)), _view3D, SLOT(updateMember(int)));
 	connect(_pDisplayCtrlWidget, SIGNAL(EnsClusterChanged(int)), _view3D, SLOT(updateEnsCluster(int)));
+	connect(_pDisplayCtrlWidget, SIGNAL(ContourLevelChanged(int)), _view3D, SLOT(updateContourLevel(int)));
 
 
 }
@@ -336,6 +373,7 @@ void MainWindow::closeEvent(QCloseEvent *event)
 		settings.setValue(ShowContourLineTruth, viewShowContourLineTruthAction->isChecked());
 		settings.setValue(ShowContourLine, viewShowContourLineAction->isChecked());
 		settings.setValue(ShowContourLineMin, viewShowContourLineMinAction->isChecked());
+		settings.setValue(ShowContourLineSDF, viewShowContourLineSDFAction->isChecked());
 		settings.setValue(ShowContourLineMax, viewShowContourLineMaxAction->isChecked());
 		settings.setValue(ShowContourLineMean, viewShowContourLineMeanAction->isChecked());
 		settings.setValue(ShowClusterBS, viewShowClusterBSAction->isChecked());

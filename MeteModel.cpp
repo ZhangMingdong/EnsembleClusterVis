@@ -23,6 +23,8 @@
 
 #include "DBSCANClustering.h"
 
+#include "ArtificialModel.h"
+
 
 
 
@@ -63,9 +65,17 @@ double PointToSegDist(double x, double y, double x1, double y1, double x2, doubl
 	return sqrt((x - px) * (x - px) + (y - py) * (y - py));
 }
 
+// 判断点在线段左侧还是右侧，网上找的公式，来不及仔细想了
+bool checkLeft(double x, double y, double x1, double y1, double x2, double y2) {
+	double dx1 = x2 - x1;
+	double dy1 = y2 - y1;
+	double dx0 = x1 - x;
+	double dy0 = y1 - y;
+	return dx0 * dy1 - dy0 * dx1 > 0;
+}
+
 MeteModel::MeteModel()
 {
-
 	_nWidth = g_nWidth;
 	_nHeight = g_nHeight;
 	_nFocusX = g_nFocusX;
@@ -172,6 +182,7 @@ void MeteModel::InitModel(int nEnsembleLen, int nWidth, int nHeight, int nFocusX
 	//	readDipValue("../../data/t2-2007-2017-jan-144 and 240h-50(1Degree, single timestep,skip 3)_dipValue.txt");
 	readDipValue("../../data/t2-2007-2017-jan-144 and 240h-50(1Degree, single timestep)_dipValue_P.txt");
 #endif
+
 	// 4.statistic
 	_pData->DoStatistic();
 
@@ -184,9 +195,27 @@ void MeteModel::InitModel(int nEnsembleLen, int nWidth, int nHeight, int nFocusX
 	for (size_t i = 0; i < _nEnsembleLen; i++)
 	{
 		// spaghetti
-		QList<ContourLine> contour;
-		_generator.Generate(_pData->GetLayer(i), contour, g_fThreshold, _nWidth, _nHeight, _nFocusX, _nFocusY, _nFocusW, _nFocusH);
-		_listContour.push_back(contour);
+		{
+			QList<ContourLine> contour;
+			_generator.Generate(_pData->GetLayer(i), contour, g_fThreshold, _nWidth, _nHeight, _nFocusX, _nFocusY, _nFocusW, _nFocusH);
+			_listContour.push_back(contour);
+
+			// calculate sdf
+			calculateSDF(_pData->GetData(i), _pData->GetSDF(i), _nWidth, _nHeight, g_fThreshold, contour);
+		}
+		// sorted spaghetti
+		{
+			QList<ContourLine> contour;
+			_generator.Generate(_pData->GetSortedLayer(i), contour, g_fThreshold, _nWidth, _nHeight, _nFocusX, _nFocusY, _nFocusW, _nFocusH);
+			_listContourSorted.push_back(contour);
+		}
+		// contours from SDF
+		{
+			QList<ContourLine> contour;
+			_generator.Generate(_pData->GetSDF(i), contour, 0, _nWidth, _nHeight, _nFocusX, _nFocusY, _nFocusW, _nFocusH);
+			_listContourSDF.push_back(contour);
+		}
+
 		// for each isovalue
 		for (size_t j = 0; j < g_nIsoValuesLen; j++)
 		{
@@ -195,6 +224,15 @@ void MeteModel::InitModel(int nEnsembleLen, int nWidth, int nHeight, int nFocusX
 			_listMemberContour[i].push_back(contour);
 		}
 	}
+	// contours from sorted SDF
+	_pData->BuildSortedSDF();
+	for (size_t i = 0; i < _nEnsembleLen; i++)
+	{
+		QList<ContourLine> contour;
+		_generator.Generate(_pData->GetSortedSDF(i), contour, 0, _nWidth, _nHeight, _nFocusX, _nFocusY, _nFocusW, _nFocusH);
+		_listContourSortedSDF.push_back(contour);
+	}
+
 	// foreach ensemble cluster
 	for (size_t i = 0; i < g_nEnsClusterLen; i++)
 	{
@@ -216,6 +254,7 @@ void MeteModel::InitModel(int nEnsembleLen, int nWidth, int nHeight, int nFocusX
 	}
 
 	generateContourImp(_listContourMinE, _listContourMaxE, _listUnionAreaE);
+
 
 	// specializaed initialization
 	initializeModel();
@@ -364,6 +403,36 @@ void MeteModel::calculateSDF(const double* arrData, double* arrSDF, int nW, int 
 	}
 }
 
+void MeteModel::calculateSDF_v2(const double* arrData, double* arrSDF, int nW, int nH, double isoValue, QList<ContourLine> contour) {
+	bool bLeft = false;
+	for (size_t i = 0; i < nH; i++)
+	{
+		for (size_t j = 0; j < nW; j++)
+		{
+			double dbMinDis = nW * nH;
+			for (size_t k = 0, lenK = contour.length(); k < lenK; k++)
+			{
+				for (size_t l = 0, lenL = contour[k]._listPt.length() - 1; l < lenL; l++)
+				{
+					double dbDis = PointToSegDist(j, i
+						, contour[k]._listPt[l].x(), contour[k]._listPt[l].y()
+						, contour[k]._listPt[l + 1].x(), contour[k]._listPt[l + 1].y());
+					if (dbDis < dbMinDis)
+					{
+						dbMinDis = dbDis;
+						bLeft=checkLeft(j, i
+							, contour[k]._listPt[l].x(), contour[k]._listPt[l].y()
+							, contour[k]._listPt[l + 1].x(), contour[k]._listPt[l + 1].y());
+					}
+
+				}
+			}
+			//if (arrData[i*_nWidth + j] < isoValue) dbMinDis = -dbMinDis;	// sign
+			arrSDF[i*_nWidth + j] = dbMinDis*(bLeft?1:-1);
+		}
+	}
+}
+
 void MeteModel::buildTextureThresholdVariance() {
 	const double* pData = _pData->GetVari(_nSmooth);
 	_nThresholdedGridPoints = 0;
@@ -391,6 +460,33 @@ void MeteModel::buildTextureThresholdVariance() {
 			}
 		}
 	}
+}
+
+
+void MeteModel::buildTextureSDF() {
+	const double* pData = _pData->GetSDF(_nMember? _nMember-1: _nMember);
+	ColorMap* colormap = ColorMap::GetInstance(ColorMap::CP_EOF);
+
+
+	double dbMax = -1000;
+	double dbMin = 1000;
+	for (int i = _nFocusY, iLen = _nFocusY + _nFocusH; i < iLen; i++) {
+		for (int j = _nFocusX, jLen = _nFocusX + _nFocusW; j < jLen; j++) {
+
+			int nIndex = i * _nWidth + j;
+			int nIndexFocus = (i - _nFocusY)*_nFocusW + j - _nFocusX;
+			MYGLColor color = colormap->GetColor(pData[nIndex]);
+			// using transparency and the blue tunnel
+			_dataTexture[4 * nIndexFocus + 0] = color._rgb[0];
+			_dataTexture[4 * nIndexFocus + 1] = color._rgb[1];
+			_dataTexture[4 * nIndexFocus + 2] = color._rgb[2];
+			_dataTexture[4 * nIndexFocus + 3] = (GLubyte)255;
+			if (pData[nIndex] > dbMax) dbMax = pData[nIndex];
+			if (pData[nIndex] < dbMin) dbMin = pData[nIndex];
+		}
+	}
+		qDebug() << "Max: " << dbMax;
+		qDebug() << "Min: " << dbMin;
 }
 
 void MeteModel::buildTextureThresholdDipValue() {
@@ -793,14 +889,59 @@ QList<QList<ContourLine>> MeteModel::GetContour()
 		}
 		else if (_nMember)
 		{
-			return _listMemberContour[_nMember - 1];
+			//return _listMemberContour[_nMember - 1];
+			QList<QList<ContourLine>> result;
+			result.push_back(_listContour[_nMember - 1]);
+			return result;
+
 		}
 		else return _listContour;
 	}
 }
 
-MeteModel* MeteModel::CreateModel() {
-	MeteModel* pModel = NULL;
+// add item from source to target
+void addContour(const QList<QList<ContourLine>>& source, QList<QList<ContourLine>>& target, int nIndex0, int nIndex1, int nLevel) {
+	if (nIndex1 > nIndex0+1) {
+		int nMedian = (nIndex1 + nIndex0) / 2;
+		target.push_back(source[nMedian]);
+		if (nLevel > 0) {
+			addContour(source, target, nIndex0, nMedian, nLevel - 1);
+			addContour(source, target, nMedian, nIndex1, nLevel - 1);
+		}
+	}
+}
+
+QList<QList<ContourLine>> MeteModel::GetContourSorted()
+{
+	QList<QList<ContourLine>> listResult;
+	addContour(_listContourSorted, listResult, 0, _listContourSorted.size(), _nContourLevel);
+	return listResult;
+}
+
+
+QList<QList<ContourLine>> MeteModel::GetContourSortedSDF()
+{
+	QList<QList<ContourLine>> listResult;
+	addContour(_listContourSortedSDF, listResult, 0, _listContourSortedSDF.size(), _nContourLevel);
+	return listResult;
+}
+
+
+QList<QList<ContourLine>> MeteModel::GetContourSDF()
+{
+	if (_nMember)
+	{
+		//return _listMemberContour[_nMember - 1];
+		QList<QList<ContourLine>> result;
+		result.push_back(_listContourSDF[_nMember - 1]);
+		return result;
+	}
+	else return _listContourSDF;
+}
+
+MeteModel* MeteModel::CreateModel(bool bA) {
+	//MeteModel* pModel = new MeteModel();
+	MeteModel* pModel = bA ? new ArtificialModel() : new MeteModel();
 	int nWidth = g_nWidth;
 	int nHeight		= g_nHeight		;
 	int nFocusX		= g_nFocusX		;
@@ -821,29 +962,21 @@ MeteModel* MeteModel::CreateModel() {
 
 	switch (g_usedModel)
 	{
-	case PRE_CMA:
-		pModel = new MeteModel();
+	case PRE_CMA:		
 		pModel->InitModel(14, nWidth, nHeight, nFocusX, nFocusY, nFocusW, nFocusH, "../../data/data10/pre-mod-cma-20160802-00-96.txt"); break;
 	case PRE_CPTEC:
-		pModel = new MeteModel();
 		pModel->InitModel(14, nWidth, nHeight, nFocusX, nFocusY, nFocusW, nFocusH, "../../data/data10/pre-mod-cptec-20160802-00-96.txt"); break;
 	case PRE_ECCC:
-		pModel = new MeteModel();
 		pModel->InitModel(20, nWidth, nHeight, nFocusX, nFocusY, nFocusW, nFocusH, "../../data/data10/pre-mod-eccc-20160802-00-96.txt"); break;
 	case PRE_ECMWF:
-		pModel = new MeteModel();
 		pModel->InitModel(50, nWidth, nHeight, nFocusX, nFocusY, nFocusW, nFocusH, "../../data/data10/pre-mod-ecmwf-20160802-00-96.txt"); break;
 	case PRE_JMA:
-		pModel = new MeteModel();
 		pModel->InitModel(26, nWidth, nHeight, nFocusX, nFocusY, nFocusW, nFocusH, "../../data/data10/pre-mod-jma-20160802-00-96.txt"); break;
 	case PRE_KMA:
-		pModel = new MeteModel();
 		pModel->InitModel(24, nWidth, nHeight, nFocusX, nFocusY, nFocusW, nFocusH, "../../data/data10/pre-mod-kma-20160802-00-96.txt"); break;
 	case PRE_NCEP:
-		pModel = new MeteModel();
 		pModel->InitModel(20, nWidth, nHeight, nFocusX, nFocusY, nFocusW, nFocusH, "../../data/data10/pre-mod-ncep-20160802-00-96.txt"); break;
 	case T2_ECMWF:
-		pModel = new MeteModel();
 		pModel->InitModel(50, nWidth, nHeight, nFocusX, nFocusY, nFocusW, nFocusH
 			//, "../../data/t2-2007-2017-jan-144 and 240h-50(1Degree).txt", false
 			//, "../../data/t2-2007-2017-jan-144 and 240h-50(1Degree, single timestep).txt", false
@@ -874,7 +1007,6 @@ MeteModel* MeteModel::CreateModel() {
 		*/
 		break;
 	case PRE_ECMWF_2017:
-		pModel = new MeteModel();
 
 		pModel->InitModel(50, nWidth, nHeight, nFocusX, nFocusY, nFocusW, nFocusH, g_strFileName);
 //		pModel->InitModel(50, nWidth, nHeight, nFocusX, nFocusY, nFocusW, nFocusH, "../../data/Pre_20171016_0-360-by-6.txt"); 
@@ -1018,6 +1150,10 @@ void MeteModel::SetEnsCluster(int nEnsClusterr) {
 	regenerateTexture();
 }
 
+void MeteModel::SetContourLevel(int nLevel) {
+	_nContourLevel = nLevel;
+}
+
 void MeteModel::regenerateTexture() {
 	if (!_dataTexture)
 	{
@@ -1044,6 +1180,9 @@ void MeteModel::regenerateTexture() {
 		break;
 	case MeteModel::bg_dipValueThreshold:
 		buildTextureThresholdDipValue();
+		break;
+	case MeteModel::bg_SDF:
+		buildTextureSDF();
 		break;
 	default:
 		break;

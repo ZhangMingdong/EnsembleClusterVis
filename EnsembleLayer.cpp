@@ -202,6 +202,34 @@ void EnsembleLayer::draw(DisplayStates states){
 			}
 		}		
 	}
+
+	if (states._bShowContourLineSorted)
+	{
+		glColor4f(.8, 0.2, 0.0, .8);
+		QList<QList<ContourLine>> contours = _pModel->GetContourSorted();
+		for (int i = 0; i < contours.size(); i++)
+		{
+			drawContourLine(contours[i]);
+		}
+	}
+	if (states._bShowContourLineSortedSDF)
+	{
+		glColor4f(.8, 0.2, 0.0, .8);
+		QList<QList<ContourLine>> contours = _pModel->GetContourSortedSDF();
+		for (int i = 0; i < contours.size(); i++)
+		{
+			drawContourLine(contours[i]);
+		}
+	}
+	if (states._bShowContourLineSDF)
+	{
+		glColor4f(.8, 0.2, 0.0, .8);
+		QList<QList<ContourLine>> contours = _pModel->GetContourSDF();
+		for (int i = 0; i < contours.size(); i++)
+		{
+			drawContourLine(contours[i]);
+		}
+	}
 	if (states._bShowGradientE)
 	{
 		for (size_t i = 0; i < g_nEnsembles; i++)
@@ -235,6 +263,7 @@ void EnsembleLayer::ReloadTexture() {
 //	_dataTexture = _pModel->generateTextureRange(0);
 //	_dataTexture = _pModel->generateTextureMean();
 //	_dataTexture = _pModel->generateTextureDiscreteSummary();
+
 	_dataTexture = _pModel->generateTextureNew();
 //	_dataTexture = _pModel->generateTextureSDF();
 

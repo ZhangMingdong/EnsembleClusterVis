@@ -16,6 +16,9 @@ DataField::DataField(int w, int h, int l):_nW(w),_nH(h),_nL(l)
 	_gridMean = new double[w*h];
 	_gridUMax = new double[w*h];
 	_gridUMin = new double[w*h];
+	_pSortedBuf = new double[w*h*l];
+	_pSDF = new double[w*h*l];
+	_pSortedSDF = new double[w*h*l];
 
 	for (size_t i = 0; i < g_nEOFLen; i++)
 	{
@@ -32,6 +35,9 @@ DataField::~DataField()
 	delete[] _gridUMax;
 	delete[] _gridUMin;
 	delete[] _pBuf;
+	delete[] _pSortedBuf;
+	delete[] _pSDF;
+	delete[] _pSortedSDF;
 	for (size_t i = 0; i < _nSmooth; i++)
 	{
 		delete[] _gridVarSmooth[i];
@@ -45,6 +51,10 @@ DataField::~DataField()
 const double* DataField::GetLayer(int l) {
 	return _pBuf + l*_nW*_nH;
 }
+const double* DataField::GetSortedLayer(int l) {
+	return _pSortedBuf + l * _nW*_nH;
+}
+
 
 double* DataField::GetEditableLayer(int l) {
 	return _pBuf + l*_nW*_nH;
@@ -97,7 +107,35 @@ double DataField::GetData(int l, int r, int c) {
 	return _pBuf[l*_nW*_nH + r*_nW + c];
 }
 
+void DataField::sortBuf(const double* pS, double* pD) {
+
+	for (int i = 0, nSize = _nW * _nH; i < nSize; i++) {
+		for (int j = 0; j < _nL; j++) {
+			double dbValue = pS[j*nSize + i];
+			int k = 0;
+			while (k < j && pD[k*nSize + i] < dbValue) k++;
+			int l = j;
+			while (l > k) {
+				pD[l*nSize + i] = pD[(l - 1)*nSize + i];
+				l--;
+			}
+			pD[k*nSize + i] = dbValue;
+		}
+	}
+}
+void DataField::buildSortedBuf() {
+	sortBuf(_pBuf, _pSortedBuf);
+}
+
+
+void DataField::BuildSortedSDF() {
+	sortBuf(_pSDF, _pSortedSDF);
+}
+
 void DataField::DoStatistic() {
+	buildSortedBuf();
+
+
 	int nLen = _nW*_nH;
 	// for each grid point
 	for (int i = 0; i < nLen; i++)

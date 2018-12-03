@@ -11,6 +11,7 @@
 class MyMapWidget;
 class MyChartWidget;
 class MeteModel;
+class ArtificialModel;
 
 class DisplayCtrlWidget;
 
@@ -32,6 +33,9 @@ private:	// action
 	QAction *viewShowLineChartAction;
 	QAction *viewShowContourLineTruthAction;
 	QAction *viewShowContourLineAction;
+	QAction *viewShowContourLineSortedAction;
+	QAction *viewShowContourLineSortedSDFAction;
+	QAction *viewShowContourLineSDFAction;
 	QAction *viewShowContourLineMinAction;
 	QAction *viewShowContourLineMaxAction;
 	QAction *viewShowContourLineMeanAction;

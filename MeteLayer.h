@@ -30,6 +30,9 @@ public:
 		bool _bShowUnionE = false;
 		bool _bShowGradientE = false;
 		bool _bShowContourLine = false;
+		bool _bShowContourLineSorted = false;
+		bool _bShowContourLineSDF = false;
+		bool _bShowContourLineSortedSDF = false;
 		bool _bShowBeliefEllipse = false;
 	};
 public:

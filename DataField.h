@@ -22,6 +22,12 @@ private:
 	double* _gridMean;				// mean of each grid among different ensemble results
 	double* _gridUMax;				// maximum of union of each grid among different ensemble results
 	double* _gridUMin;				// minimum of union of each grid among different ensemble results
+
+	double* _pSortedBuf;			// data sorted at each grid point
+	double* _pSDF;					// data of signed distance function
+	double* _pSortedSDF;			// data of signed distance function
+
+
 	int _nW;						// width
 	int _nH;						// height
 	int _nL;						// number of ensemble members
@@ -31,6 +37,7 @@ private:
 public:
 	// get the l'th layer
 	const double* GetLayer(int l);
+	const double* GetSortedLayer(int l);
 	// get variance, nSmooth: level of smooth
 	const double* GetVari(int nSmooth=0);
 	const double* GetEOF(int nSeq=0);
@@ -48,6 +55,10 @@ public:
 	double GetData(int l, int bias);
 	double GetData(int l, int r, int c);
 	const double* GetData() { return _pBuf; }
+	const double* GetData(int l) { return _pBuf+l*_nW*_nH; }
+	double* GetSDF() { return _pSDF; }
+	double* GetSDF(int l) { return _pSDF + l * _nW*_nH; }
+	double* GetSortedSDF(int l) { return _pSortedSDF + l * _nW*_nH; }
 	void DoStatistic();
 	/*
 		generate clustered data using the labels
@@ -65,5 +76,12 @@ public:
 private:
 	// smooth the variance to level nSmooth
 	void smoothVar(int nSmooth);
+
+private:
+	void sortBuf(const double* pS, double* pD);	// sort source to target
+	void buildSortedBuf();			// build the sorted buf from buf
+public:
+	void BuildSortedSDF();
+
 };
 

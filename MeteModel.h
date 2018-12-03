@@ -68,6 +68,9 @@ public:
 	virtual QList<ContourLine> GetContourMax(){ return _listContourMaxE; }
 	virtual QList<ContourLine> GetContourMean(){ return _listContourMeanE; }
 	virtual QList<QList<ContourLine>> GetContour();
+	virtual QList<QList<ContourLine>> GetContourSorted();
+	virtual QList<QList<ContourLine>> GetContourSDF();
+	virtual QList<QList<ContourLine>> GetContourSortedSDF();
 	virtual QList<QList<ContourLine>> GetContourBrushed();
 	virtual QList<QList<ContourLine>> GetContourNotBrushed();
 	virtual QList<UnCertaintyArea*> GetUncertaintyArea(){ return _listUnionAreaE; }
@@ -102,6 +105,8 @@ protected:
 		contour:	the generated contour
 	*/
 	void calculateSDF(const double* arrData, double* arrSDF, int nW, int nH, double isoValue, QList<ContourLine> contour);
+	// use direction instead of isovalue
+	void calculateSDF_v2(const double* arrData, double* arrSDF, int nW, int nH, double isoValue, QList<ContourLine> contour);
 	
 	// space segmentation
 	void generateContourImp(const QList<ContourLine>& contourMin, const QList<ContourLine>& contourMax, QList<UnCertaintyArea*>& areas);
@@ -120,7 +125,8 @@ public:
 		bg_dipValueThreshold,	// thresholded dip value
 		bg_EOF,					// EOF
 		bg_Obs,					// obs
-		bg_err					// error
+		bg_err,					// error
+		bg_SDF					// SDF
 	};
 protected:
 	// using which background function
@@ -145,6 +151,9 @@ protected:
 	QList<ContourLine> _listContourMaxE;				// list of contours of maximum of E
 	QList<ContourLine> _listContourMeanE;				// list of contours of mean of E
 	QList<QList<ContourLine>> _listContour;				// list of contours of ensemble members
+	QList<QList<ContourLine>> _listContourSorted;		// list of contours of sorted ensemble members
+	QList<QList<ContourLine>> _listContourSDF;			// list of contours generated form SDF
+	QList<QList<ContourLine>> _listContourSortedSDF;	// list of contours generated form sorted SDF
 	QList<QList<ContourLine>> _listMemberContour[g_nEnsembles];			// list of contours of each ensemble member
 	QList<QList<ContourLine>> _listEnsClusterContour[g_nEnsClusterLen];			// list of contours of each ensemble cluster
 	QList<QList<ContourLine>> _listContourBrushed;		// list of brushed contours of ensemble members
@@ -207,6 +216,10 @@ private:
 
 	// generate texture of colormap of mean or variance
 	void buildTextureColorMap();
+
+
+	// generate texture of signed distance function
+	void buildTextureSDF();
 	
 	// generate PCA points from a spatial cluster
 	void generatePCAPoint(UncertaintyRegion& cluster, std::vector<DPoint3>& points);
@@ -241,7 +254,7 @@ private:
 	void readObsData();
 public:
 	// interface of the creation of model
-	static MeteModel* CreateModel();
+	static MeteModel* CreateModel(bool bA=false);
 public:
 	// wrappers
 
@@ -261,6 +274,7 @@ public:
 	void SetEOF(int nEOF);
 	void SetMember(int nMember);
 	void SetEnsCluster(int nEnsCluster);
+	void SetContourLevel(int nLevel);
 
 	// get the cluster similarity between two uncertainty regions
 
@@ -285,5 +299,9 @@ public:
 	const std::vector<UncertaintyRegion> GetUncertaintyRegions() { return _vecRegions; }
 
 	void SetFocusedRegion(int nRegion);
+
+private:
+	// detail level of the contours, 0-1;1-3;2-7...
+	int _nContourLevel = 0;
 };
 

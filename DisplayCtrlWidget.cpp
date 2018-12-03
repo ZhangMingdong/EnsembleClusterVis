@@ -33,6 +33,7 @@ void DisplayCtrlWidget::createWidgets() {
 	_pCombBgFunction->addItem("EOF", 7);
 	_pCombBgFunction->addItem("Obs", 8);
 	_pCombBgFunction->addItem("Error", 9);
+	_pCombBgFunction->addItem("SDF", 10);
 
 	_pSpinBoxSmooth = new QSpinBox;
 	_pSpinBoxSmooth->setRange(1, 10);
@@ -77,6 +78,13 @@ void DisplayCtrlWidget::createWidgets() {
 	_pSpinBoxEnsCluster->setValue(0);
 	_pSpinBoxEnsCluster->setSingleStep(1);
 
+
+	_pSpinBoxContourLevel = new QSpinBox;
+	_pSpinBoxContourLevel->setRange(0, 5);
+	_pSpinBoxContourLevel->setAlignment(Qt::AlignVCenter | Qt::AlignRight);
+	_pSpinBoxContourLevel->setValue(0);
+	_pSpinBoxContourLevel->setSingleStep(1);
+
 }
 
 void DisplayCtrlWidget::createLayout() {
@@ -90,6 +98,7 @@ void DisplayCtrlWidget::createLayout() {
 	layout->addRow(tr("EOF:"), _pSpinBoxEOF);
 	layout->addRow(tr("Member:"), _pSpinBoxMember);
 	layout->addRow(tr("Ens Cluster:"), _pSpinBoxEnsCluster);
+	layout->addRow(tr("Contour Level:"), _pSpinBoxContourLevel);
 	setLayout(layout);
 }
 
@@ -102,6 +111,7 @@ void DisplayCtrlWidget::createConnections() {
 	connect(_pSpinBoxEOF, SIGNAL(valueChanged(int)), this, SLOT(updateEOF(int)));
 	connect(_pSpinBoxMember, SIGNAL(valueChanged(int)), this, SLOT(updateMember(int)));
 	connect(_pSpinBoxEnsCluster, SIGNAL(valueChanged(int)), this, SLOT(updateEnsCluster(int)));
+	connect(_pSpinBoxContourLevel, SIGNAL(valueChanged(int)), this, SLOT(updateContourLevel(int)));
 }
 
 void DisplayCtrlWidget::updateBgFunction(int nBgFunction)
@@ -144,4 +154,8 @@ void DisplayCtrlWidget::updateEnsCluster(int nEnsCluster) {
 	//	qDebug() << "updateFocusedRegion";
 
 	emit EnsClusterChanged(nEnsCluster);
+}
+void DisplayCtrlWidget::updateContourLevel(int nLevel) {
+
+	emit ContourLevelChanged(nLevel);
 }

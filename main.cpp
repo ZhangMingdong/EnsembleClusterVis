@@ -78,6 +78,8 @@ int main(int argc, char *argv[])
 	app.setOrganizationName("CG&CAD");
 	app.setOrganizationDomain("cg&cad.tsinghua.edu.cn");
 
+	g_fThreshold= 273.16 - 10;
+
 	MainWindow mainwindow;
 	mainwindow.show();
     return app.exec();

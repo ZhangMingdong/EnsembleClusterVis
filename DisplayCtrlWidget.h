@@ -22,6 +22,17 @@ private:
 	QSpinBox *_pSpinBoxMember;
 	QSpinBox *_pSpinBoxEnsCluster;
 
+	/*
+		displayed level of contour
+		0-1;
+		1-3;
+		2-7;
+		3-15;
+		4-31;
+		5-50;
+	*/
+	QSpinBox *_pSpinBoxContourLevel;
+
 private:
 	void createWidgets();
 	void createLayout();
@@ -36,6 +47,7 @@ private slots:
 	void updateEOF(int nEOF);
 	void updateMember(int nMember);
 	void updateEnsCluster(int nEnsCluster);
+	void updateContourLevel(int nLevel);
 signals:
 	void bgFunctionChanged(int nFunction);
 	void smoothChanged(int nSmooth);
@@ -45,4 +57,5 @@ signals:
 	void EOFChanged(int nEOF);
 	void MemberChanged(int nMember);
 	void EnsClusterChanged(int nMember);
+	void ContourLevelChanged(int nLevel);
 };

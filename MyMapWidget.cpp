@@ -66,11 +66,12 @@ void MyMapWidget::init()
 	pLayer->InitLayer(_pLayout, _fScaleW, _fScaleH);
 	_vecLayers.push_back(pLayer);
 
+	/*
 	pLayer = new ClusterLayer();
 	pLayer->SetModel(_pModelE);
 	pLayer->InitLayer(_pLayout, _fScaleW, _fScaleH);
 	_vecLayers.push_back(pLayer);
-
+	*/
 	// create cost line layer
 	pLayer = new CostLineLayer();
 	pLayer->InitLayer(_pLayout, _fScaleW, _fScaleH);
@@ -159,12 +160,6 @@ void MyMapWidget::mouseMoveEvent(QMouseEvent *event)
 void MyMapWidget::mouseDoubleClickEvent(QMouseEvent *event){
 	select(_nSelectedX, _nSelectedRight, event->pos());
 }
-
-
-
-
-
-
 
 void MyMapWidget::drawContourLine(const QList<ContourLine>& contours) {
 
@@ -412,6 +407,16 @@ void MyMapWidget::viewShowContourLineTruth(bool on){
 void MyMapWidget::viewShowContourLine(bool on){
 	_displayStates._bShowContourLine = on; updateGL(); };
 
+void MyMapWidget::viewShowContourLineSorted(bool on) {
+	_displayStates._bShowContourLineSorted = on; updateGL();
+};
+
+void MyMapWidget::viewShowContourLineSortedSDF(bool on) {
+	_displayStates._bShowContourLineSortedSDF = on; updateGL();
+};
+void MyMapWidget::viewShowContourLineSDF(bool on) {
+	_displayStates._bShowContourLineSDF = on; updateGL();
+};
 void MyMapWidget::viewShowContourLineMin(bool on){
 	_displayStates._bShowContourLineMin = on; updateGL();
 };
@@ -525,5 +530,12 @@ void MyMapWidget::updateMember(int nMember) {
 void MyMapWidget::updateEnsCluster(int nEnsCluster) {
 	if (_pModelE)
 		_pModelE->SetEnsCluster(nEnsCluster);
+	onTextureReloaded();
+}
+
+
+void MyMapWidget::updateContourLevel(int nLevel) {
+	if (_pModelE)
+		_pModelE->SetContourLevel(nLevel);
 	onTextureReloaded();
 }
