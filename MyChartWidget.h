@@ -2,7 +2,6 @@
 
 
 #include "def.h"
-#include "ContourGenerator.h"
 #include "EnsembleIntersections.h"
 #include "GLFont.h"
 

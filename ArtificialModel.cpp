@@ -1,5 +1,7 @@
 #include "ArtificialModel.h"
 #include "DataField.h"
+#include "FeatureSet.h"
+#include "ContourGenerator.h"
 
 
 ArtificialModel::ArtificialModel()
@@ -12,7 +14,8 @@ ArtificialModel::~ArtificialModel()
 }
 
 void ArtificialModel::initializeModel() {
-	_listContour.clear();
+	QList<QList<ContourLine>>& listContour = _pFeature->GetContours();
+	listContour.clear();
 	_listContourSDF.clear();
 	_listContourSorted.clear();
 	_listContourSortedSDF.clear();
@@ -45,7 +48,7 @@ void ArtificialModel::initializeModel() {
 			}
 		}
 		contour.append(line);
-		_listContour.push_back(contour);
+		listContour.push_back(contour);
 
 		// calculate sdf
 		calculateSDF(_pData->GetData(i), _pData->GetSDF(i), _nWidth, _nHeight, 0, contour);
@@ -57,12 +60,12 @@ void ArtificialModel::initializeModel() {
 	{
 		{
 			QList<ContourLine> contour;
-			_generator.Generate(_pData->GetSDF(i), contour, 0, _nWidth, _nHeight, _nFocusX, _nFocusY, _nFocusW, _nFocusH);
+			ContourGenerator::GetInstance()->Generate(_pData->GetSDF(i), contour, 0, _nWidth, _nHeight, _nFocusX, _nFocusY, _nFocusW, _nFocusH);
 			_listContourSDF.push_back(contour);
 		}
 		{
 			QList<ContourLine> contour;
-			_generator.Generate(_pData->GetSortedSDF(i), contour, 0, _nWidth, _nHeight, _nFocusX, _nFocusY, _nFocusW, _nFocusH);
+			ContourGenerator::GetInstance()->Generate(_pData->GetSortedSDF(i), contour, 0, _nWidth, _nHeight, _nFocusX, _nFocusY, _nFocusW, _nFocusH);
 			_listContourSortedSDF.push_back(contour);
 		}
 	}

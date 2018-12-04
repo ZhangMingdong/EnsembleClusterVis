@@ -5,7 +5,6 @@
 #include <QMainWindow>
 
 #include "EnsembleIntersections.h"
-#include "ContourGenerator.h"
 #include "def.h"
 
 class MyMapWidget;

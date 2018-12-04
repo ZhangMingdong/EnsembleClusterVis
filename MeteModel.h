@@ -1,6 +1,5 @@
 #pragma once
 #include <QGLWidget>
-#include "ContourGenerator.h"
 #include "ContourStripGenerator.h"
 #include <MathTypes.hpp>
 #include "def.h"
@@ -8,6 +7,7 @@
 #include "SpatialCluster.h"
 
 class DataField;
+class FeatureSet;
 
 /*
 	model of the meteorology data
@@ -144,19 +144,17 @@ protected:
 
 	// 1.raw data
 	DataField* _pData=0;					// the data	
+	FeatureSet* _pFeature=0;					// the feature
 	double* _bufObs = 0;					// observation data
 	int _nEnsembleLen;						// number of ensemble members
 
 
 	// 2.basic contours and areas
-	ContourGenerator _generator;
-
 	QList<UnCertaintyArea*> _listUnionAreaE;			// list of the uncertainty area of union of E
 	QList<ContourLine> _listContourMinE;				// list of contours of minimum of E
 	QList<ContourLine> _listContourMaxE;				// list of contours of maximum of E
 	QList<ContourLine> _listContourMeanE;				// list of contours of mean of E
 	QList<ContourLine> _listContourMedianE;				// list of contours of median of E
-	QList<QList<ContourLine>> _listContour;				// list of contours of ensemble members
 	QList<QList<ContourLine>> _listContourSorted;		// list of contours of sorted ensemble members
 	QList<QList<ContourLine>> _listContourSDF;			// list of contours generated form SDF
 	QList<QList<ContourLine>> _listContourSortedSDF;	// list of contours generated form sorted SDF

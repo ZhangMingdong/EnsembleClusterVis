@@ -9,7 +9,19 @@
 // 
 class ContourGenerator
 {
+private:
+	static ContourGenerator* s_pInstance;
 public:
+	static ContourGenerator* GetInstance() {
+		if (!s_pInstance)
+			s_pInstance = new ContourGenerator();
+		return s_pInstance;
+	}
+	static void Release() {
+		if (s_pInstance)
+			delete s_pInstance;
+	}
+private:
 	ContourGenerator();
 	~ContourGenerator();
 public:
@@ -53,5 +65,6 @@ private:
 	void generateLineStrip();
 	// combine the line strips
 	void combineLineStrip(QList<ContourLine>& listContour);
+
 };
 

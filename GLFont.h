@@ -15,6 +15,7 @@
 //========================================================
 #ifndef	__GLFONT_H__
 #define	__GLFONT_H__
+#include <windows.h>
 
 #pragma warning(disable: 4267)  /**< 禁止编译器出现类型转换的警告 */
 

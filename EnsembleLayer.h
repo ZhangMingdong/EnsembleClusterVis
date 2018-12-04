@@ -6,9 +6,10 @@
 #pragma once
 
 #include "MeteLayer.h"
-#include "ContourGenerator.h"
 #include <QGLWidget>
 #include <gl/GLU.h>
+
+#include "BasicStruct.h"
 
 class UnCertaintyArea;
 

@@ -2,8 +2,7 @@
 #include "def.h"
 #include <QDebug>
 
-
-
+ContourGenerator* ContourGenerator::s_pInstance = NULL;
 
 LineSeg::LineSeg(int i11, int j11, int i12, int j12, int i21, int j21, int i22, int j22){
 	_arrIndices[0] = i11;
