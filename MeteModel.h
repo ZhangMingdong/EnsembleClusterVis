@@ -37,6 +37,7 @@ protected:
 	int _nFocusEast;
 	int _nFocusSouth;
 	int _nFocusNorth;
+	int _nEnsembleLen;						// number of ensemble members
 public:
 	// initialize the model
 	virtual void InitModel(int nEnsembleLen, int nWidth, int nHeight, int nFocusX, int nFocusY, int nFocusW, int nFocusH
@@ -64,10 +65,10 @@ public:
 
 	virtual DataField* GetData() { return _pData; }
 
-	virtual QList<ContourLine> GetContourMin(){ return _listContourMinE; }
-	virtual QList<ContourLine> GetContourMax(){ return _listContourMaxE; }
-	virtual QList<ContourLine> GetContourMean(){ return _listContourMeanE; }
-	virtual QList<ContourLine> GetContourMedian() { return _listContourMedianE; }
+	virtual QList<ContourLine> GetContourMin();
+	virtual QList<ContourLine> GetContourMax();
+	virtual QList<ContourLine> GetContourMean();
+	virtual QList<ContourLine> GetContourMedian();
 	virtual QList<QList<ContourLine>> GetContour();
 	virtual QList<QList<ContourLine>> GetContourOutlier();
 	virtual QList<QList<ContourLine>> GetContourSorted();
@@ -76,8 +77,8 @@ public:
 	virtual QList<QList<ContourLine>> GetContourBrushed();
 	virtual QList<QList<ContourLine>> GetContourNotBrushed();
 	virtual QList<UnCertaintyArea*> GetUncertaintyArea(){ return _listUnionAreaE; }
-	virtual QList<UnCertaintyArea*> GetUncertaintyAreaValid() { return _listAreaValid; }
-	virtual QList<UnCertaintyArea*> GetUncertaintyAreaHalf() { return _listAreaHalf; }
+	virtual QList<UnCertaintyArea*> GetUncertaintyAreaValid();
+	virtual QList<UnCertaintyArea*> GetUncertaintyAreaHalf() ;
 	virtual int GetUncertaintyAreas() { return _nUncertaintyRegions; }
 	virtual int GetDepth(int l);
 
@@ -113,8 +114,6 @@ protected:
 	// use direction instead of isovalue
 	void calculateSDF_v2(const double* arrData, double* arrSDF, int nW, int nH, double isoValue, QList<ContourLine> contour);
 	
-	// space segmentation
-	void generateContourImp(const QList<ContourLine>& contourMin, const QList<ContourLine>& contourMax, QList<UnCertaintyArea*>& areas);
 
 	// read data from binary file
 	void readData();
@@ -144,17 +143,17 @@ protected:
 
 	// 1.raw data
 	DataField* _pData=0;					// the data	
-	FeatureSet* _pFeature=0;					// the feature
+	FeatureSet* _pFeature=0;				// the feature
 	double* _bufObs = 0;					// observation data
-	int _nEnsembleLen;						// number of ensemble members
 
 
 	// 2.basic contours and areas
+
+
+
+
+
 	QList<UnCertaintyArea*> _listUnionAreaE;			// list of the uncertainty area of union of E
-	QList<ContourLine> _listContourMinE;				// list of contours of minimum of E
-	QList<ContourLine> _listContourMaxE;				// list of contours of maximum of E
-	QList<ContourLine> _listContourMeanE;				// list of contours of mean of E
-	QList<ContourLine> _listContourMedianE;				// list of contours of median of E
 	QList<QList<ContourLine>> _listContourSorted;		// list of contours of sorted ensemble members
 	QList<QList<ContourLine>> _listContourSDF;			// list of contours generated form SDF
 	QList<QList<ContourLine>> _listContourSortedSDF;	// list of contours generated form sorted SDF
@@ -171,13 +170,9 @@ protected:
 	QList<QList<ContourLine>> _listContourEOF;			// list of contours of EOF
 
 
-	QList<ContourLine> _listContourMinValid;				// list of contours of minimum of valid members
-	QList<ContourLine> _listContourMaxValid;				// list of contours of maximum of valid members
-	QList<ContourLine> _listContourMinHalf;				// list of contours of minimum of half valid members
-	QList<ContourLine> _listContourMaxHalf;				// list of contours of maximum of half valid members
 
-	QList<UnCertaintyArea*> _listAreaValid;			// list of the uncertainty area of union of valid members
-	QList<UnCertaintyArea*> _listAreaHalf;			// list of the uncertainty area of union of half valid members
+
+
 
 
 	// 3.cluster related

@@ -119,10 +119,7 @@ MeteModel::~MeteModel()
 
 	for each (UnCertaintyArea* pArea in _listUnionAreaE)
 		delete pArea;
-	for each (UnCertaintyArea* pArea in _listAreaValid)
-		delete pArea;
-	for each (UnCertaintyArea* pArea in _listAreaHalf)
-		delete pArea;
+
 
 
 	for (size_t i = 0; i < _listUnionAreaEG.length(); i++)
@@ -192,7 +189,8 @@ void MeteModel::InitModel(int nEnsembleLen, int nWidth, int nHeight, int nFocusX
 
 	// calculate set
 	// the depth result is used in statistic
-	_pData->CalculateSet(g_fThreshold);
+
+	_pFeature->CalculateSet(g_fThreshold);
 	// 4.statistic
 	_pData->DoStatistic();
 
@@ -212,7 +210,7 @@ void MeteModel::InitModel(int nEnsembleLen, int nWidth, int nHeight, int nFocusX
 
 
 			// calculate sdf
-			calculateSDF(_pData->GetData(i), _pData->GetSDF(i), _nWidth, _nHeight, g_fThreshold, contour);
+			calculateSDF(_pData->GetData(i), _pFeature->GetSDF(i), _nWidth, _nHeight, g_fThreshold, contour);
 		}
 		// sorted spaghetti
 		{
@@ -223,7 +221,7 @@ void MeteModel::InitModel(int nEnsembleLen, int nWidth, int nHeight, int nFocusX
 		// contours from SDF
 		{
 			QList<ContourLine> contour;
-			ContourGenerator::GetInstance()->Generate(_pData->GetSDF(i), contour, 0, _nWidth, _nHeight, _nFocusX, _nFocusY, _nFocusW, _nFocusH);
+			ContourGenerator::GetInstance()->Generate(_pFeature->GetSDF(i), contour, 0, _nWidth, _nHeight, _nFocusX, _nFocusY, _nFocusW, _nFocusH);
 			_listContourSDF.push_back(contour);
 		}
 
@@ -237,11 +235,11 @@ void MeteModel::InitModel(int nEnsembleLen, int nWidth, int nHeight, int nFocusX
 
 	}
 	// contours from sorted SDF
-	_pData->BuildSortedSDF();
+	_pFeature->BuildSortedSDF();
 	for (size_t i = 0; i < _nEnsembleLen; i++)
 	{
 		QList<ContourLine> contour;
-		ContourGenerator::GetInstance()->Generate(_pData->GetSortedSDF(i), contour, 0, _nWidth, _nHeight, _nFocusX, _nFocusY, _nFocusW, _nFocusH);
+		ContourGenerator::GetInstance()->Generate(_pFeature->GetSortedSDF(i), contour, 0, _nWidth, _nHeight, _nFocusX, _nFocusY, _nFocusW, _nFocusH);
 		_listContourSortedSDF.push_back(contour);
 	}
 
@@ -259,14 +257,7 @@ void MeteModel::InitModel(int nEnsembleLen, int nWidth, int nHeight, int nFocusX
 	}
 	*/
 
-	ContourGenerator::GetInstance()->Generate(_pData->GetUMin(), _listContourMinE, g_fThreshold, _nWidth, _nHeight, _nFocusX, _nFocusY, _nFocusW, _nFocusH);
-	ContourGenerator::GetInstance()->Generate(_pData->GetUMax(), _listContourMaxE, g_fThreshold, _nWidth, _nHeight, _nFocusX, _nFocusY, _nFocusW, _nFocusH);
-	ContourGenerator::GetInstance()->Generate(_pData->GetValidMin(), _listContourMinValid, g_fThreshold, _nWidth, _nHeight, _nFocusX, _nFocusY, _nFocusW, _nFocusH);
-	ContourGenerator::GetInstance()->Generate(_pData->GetValidMax(), _listContourMaxValid, g_fThreshold, _nWidth, _nHeight, _nFocusX, _nFocusY, _nFocusW, _nFocusH);
-	ContourGenerator::GetInstance()->Generate(_pData->GetHalfMin(), _listContourMinHalf, g_fThreshold, _nWidth, _nHeight, _nFocusX, _nFocusY, _nFocusW, _nFocusH);
-	ContourGenerator::GetInstance()->Generate(_pData->GetHalfMax(), _listContourMaxHalf, g_fThreshold, _nWidth, _nHeight, _nFocusX, _nFocusY, _nFocusW, _nFocusH);
-	ContourGenerator::GetInstance()->Generate(_pData->GetMean(), _listContourMeanE, g_fThreshold, _nWidth, _nHeight, _nFocusX, _nFocusY, _nFocusW, _nFocusH);
-	ContourGenerator::GetInstance()->Generate(_pData->GetMedian(), _listContourMedianE, g_fThreshold, _nWidth, _nHeight, _nFocusX, _nFocusY, _nFocusW, _nFocusH);
+
 
 	/*
 	for (size_t j = 0; j < g_nIsoValuesLen; j++)
@@ -275,9 +266,8 @@ void MeteModel::InitModel(int nEnsembleLen, int nWidth, int nHeight, int nFocusX
 	}
 	*/
 
-	generateContourImp(_listContourMinE, _listContourMaxE, _listUnionAreaE);
-	generateContourImp(_listContourMinValid, _listContourMaxValid, _listAreaValid);
-	generateContourImp(_listContourMinHalf, _listContourMaxHalf, _listAreaHalf);
+//	generateContourImp(_listContourMinE, _listContourMaxE, _listUnionAreaE);
+
 
 
 	// specializaed initialization
@@ -486,9 +476,8 @@ void MeteModel::buildTextureThresholdVariance() {
 	}
 }
 
-
 void MeteModel::buildTextureSDF() {
-	const double* pData = _pData->GetSDF(_nMember? _nMember-1: _nMember);
+	const double* pData = _pFeature->GetSDF(_nMember? _nMember-1: _nMember);
 	ColorMap* colormap = ColorMap::GetInstance(ColorMap::CP_EOF);
 
 
@@ -794,11 +783,6 @@ vector<double> MeteModel::GetVariance() {
 	return vecVar;
 }
 
-void MeteModel::generateContourImp(const QList<ContourLine>& contourMin, const QList<ContourLine>& contourMax, QList<UnCertaintyArea*>& areas) {
-	ContourStripGenerator generator;
-	generator.Generate(areas, contourMin, contourMax, _nWidth, _nHeight, _nFocusX, _nFocusY, _nFocusW, _nFocusH);
-}
-
 void MeteModel::readData() {
 	QFile file(_strFile);
 	if (!file.open(QIODevice::ReadOnly)) {
@@ -933,7 +917,7 @@ QList<QList<ContourLine>> MeteModel::GetContourOutlier()
 	QList<QList<ContourLine>> result;
 	for (size_t i = 0; i < _nEnsembleLen; i++)
 	{
-		if (_pData->GetRegionType(i)==0)
+		if (_pFeature->GetRegionType(i)==0)
 		{
 			result.push_back(listContour[i]);
 		}
@@ -944,7 +928,7 @@ QList<QList<ContourLine>> MeteModel::GetContourOutlier()
 
 
 int MeteModel::GetDepth(int l) {
-	return _pData->GetDepth(l);
+	return _pFeature->GetDepth(l);
 }
 
 // add item from source to target
@@ -1457,3 +1441,12 @@ void MeteModel::readObsData() {
 	}
 	file.close();
 }
+
+QList<ContourLine> MeteModel::GetContourMin()  { return _pFeature->GetContourMin() ; }
+QList<ContourLine> MeteModel::GetContourMax()  { return _pFeature->GetContourMax() ; }
+QList<ContourLine> MeteModel::GetContourMean() { return _pFeature->GetContourMean(); }
+QList<ContourLine> MeteModel::GetContourMedian() { return _pFeature->GetContourMedian(); }
+
+
+QList<UnCertaintyArea*> MeteModel::GetUncertaintyAreaValid() { return _pFeature->GetUncertaintyAreaValid(); }
+QList<UnCertaintyArea*> MeteModel::GetUncertaintyAreaHalf() { return _pFeature->GetUncertaintyAreaHalf(); }

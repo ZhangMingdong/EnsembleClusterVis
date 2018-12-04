@@ -14,12 +14,14 @@ ArtificialModel::~ArtificialModel()
 }
 
 void ArtificialModel::initializeModel() {
+	// 1.clear the four group of spaghetti
 	QList<QList<ContourLine>>& listContour = _pFeature->GetContours();
 	listContour.clear();
 	_listContourSDF.clear();
 	_listContourSorted.clear();
 	_listContourSortedSDF.clear();
 
+	// 2.reset the scalar field to 1
 	for (size_t i = 0; i < _nEnsembleLen; i++)
 	{
 		for (size_t j = 0; j < _nWidth*_nHeight;j++)
@@ -27,7 +29,7 @@ void ArtificialModel::initializeModel() {
 			_pData->SetData(i, j, 1);
 		}
 	}
-	
+	// 3.regenerate a contour line, and set -1 of the grid points of the other side, and calculate sdf
 	for (size_t i = 0; i < _nEnsembleLen; i++)
 	{
 		// generate contour
@@ -51,21 +53,21 @@ void ArtificialModel::initializeModel() {
 		listContour.push_back(contour);
 
 		// calculate sdf
-		calculateSDF(_pData->GetData(i), _pData->GetSDF(i), _nWidth, _nHeight, 0, contour);
+		calculateSDF(_pData->GetData(i), _pFeature->GetSDF(i), _nWidth, _nHeight, 0, contour);
 	}
 
-	// contours from sorted SDF
-	_pData->BuildSortedSDF();
+	// 4.regenerate contours from sorted SDF
+	_pFeature->BuildSortedSDF();
 	for (size_t i = 0; i < _nEnsembleLen; i++)
 	{
 		{
 			QList<ContourLine> contour;
-			ContourGenerator::GetInstance()->Generate(_pData->GetSDF(i), contour, 0, _nWidth, _nHeight, _nFocusX, _nFocusY, _nFocusW, _nFocusH);
+			ContourGenerator::GetInstance()->Generate(_pFeature->GetSDF(i), contour, 0, _nWidth, _nHeight, _nFocusX, _nFocusY, _nFocusW, _nFocusH);
 			_listContourSDF.push_back(contour);
 		}
 		{
 			QList<ContourLine> contour;
-			ContourGenerator::GetInstance()->Generate(_pData->GetSortedSDF(i), contour, 0, _nWidth, _nHeight, _nFocusX, _nFocusY, _nFocusW, _nFocusH);
+			ContourGenerator::GetInstance()->Generate(_pFeature->GetSortedSDF(i), contour, 0, _nWidth, _nHeight, _nFocusX, _nFocusY, _nFocusW, _nFocusH);
 			_listContourSortedSDF.push_back(contour);
 		}
 	}
