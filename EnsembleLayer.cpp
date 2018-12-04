@@ -159,7 +159,63 @@ void EnsembleLayer::draw(DisplayStates states){
 
 	glScalef(_fScaleW, _fScaleH, 0);
 
+	// ==area==
 
+	if (states._bShowGradientE)
+	{
+		for (size_t i = 0; i < g_nEnsembles; i++)
+		{
+			glColor4f(1.0, 1.0, 0.0, 0.06);
+			glCallList(_gllistG + i * 3 + 1);
+		}
+	}
+	// union
+	if (states._bShowUnionE)
+	{
+		bool bContourBoxplot = true;
+		if (bContourBoxplot) {
+			glColor4f(.5, .5, .5, .3);
+			glCallList(_gllist + 4);
+
+			glColor4f(.5, .5, .5, .3);
+			glCallList(_gllist + 7);
+
+		}
+		else {
+			double fTransparency = .2;
+			// render each area
+			if (g_bShowUncertaintyOnly) {
+
+				glColor4f(0, 1, 0, .5);
+				glCallList(_gllist + 1);
+			}
+			else
+				for (size_t j = 0; j < 3; j++)
+				{
+					glColor4f(ColorMap::GetRGB(j, 0), ColorMap::GetRGB(j, 1), ColorMap::GetRGB(j, 2), fTransparency);
+					glCallList(_gllist + j);
+				}
+
+		}
+	}
+
+
+	// == lines ==
+	if (states._bShowContourLineOutlier)
+	{
+		glColor4f(0.0, 0.0, 1.0, 1.0);
+		glPushAttrib(GL_ENABLE_BIT);
+
+		glLineStipple(1, 0xAAAA);
+		glEnable(GL_LINE_STIPPLE);
+
+		QList<QList<ContourLine>> outliers = _pModel->GetContourOutlier();
+		for each (QList<ContourLine> line in outliers)
+		{
+			drawContourLine(line);
+		}
+		glPopAttrib();
+	}
 	if (states._bShowContourLineMin)
 	{
 		glColor4f(1, 1, 0.0, 1.0);
@@ -171,9 +227,14 @@ void EnsembleLayer::draw(DisplayStates states){
 	}
 	if (states._bShowContourLineMean)
 	{
-		glColor4f(0.0, 0.0, 1.0, 1.0);
+		glColor4f(0.0, 1.0, 1.0, 1.0);
 		drawContourLine(_pModel->GetContourMean());
 	}
+	if (states._bShowContourLineMedian)
+	{
+		glColor4f(1.0, 1.0, 0.0, 1.0);
+		drawContourLine(_pModel->GetContourMedian());
+	}	
 	if (states._bShowContourLine)
 	{
 		bool bBrush = false;
@@ -192,17 +253,28 @@ void EnsembleLayer::draw(DisplayStates states){
 			}
 		}
 		else {
-			glColor4f(.8, 0.2, 0.0, .8);
-			QList<QList<ContourLine>> contours = _pModel->GetContour();
-			const ClusterResult* pCR=_pModel->GetClusterResultOfFocusedRegion();
-			for (int i = 0; i < contours.size(); i++)
-			{
-//				SetGroupColor(pCR->_arrLabels[i]);
-				drawContourLine(contours[i]);
+			bool bGroup = false;
+			if (bGroup) {
+				glColor4f(.8, 0.2, 0.0, .8);
+				QList<QList<ContourLine>> contours = _pModel->GetContour();
+				const ClusterResult* pCR = _pModel->GetClusterResultOfFocusedRegion();
+				for (int i = 0; i < contours.size(); i++)
+				{
+//					SetGroupColor(pCR->_arrLabels[i]);
+					drawContourLine(contours[i]);
+				}
+
+			}
+			else {
+				QList<QList<ContourLine>> contours = _pModel->GetContour();
+				glColor4f(.8, 0.2, 0.0, .8);
+				for (int i = 0; i < contours.size(); i++)
+				{
+					drawContourLine(contours[i]);
+				}
 			}
 		}		
 	}
-
 	if (states._bShowContourLineSorted)
 	{
 		glColor4f(.8, 0.2, 0.0, .8);
@@ -230,31 +302,7 @@ void EnsembleLayer::draw(DisplayStates states){
 			drawContourLine(contours[i]);
 		}
 	}
-	if (states._bShowGradientE)
-	{
-		for (size_t i = 0; i < g_nEnsembles; i++)
-		{
-			glColor4f(1.0,1.0,0.0,0.06);
-			glCallList(_gllistG + i * 3 + 1);
-		}
-	}
-	// union
-	if (states._bShowUnionE)
-	{
-		double fTransparency = .2;
-		// render each area
-		if (g_bShowUncertaintyOnly) {
 
-			glColor4f(0, 1, 0, .5);
-			glCallList(_gllist + 1);
-		}
-		else
-			for (size_t j = 0; j < 3; j++)
-			{
-				glColor4f(ColorMap::GetRGB(j, 0), ColorMap::GetRGB(j, 1), ColorMap::GetRGB(j, 2), fTransparency);
-				glCallList(_gllist + j);
-			}
-	}
 }
 
 void EnsembleLayer::ReloadTexture() {
@@ -601,7 +649,7 @@ void EnsembleLayer::generateColorBarTexture() {
 
 // build the tess for uncertainty regions
 void EnsembleLayer::buildTess() {
-	_gllist = glGenLists(3);					// generate the display lists
+	_gllist = glGenLists(9);					// generate the display lists
 	_gllistG = glGenLists(g_gradient_l * 3);	// generate the display lists
 
 
@@ -618,6 +666,10 @@ void EnsembleLayer::buildTess() {
 
 	// 4.tess the areas
 	tessSegmentation(_gllist, _pModel->GetUncertaintyArea());
+	tessSegmentation(_gllist+3, _pModel->GetUncertaintyAreaValid());
+	tessSegmentation(_gllist+6, _pModel->GetUncertaintyAreaHalf());
+
+
 	/*
 	QList<QList<UnCertaintyArea*> > listAreas = _pModel->GetUncertaintyAreaG();
 	for (size_t i = 0, len = listAreas.length(); i < len; i++)

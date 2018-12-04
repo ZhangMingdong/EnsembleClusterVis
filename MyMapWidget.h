@@ -107,6 +107,8 @@ public slots:
 	void viewShowContourLineMin(bool on);
 	void viewShowContourLineMax(bool on);
 	void viewShowContourLineMean(bool on);
+	void viewShowContourLineMedian(bool on);
+	void viewShowContourLineOutlier(bool on);
 	void viewShowClusterBS(bool on);
 	void viewShowClusterBV(bool on);
 	void onCheckShowBeliefEllipse(bool bChecked);

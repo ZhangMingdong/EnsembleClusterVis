@@ -215,8 +215,8 @@ void MyMapWidget::paint() {
 		}
 		glEnd();
 		// show detail
-		if (false) {
-			glColor4f(.5, .5, .5, .3);
+		if (true) {
+			glColor4f(.5, .5, .5, .1);
 			glBegin(GL_LINES);
 			int nStep = 1;
 			for (int i = 0; i < g_globalW; i += nStep)
@@ -427,6 +427,12 @@ void MyMapWidget::viewShowContourLineMax(bool on){
 
 void MyMapWidget::viewShowContourLineMean(bool on){ 
 	_displayStates._bShowContourLineMean = on; updateGL();
+};
+void MyMapWidget::viewShowContourLineMedian(bool on) {
+	_displayStates._bShowContourLineMedian = on; updateGL();
+};
+void MyMapWidget::viewShowContourLineOutlier(bool on) {
+	_displayStates._bShowContourLineOutlier = on; updateGL();
 };
 
 void MyMapWidget::viewShowClusterBS(bool on){

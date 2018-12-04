@@ -39,6 +39,8 @@ private:	// action
 	QAction *viewShowContourLineMinAction;
 	QAction *viewShowContourLineMaxAction;
 	QAction *viewShowContourLineMeanAction;
+	QAction *viewShowContourLineMedianAction;
+	QAction *viewShowContourLineOutlierAction;
 	QAction *viewShowClusterBSAction;		// show cluster of Bayesian variance statistics
 	QAction *viewShowClusterBVAction;		// show cluster of Bayesian variance
 private:		// widget

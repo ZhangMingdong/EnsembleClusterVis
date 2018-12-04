@@ -27,6 +27,8 @@ public:
 		bool _bShowContourLineMin = false;
 		bool _bShowContourLineMax = false;
 		bool _bShowContourLineMean = false;
+		bool _bShowContourLineMedian = false;
+		bool _bShowContourLineOutlier = false;
 		bool _bShowUnionE = false;
 		bool _bShowGradientE = false;
 		bool _bShowContourLine = false;

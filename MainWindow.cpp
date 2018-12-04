@@ -37,6 +37,8 @@ const QString ShowContourLineSDF("ShowContourLineSDF");
 const QString ShowContourLineMin("ShowContourLineMin");
 const QString ShowContourLineMax("ShowContourLineMax");
 const QString ShowContourLineMean("ShowContourLineMean");
+const QString ShowContourLineMedian("ShowContourLineMedian");
+const QString ShowContourLineOutlier("ShowContourLineOutlier");
 const QString ShowClusterBS("ShowClusterBS");
 const QString ShowClusterBV("ShowClusterBV");
 const QString ShowBeliefEllipse("ShowBeliefEllipse");
@@ -79,6 +81,8 @@ MainWindow::MainWindow()
 	viewShowContourLineMinAction->setChecked(settings.value(ShowContourLineMin, true).toBool());
 	viewShowContourLineMaxAction->setChecked(settings.value(ShowContourLineMax, true).toBool());
 	viewShowContourLineMeanAction->setChecked(settings.value(ShowContourLineMean, true).toBool());
+	viewShowContourLineMedianAction->setChecked(settings.value(ShowContourLineMedian, true).toBool());
+	viewShowContourLineOutlierAction->setChecked(settings.value(ShowContourLineOutlier, true).toBool());
 	viewShowClusterBSAction->setChecked(settings.value(ShowClusterBS, true).toBool());
 	viewShowClusterBVAction->setChecked(settings.value(ShowClusterBV, true).toBool());
 
@@ -211,6 +215,8 @@ void MainWindow::populateMenusAndToolBars()
 		<< viewShowContourLineMinAction
 		<< viewShowContourLineMaxAction
 		<< viewShowContourLineMeanAction
+		<< viewShowContourLineMedianAction
+		<< viewShowContourLineOutlierAction
 //		<< viewShowClusterBSAction
 //		<< viewShowClusterBVAction
 );
@@ -311,6 +317,14 @@ void MainWindow::createActions()
 	viewShowContourLineMeanAction->setIcon(QIcon(":/images/b.png"));
 	viewShowContourLineMeanAction->setCheckable(true);
 
+	viewShowContourLineMedianAction = new QAction(tr("Show Contour of Median"), this);
+	viewShowContourLineMedianAction->setIcon(QIcon(":/images/b.png"));
+	viewShowContourLineMedianAction->setCheckable(true);
+
+	viewShowContourLineOutlierAction = new QAction(tr("Show Contour of Outlier"), this);
+	viewShowContourLineOutlierAction->setIcon(QIcon(":/images/b.png"));
+	viewShowContourLineOutlierAction->setCheckable(true);
+
 
 	viewShowClusterBSAction = new QAction(tr("Show Cluster BS"), this);
 	viewShowClusterBSAction->setIcon(QIcon(":/images/showgrid.png"));
@@ -339,6 +353,8 @@ void MainWindow::createConnections(){
 	connect(viewShowContourLineMinAction, SIGNAL(toggled(bool)), _view3D, SLOT(viewShowContourLineMin(bool)));
 	connect(viewShowContourLineMaxAction, SIGNAL(toggled(bool)), _view3D, SLOT(viewShowContourLineMax(bool)));
 	connect(viewShowContourLineMeanAction, SIGNAL(toggled(bool)), _view3D, SLOT(viewShowContourLineMean(bool)));
+	connect(viewShowContourLineMedianAction, SIGNAL(toggled(bool)), _view3D, SLOT(viewShowContourLineMedian(bool)));
+	connect(viewShowContourLineOutlierAction, SIGNAL(toggled(bool)), _view3D, SLOT(viewShowContourLineOutlier(bool)));
 	connect(viewShowClusterBSAction, SIGNAL(toggled(bool)), _view3D, SLOT(viewShowClusterBS(bool)));
 	connect(viewShowClusterBVAction, SIGNAL(toggled(bool)), _view3D, SLOT(viewShowClusterBV(bool)));
 
@@ -376,6 +392,8 @@ void MainWindow::closeEvent(QCloseEvent *event)
 		settings.setValue(ShowContourLineSDF, viewShowContourLineSDFAction->isChecked());
 		settings.setValue(ShowContourLineMax, viewShowContourLineMaxAction->isChecked());
 		settings.setValue(ShowContourLineMean, viewShowContourLineMeanAction->isChecked());
+		settings.setValue(ShowContourLineMedian, viewShowContourLineMedianAction->isChecked());
+		settings.setValue(ShowContourLineOutlier, viewShowContourLineOutlierAction->isChecked());
 		settings.setValue(ShowClusterBS, viewShowClusterBSAction->isChecked());
 		settings.setValue(ShowClusterBV, viewShowClusterBVAction->isChecked());
 
