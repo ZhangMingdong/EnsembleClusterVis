@@ -9,9 +9,12 @@
 
 #include "MyPCA.h"
 
-DataField::DataField(int w, int h, int l):_nW(w),_nH(h),_nL(l)
+DataField::DataField(int w, int h, int l)
 {
-	_nGrids = _nW * _nH;
+	_nWidth = w;
+	_nHeight = h;
+	_nEnsembleLen = l;
+	_nGrids = w * h;
 
 	_pBuf = new double[w*h*l];
 	_pDipBuf = new double[w*h];
@@ -91,7 +94,7 @@ const double* DataField::GetDipValue() {
 const double* DataField::GetMean() { return _gridMean; }
 
 void DataField::SetData(int l, int bias, double dbValue) {
-	_pBuf[l*_nW*_nH + bias] = dbValue;
+	_pBuf[l*_nGrids + bias] = dbValue;
 }
 
 void DataField::SetDipValue(int bias, double dbValue) {
@@ -100,20 +103,20 @@ void DataField::SetDipValue(int bias, double dbValue) {
 }
 
 void DataField::SetData(int l, int y, int x, double dbValue) {
-	_pBuf[l*_nW*_nH + y*_nW + x] = dbValue;
+	_pBuf[l*_nGrids + y*_nWidth + x] = dbValue;
 }
 
 double DataField::GetData(int l, int bias) {
-	return _pBuf[l*_nW*_nH + bias];
+	return _pBuf[l*_nGrids + bias];
 }
 
 double DataField::GetData(int l, int r, int c) {
-	return _pBuf[l*_nW*_nH + r*_nW + c];
+	return _pBuf[l*_nGrids + r* _nWidth + c];
 }
 
 void DataField::sortBuf(const double* pS, double* pD) {
 	for (int i = 0; i < _nGrids; i++) {
-		for (int j = 0; j < _nL; j++) {
+		for (int j = 0; j < _nEnsembleLen; j++) {
 			double dbValue = pS[j*_nGrids + i];
 			int k = 0;
 			while (k < j && pD[k*_nGrids + i] < dbValue) k++;
@@ -142,21 +145,21 @@ void DataField::DoStatistic() {
 
 		// 1.calculate mean
 		double fMean = 0;
-		for (int j = 0; j < _nL; j++)
+		for (int j = 0; j < _nEnsembleLen; j++)
 		{
 			vecData.push_back(this->GetData(j, i));
 			fMean += this->GetData(j, i);
 		}
-		fMean /= _nL;
+		fMean /= _nEnsembleLen;
 		_gridMean[i] = fMean;
 		// 2.calculate variance
 		double fVariance = 0;
-		for (int j = 0; j < _nL; j++)
+		for (int j = 0; j < _nEnsembleLen; j++)
 		{
 			double fBias = this->GetData(j, i) - fMean;
 			fVariance += fBias*fBias;
 		}
-		_gridVari[i] = sqrt(fVariance / _nL);
+		_gridVari[i] = sqrt(fVariance / _nEnsembleLen);
 		// 3.caluclate variance of variance
 
 		// sort the data
@@ -228,13 +231,13 @@ void DataField::DoStatistic() {
 		{
 			// calculate max and min
 			QList<double> list;
-			for (int j = 0; j < _nL; j++)
+			for (int j = 0; j < _nEnsembleLen; j++)
 			{
 				list.append(this->GetData(j, i));
 			}
 			qSort(list);
 			_gridUMin[i] = list[0];
-			_gridUMax[i] = list[_nL - 1];
+			_gridUMax[i] = list[_nEnsembleLen - 1];
 		}
 		else {
 			// calculate max and min
@@ -253,11 +256,11 @@ void DataField::GenerateClusteredData(const QList<int> listClusterLens, const in
 	QList<int> listCurrentIndex;
 	for (size_t i = 0; i < nClusters; i++)
 	{
-		arrData.push_back(new DataField(_nW, _nH, listClusterLens[i]));
+		arrData.push_back(new DataField(_nWidth, _nHeight, listClusterLens[i]));
 		listCurrentIndex.push_back(0);
 	}
 	// set data for each new field
-	for (size_t i = 0; i < _nL; i++)
+	for (size_t i = 0; i < _nEnsembleLen; i++)
 	{
 		int nLabel = arrLabels[i];
 		for (size_t j = 0; j < _nGrids; j++)
@@ -279,40 +282,40 @@ void DataField::smoothVar(int nSmooth) {
 	double* _pVarNew= _gridVarSmooth[nSmooth] = new double[_nGrids];
 
 	// smooth
-	for (size_t i = 1; i < _nH-1; i++)
+	for (size_t i = 1; i < _nHeight-1; i++)
 	{
-		for (size_t j = 1; j < _nW-1; j++)
+		for (size_t j = 1; j < _nWidth-1; j++)
 		{
 			double dbVar = 0;
 			for (int ii = -1; ii < 2; ii++)
 			{
 				for (int jj = -1; jj < 2; jj++) {
-					dbVar += pVar[(i + ii)*_nW + j + jj];
+					dbVar += pVar[(i + ii)*_nWidth + j + jj];
 				}
 			}
-			int nIndex = i*_nW + j;
+			int nIndex = i* _nWidth + j;
 
 			_pVarNew[nIndex] = dbVar / 9.0;
 		}
 	}
 
 	// zero border
-	for (size_t i = 0; i < _nH; i++)
+	for (size_t i = 0; i < _nHeight; i++)
 	{
-		_pVarNew[i*_nW + 0] = 0;
-		_pVarNew[i*_nW + _nW-1] = 0;
+		_pVarNew[i*_nWidth + 0] = 0;
+		_pVarNew[i*_nWidth + _nWidth -1] = 0;
 	}
-	for (size_t j = 1; j < _nW - 1; j++)
+	for (size_t j = 1; j < _nWidth - 1; j++)
 	{
 		_pVarNew[j] = 0;
-		_pVarNew[(_nH - 1)*_nW + j] = 0;
+		_pVarNew[(_nHeight - 1)*_nWidth + j] = 0;
 	}
 
 }
 
 void DataField::DoEOF() {
 	// 1.set parameter
-	int mI = _nL;
+	int mI = _nEnsembleLen;
 	int mO = g_nEOFLen;
 	int n = _nGrids;
 	// 2.allocate input and output buffer

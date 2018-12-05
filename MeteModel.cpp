@@ -31,36 +31,6 @@
 using namespace std;
 
 
-/*
-double PointToSegDist(double x, double y, double x1, double y1, double x2, double y2)
-{
-	double cross = (x2 - x1) * (x - x1) + (y2 - y1) * (y - y1);
-	if (cross <= 0) return sqrt((x - x1) * (x - x1) + (y - y1) * (y - y1));
-
-	double d2 = (x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1);
-	if (cross >= d2) return sqrt((x - x2) * (x - x2) + (y - y2) * (y - y2));
-
-	double r = cross / d2;
-	double px = x1 + (x2 - x1) * r;
-	double py = y1 + (y2 - y1) * r;
-	return sqrt((x - px) * (x - px) + (py - y) * (py - y));
-}
-*/
-double PointToSegDist(double x, double y, double x1, double y1, double x2, double y2)
-{
-	double cross = (x2 - x1) * (x - x1) + (y2 - y1) * (y - y1);
-	if (cross <= 0)
-		return sqrt((x - x1) * (x - x1) + (y - y1) * (y - y1));
-
-	double d2 = (x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1);
-	if (cross >= d2)
-		return sqrt((x - x2) * (x - x2) + (y - y2) * (y - y2));
-
-	double r = cross / d2;
-	double px = x1 + (x2 - x1) * r;
-	double py = y1 + (y2 - y1) * r;
-	return sqrt((x - px) * (x - px) + (y - py) * (y - py));
-}
 
 // 判断点在线段左侧还是右侧，网上找的公式，来不及仔细想了
 bool checkLeft(double x, double y, double x1, double y1, double x2, double y2) {
@@ -88,12 +58,12 @@ MeteModel::MeteModel()
 	_nFocusNorth = g_nNorth;
 	_nFocusSouth = g_nSouth;
 
-	_nLen = _nWidth*_nHeight;
-	_nFocusLen = _nFocusW*_nFocusH;
+	_nGrids = _nWidth*_nHeight;
+	_nFocusGrids = _nFocusW*_nFocusH;
 
-	_bufObs = new double[_nLen];
+	_bufObs = new double[_nGrids];
 
-	_gridErr = new double[_nLen];
+	_gridErr = new double[_nGrids];
 	readObsData();
 }
 
@@ -111,16 +81,10 @@ MeteModel::~MeteModel()
 	{
 		delete _pData;
 	}
-	if (_pFeature)
-	{
-		delete _pFeature;
-	}
-
-
-	for each (UnCertaintyArea* pArea in _listUnionAreaE)
-		delete pArea;
-
-
+//	if (_pFeature)
+//	{
+//		delete _pFeature;
+//	}
 
 	for (size_t i = 0; i < _listUnionAreaEG.length(); i++)
 	{
@@ -128,6 +92,10 @@ MeteModel::~MeteModel()
 			delete pArea;
 	}
 	if (_dataTexture) delete[] _dataTexture;
+
+
+	for each (FeatureSet* pFeature in _listFeature)
+		delete pFeature;
 
 	ContourGenerator::Release();
 }
@@ -139,14 +107,14 @@ void MeteModel::InitModel(int nEnsembleLen, int nWidth, int nHeight, int nFocusX
 	_nEnsembleLen = nEnsembleLen;
 	_nWidth = nWidth;
 	_nHeight = nHeight;
-	_nLen = nHeight*nWidth;
+	_nGrids = nHeight*nWidth;
 
 	_nFocusX = nFocusX;
 	_nFocusY = nFocusY;
 	_nFocusW = nFocusW;
 	_nFocusH = nFocusH;
 
-	_nFocusLen = _nFocusW*_nFocusH;
+	_nFocusGrids = _nFocusW*_nFocusH;
 
 	_nWest = nWest;
 	_nEast = nEast;
@@ -162,7 +130,12 @@ void MeteModel::InitModel(int nEnsembleLen, int nWidth, int nHeight, int nFocusX
 
 	// 2.allocate resource
 	_pData = new DataField(_nWidth, _nHeight, _nEnsembleLen);
-	_pFeature = new FeatureSet(_pData,g_fThreshold,_nWidth,_nHeight,_nEnsembleLen,_nFocusX,_nFocusY,_nFocusW,_nFocusH);
+	for each (double isoValue in _listIsoValues)
+	{
+		_listFeature.append(new FeatureSet(_pData, isoValue, _nWidth, _nHeight, _nEnsembleLen, _nFocusX, _nFocusY, _nFocusW, _nFocusH));
+	}
+
+//	_pFeature = new FeatureSet(_pData,g_fThreshold,_nWidth,_nHeight,_nEnsembleLen,_nFocusX,_nFocusY,_nFocusW,_nFocusH);
 
 	// 3.read data
 	if (_bBinaryFile)
@@ -190,58 +163,28 @@ void MeteModel::InitModel(int nEnsembleLen, int nWidth, int nHeight, int nFocusX
 	// calculate set
 	// the depth result is used in statistic
 
-	_pFeature->CalculateSet(g_fThreshold);
+	for each (FeatureSet* pFeaturen in _listFeature)
+	{
+		pFeaturen->CalculateSet();
+	}
 	// 4.statistic
 	_pData->DoStatistic();
 
 
 
+	for each (FeatureSet* pFeature in _listFeature)
+	{
+		pFeature->GenerateContours();
+
+
+		// contours from sorted SDF
+		pFeature->BuildSortedSDF();
+	}
+
+
+
 	// ensemble clustering
 	//doEnsCluster();
-
-
-	_pFeature->GenerateContours();
-	// 5.generate features
-	for (size_t i = 0; i < _nEnsembleLen; i++)
-	{
-		// spaghetti
-		{
-			QList<ContourLine> contour=(_pFeature->GetContours())[i];
-
-
-			// calculate sdf
-			calculateSDF(_pData->GetData(i), _pFeature->GetSDF(i), _nWidth, _nHeight, g_fThreshold, contour);
-		}
-		// sorted spaghetti
-		{
-			QList<ContourLine> contour;
-			ContourGenerator::GetInstance()->Generate(_pData->GetSortedLayer(i), contour, g_fThreshold, _nWidth, _nHeight, _nFocusX, _nFocusY, _nFocusW, _nFocusH);
-			_listContourSorted.push_back(contour);
-		}
-		// contours from SDF
-		{
-			QList<ContourLine> contour;
-			ContourGenerator::GetInstance()->Generate(_pFeature->GetSDF(i), contour, 0, _nWidth, _nHeight, _nFocusX, _nFocusY, _nFocusW, _nFocusH);
-			_listContourSDF.push_back(contour);
-		}
-
-		// for each isovalue
-		for (size_t j = 0; j < g_nIsoValuesLen; j++)
-		{
-			QList<ContourLine> contour;
-			ContourGenerator::GetInstance()->Generate(_pData->GetLayer(i), contour, g_arrIsoValues[j], _nWidth, _nHeight, _nFocusX, _nFocusY, _nFocusW, _nFocusH);
-			_listMemberContour[i].push_back(contour);
-		}
-
-	}
-	// contours from sorted SDF
-	_pFeature->BuildSortedSDF();
-	for (size_t i = 0; i < _nEnsembleLen; i++)
-	{
-		QList<ContourLine> contour;
-		ContourGenerator::GetInstance()->Generate(_pFeature->GetSortedSDF(i), contour, 0, _nWidth, _nHeight, _nFocusX, _nFocusY, _nFocusW, _nFocusH);
-		_listContourSortedSDF.push_back(contour);
-	}
 
 	/*
 	// foreach ensemble cluster
@@ -289,7 +232,7 @@ void MeteModel::readDataFromText() {
 		// skip first line
 		QString line = in.readLine();
 		// every grid
-		for (int j = 0; j < _nLen; j++)
+		for (int j = 0; j < _nGrids; j++)
 		{
 			QString line = in.readLine();
 			_pData->SetData(i, j, line.toFloat());
@@ -310,7 +253,7 @@ void MeteModel::readDipValue(char* strFileName) {
 
 	QTextStream in(&file);
 	// every grid
-	for (int j = 0; j < _nLen; j++)
+	for (int j = 0; j < _nGrids; j++)
 	{
 		QString line = in.readLine();
 //		double dbDipValue = line.toFloat() * 100;
@@ -391,62 +334,6 @@ void MeteModel::readDataFromTextG() {
 	file.close();
 }
 
-void MeteModel::calculateSDF(const double* arrData, double* arrSDF, int nW, int nH, double isoValue, QList<ContourLine> contour) {
-	for (size_t i = 0; i < nH; i++)
-	{
-		for (size_t j = 0; j < nW; j++)
-		{
-			double dbMinDis = nW*nH;
-			for (size_t k = 0,lenK=contour.length(); k < lenK; k++)
-			{
-				for (size_t l = 0,lenL=contour[k]._listPt.length()-1; l < lenL; l++)
-				{
-					double dbDis = PointToSegDist(j,i
-						, contour[k]._listPt[l].x(), contour[k]._listPt[l].y()
-						, contour[k]._listPt[l+1].x(), contour[k]._listPt[l+1].y());
-					if (dbDis < dbMinDis)
-					{
-						dbMinDis = dbDis;
-					}
-
-				}
-			}
-			if (arrData[i*_nWidth + j] < isoValue) dbMinDis = -dbMinDis;	// sign
-			arrSDF[i*_nWidth + j] = dbMinDis;
-		}
-	}
-}
-
-void MeteModel::calculateSDF_v2(const double* arrData, double* arrSDF, int nW, int nH, double isoValue, QList<ContourLine> contour) {
-	bool bLeft = false;
-	for (size_t i = 0; i < nH; i++)
-	{
-		for (size_t j = 0; j < nW; j++)
-		{
-			double dbMinDis = nW * nH;
-			for (size_t k = 0, lenK = contour.length(); k < lenK; k++)
-			{
-				for (size_t l = 0, lenL = contour[k]._listPt.length() - 1; l < lenL; l++)
-				{
-					double dbDis = PointToSegDist(j, i
-						, contour[k]._listPt[l].x(), contour[k]._listPt[l].y()
-						, contour[k]._listPt[l + 1].x(), contour[k]._listPt[l + 1].y());
-					if (dbDis < dbMinDis)
-					{
-						dbMinDis = dbDis;
-						bLeft=checkLeft(j, i
-							, contour[k]._listPt[l].x(), contour[k]._listPt[l].y()
-							, contour[k]._listPt[l + 1].x(), contour[k]._listPt[l + 1].y());
-					}
-
-				}
-			}
-			//if (arrData[i*_nWidth + j] < isoValue) dbMinDis = -dbMinDis;	// sign
-			arrSDF[i*_nWidth + j] = dbMinDis*(bLeft?1:-1);
-		}
-	}
-}
-
 void MeteModel::buildTextureThresholdVariance() {
 	const double* pData = _pData->GetVari(_nSmooth);
 	_nThresholdedGridPoints = 0;
@@ -477,7 +364,7 @@ void MeteModel::buildTextureThresholdVariance() {
 }
 
 void MeteModel::buildTextureSDF() {
-	const double* pData = _pFeature->GetSDF(_nMember? _nMember-1: _nMember);
+	const double* pData = _listFeature[0]->GetSDF(_nMember? _nMember-1: _nMember);
 	ColorMap* colormap = ColorMap::GetInstance(ColorMap::CP_EOF);
 
 
@@ -551,7 +438,7 @@ void MeteModel::buildTextureClusteredVariance() {
 
 	// 6.Generate texture
 	// 6.1.initialize the texture
-	for (size_t i = 0; i < _nFocusLen; i++)
+	for (size_t i = 0; i < _nFocusGrids; i++)
 	{
 		_dataTexture[4 * i + 0] = (GLubyte)100;
 		_dataTexture[4 * i + 1] = (GLubyte)100;
@@ -609,7 +496,7 @@ void MeteModel::generateRegions() {
 //	CLUSTER::Clustering* pClusterer = new CLUSTER::KMeansClustering();
 	CLUSTER::Clustering* pClusterer = new CLUSTER::AHCClustering();
 	// 1.parameters setting
-	int nN = _nLen;							// number of data items
+	int nN = _nGrids;							// number of data items
 	int nK = 6;							// number of clusters
 	int nM = 1;								// dimension
 	// 2.input data
@@ -711,7 +598,7 @@ void MeteModel::buildTextureColorMap() {
 				_pBiasBuf = _pData->GetMean();
 			}
 			double dbAccum= 0;
-			for (size_t i = 0; i < _nLen; i++)
+			for (size_t i = 0; i < _nGrids; i++)
 			{
 				int nRow = i / _nWidth;
 				int nCol = i% _nWidth;
@@ -885,9 +772,9 @@ QList<QList<ContourLine>> MeteModel::GetContourNotBrushed()
 	return _listContourNotBrushed;
 }
 
-QList<QList<ContourLine>> MeteModel::GetContour()
+QList<QList<ContourLine>> MeteModel::GetContour(int isoIndex)
 {
-	QList<QList<ContourLine>>& listContour = _pFeature->GetContours();
+	QList<QList<ContourLine>>& listContour = _listFeature[isoIndex]->GetContours();
 	if (_bgFunction==bg_EOF)
 	{
 		return _listContourEOF;
@@ -911,13 +798,13 @@ QList<QList<ContourLine>> MeteModel::GetContour()
 }
 
 
-QList<QList<ContourLine>> MeteModel::GetContourOutlier()
+QList<QList<ContourLine>> MeteModel::GetContourOutlier(int isoIndex)
 {
-	QList<QList<ContourLine>> listContour = _pFeature->GetContours();
+	QList<QList<ContourLine>> listContour = _listFeature[isoIndex]->GetContours();
 	QList<QList<ContourLine>> result;
 	for (size_t i = 0; i < _nEnsembleLen; i++)
 	{
-		if (_pFeature->GetRegionType(i)==0)
+		if (_listFeature[isoIndex]->GetRegionType(i)==0)
 		{
 			result.push_back(listContour[i]);
 		}
@@ -926,10 +813,6 @@ QList<QList<ContourLine>> MeteModel::GetContourOutlier()
 	return result;
 }
 
-
-int MeteModel::GetDepth(int l) {
-	return _pFeature->GetDepth(l);
-}
 
 // add item from source to target
 void addContour(const QList<QList<ContourLine>>& source, QList<QList<ContourLine>>& target, int nIndex0, int nIndex1, int nLevel) {
@@ -943,37 +826,47 @@ void addContour(const QList<QList<ContourLine>>& source, QList<QList<ContourLine
 	}
 }
 
-QList<QList<ContourLine>> MeteModel::GetContourSorted()
+QList<QList<ContourLine>> MeteModel::GetContourSorted(int isoIndex)
 {
 	QList<QList<ContourLine>> listResult;
-	addContour(_listContourSorted, listResult, 0, _listContourSorted.size(), _nContourLevel);
+	QList<QList<ContourLine>> contours= _listFeature[isoIndex]->GetContourSorted();
+	addContour(contours, listResult, 0, contours.size(), _nContourLevel);
 	return listResult;
 }
 
 
-QList<QList<ContourLine>> MeteModel::GetContourSortedSDF()
+QList<QList<ContourLine>> MeteModel::GetContourSortedSDF(int isoIndex)
 {
 	QList<QList<ContourLine>> listResult;
-	addContour(_listContourSortedSDF, listResult, 0, _listContourSortedSDF.size(), _nContourLevel);
+	QList<QList<ContourLine>> contours = _listFeature[isoIndex]->GetContourSortedSDF();
+	addContour(contours, listResult, 0, contours.size(), _nContourLevel);
 	return listResult;
 }
 
 
-QList<QList<ContourLine>> MeteModel::GetContourSDF()
+QList<QList<ContourLine>> MeteModel::GetContourSDF(int isoIndex)
 {
+	QList<QList<ContourLine>> contours = _listFeature[isoIndex]->GetContourSDF();
 	if (_nMember)
 	{
 		//return _listMemberContour[_nMember - 1];
 		QList<QList<ContourLine>> result;
-		result.push_back(_listContourSDF[_nMember - 1]);
+		result.push_back(contours[_nMember - 1]);
 		return result;
 	}
-	else return _listContourSDF;
+	else return contours;
 }
 
 MeteModel* MeteModel::CreateModel(bool bA) {
 	//MeteModel* pModel = new MeteModel();
 	MeteModel* pModel = bA ? new ArtificialModel() : new MeteModel();
+	QList<double> listIsoValue;
+	listIsoValue.append(273.16);
+	listIsoValue.append(273.16+5);
+	listIsoValue.append(273.16+10);
+	listIsoValue.append(273.16 + 15);
+	listIsoValue.append(273.16 + 20);
+	pModel->SetIsoValues(listIsoValue);
 	int nWidth = g_nWidth;
 	int nHeight		= g_nHeight		;
 	int nFocusX		= g_nFocusX		;
@@ -1189,7 +1082,7 @@ void MeteModel::SetContourLevel(int nLevel) {
 void MeteModel::regenerateTexture() {
 	if (!_dataTexture)
 	{
-		_dataTexture = new GLubyte[4 * _nFocusLen];
+		_dataTexture = new GLubyte[4 * _nFocusGrids];
 	}
 
 	switch (_bgFunction)
@@ -1398,7 +1291,7 @@ void MeteModel::readObsData() {
 	QFile file(g_strObsFileName);
 
 	if (!file.open(QIODevice::ReadOnly)) {
-		for (int j = 0; j < _nLen; j++)
+		for (int j = 0; j < _nGrids; j++)
 		{
 			_bufObs[j] = 0;
 		}
@@ -1414,7 +1307,7 @@ void MeteModel::readObsData() {
 		// skip first line
 		QString line = in.readLine();
 		// every grid
-		for (int j = 0; j < _nLen; j++)
+		for (int j = 0; j < _nGrids; j++)
 		{
 			QString line = in.readLine();
 		}
@@ -1442,11 +1335,15 @@ void MeteModel::readObsData() {
 	file.close();
 }
 
-QList<ContourLine> MeteModel::GetContourMin()  { return _pFeature->GetContourMin() ; }
-QList<ContourLine> MeteModel::GetContourMax()  { return _pFeature->GetContourMax() ; }
-QList<ContourLine> MeteModel::GetContourMean() { return _pFeature->GetContourMean(); }
-QList<ContourLine> MeteModel::GetContourMedian() { return _pFeature->GetContourMedian(); }
+QList<ContourLine> MeteModel::GetContourMin(int isoIndex)  { return _listFeature[isoIndex]->GetContourMin() ; }
+QList<ContourLine> MeteModel::GetContourMax(int isoIndex)  { return _listFeature[isoIndex]->GetContourMax() ; }
+QList<ContourLine> MeteModel::GetContourMean(int isoIndex) { return _listFeature[isoIndex]->GetContourMean(); }
+QList<ContourLine> MeteModel::GetContourMedian(int isoIndex) { return _listFeature[isoIndex]->GetContourMedian(); }
 
+QList<UnCertaintyArea*> MeteModel::GetUncertaintyAreaValid(int isoIndex) { return _listFeature[isoIndex]->GetUncertaintyAreaValid(); }
+QList<UnCertaintyArea*> MeteModel::GetUncertaintyAreaHalf(int isoIndex) { return _listFeature[isoIndex]->GetUncertaintyAreaHalf(); }
+QList<UnCertaintyArea*> MeteModel::GetUncertaintyArea(int isoIndex) { return _listFeature[isoIndex]->GetUncertaintyArea(); }
 
-QList<UnCertaintyArea*> MeteModel::GetUncertaintyAreaValid() { return _pFeature->GetUncertaintyAreaValid(); }
-QList<UnCertaintyArea*> MeteModel::GetUncertaintyAreaHalf() { return _pFeature->GetUncertaintyAreaHalf(); }
+void MeteModel::SetIsoValues(QList<double> listIsoValues) {
+	_listIsoValues = listIsoValues;
+}

@@ -1,6 +1,7 @@
 #pragma once
 #include <QList>
 #include "BasicStruct.h"
+#include "GridFrame.h"
 
 class DataField;
 class UnCertaintyArea;
@@ -9,7 +10,7 @@ class UnCertaintyArea;
 	Mingdong
 	2018/12/04
 */
-class FeatureSet
+class FeatureSet:public GridFrame
 {
 public:
 	FeatureSet(DataField* pData,double _dbIsoValue,int nWidth,int nHeight,int _nEnsembleLen,int nFocusX,int nFocusY,int nFocusW,int nFocusH);
@@ -28,15 +29,6 @@ private:
 	QList<ContourLine> _listContourMinHalf;				// list of contours of minimum of half valid members
 	QList<ContourLine> _listContourMaxHalf;				// list of contours of maximum of half valid members
 
-	int _nWidth;
-	int _nHeight;
-	int _nGrids;								// _nWidth*_nHeight
-	int _nEnsembleLen;
-	int _nFocusX;
-	int _nFocusY;
-	int _nFocusW;
-	int _nFocusH;
-
 	double* _gridHalfMax;			// maximum of half valid ensemble results
 	double* _gridHalfMin;			// minimum of half valid ensemble results
 	double* _gridValidMax;			// maximum of valid ensemble results
@@ -51,12 +43,20 @@ private:
 
 	QList<UnCertaintyArea*> _listAreaValid;			// list of the uncertainty area of union of valid members
 	QList<UnCertaintyArea*> _listAreaHalf;			// list of the uncertainty area of union of half valid members
+
+	QList<UnCertaintyArea*> _listUnionAreaE;			// list of the uncertainty area of union of E
+	QList<QList<ContourLine>> _listContourSorted;		// list of contours of sorted ensemble members
+	QList<QList<ContourLine>> _listContourSDF;			// list of contours generated form SDF
+	QList<QList<ContourLine>> _listContourSortedSDF;	// list of contours generated form sorted SDF
 public:
 	QList<QList<ContourLine>>& GetContours() { return _listContour; }
 	QList<ContourLine> GetContourMin() { return _listContourMinE; }
 	QList<ContourLine> GetContourMax() { return _listContourMaxE; }
 	QList<ContourLine> GetContourMean(){ return _listContourMeanE; }
 	QList<ContourLine> GetContourMedian() { return _listContourMedianE; }
+	QList<QList<ContourLine>> GetContourSDF() { return _listContourSDF; }
+	QList<QList<ContourLine>> GetContourSorted() { return _listContourSorted; }
+	QList<QList<ContourLine>> GetContourSortedSDF() { return _listContourSortedSDF; }
 	void GenerateContours();
 
 	const double* GetValidMax() { return _gridValidMax; };
@@ -68,15 +68,26 @@ public:
 	double* GetSDF(int l) { return _pSDF + l * _nGrids; }
 	double* GetSortedSDF(int l) { return _pSortedSDF + l * _nGrids; }
 	bool* GetSet(int l) { return _pSet + l * _nGrids; }
-	int GetDepth(int l) { return _pSetBandDepth[l]; }
 	int GetRegionType(int l) { return _pRegionType[l]; }
 	void BuildSortedSDF();
-	void CalculateSet(double dbIsoValue);
+	void CalculateSet();
 	virtual QList<UnCertaintyArea*> GetUncertaintyAreaValid() { return _listAreaValid; }
 	virtual QList<UnCertaintyArea*> GetUncertaintyAreaHalf() { return _listAreaHalf; }
+	virtual QList<UnCertaintyArea*> GetUncertaintyArea() { return _listUnionAreaE; }
+
+
 private:
 	void sortBuf(const double* pS, double* pD);	// space segmentation
 	void generateContourImp(const QList<ContourLine>& contourMin, const QList<ContourLine>& contourMax, QList<UnCertaintyArea*>& areas);
 
+public:
+	/*
+	calculate the signed distance function
+	arrData:	the input data
+	arrSDF:		the calculated sdf
+	isoValue:	the iso value
+	contour:	the generated contour
+	*/
+	void calculateSDF(const double* arrData, double* arrSDF, int nW, int nH, double isoValue, QList<ContourLine> contour);
 };
 

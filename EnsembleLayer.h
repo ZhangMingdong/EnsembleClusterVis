@@ -52,5 +52,18 @@ public:
 	virtual void ReloadTexture();
 	// brushing
 	virtual void Brush(int nLeft, int nRight, int nTop, int nBottom);
+
+private:
+	void drawContourLineOutlier();
+	void drawContourLineMin();
+	void drawContourLineMax();
+	void drawContourLineMean();
+	void drawContourLineMedian();
+	void drawContourLine();
+	void drawContourLineSorted();
+	void drawContourLineSortedSDF();
+	void drawContourLineSDF();
+
+	void drawBand();
 };
 

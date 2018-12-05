@@ -78,7 +78,6 @@ protected:
 protected:
 	MeteModel* _pModel = NULL;
 	GLuint _gllist;                           // display index
-	GLuint _gllistG;                           // display index for gradient
 
 	double _fScaleW;
 	double _fScaleH;

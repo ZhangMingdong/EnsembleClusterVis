@@ -103,17 +103,25 @@ EnsembleLayer::~EnsembleLayer()
 	
 }
 
+void SetColor(int nIndex,double dbValue,double dbOpacity=.8) {
+	bool bCategorical = true;
+	if (bCategorical) {
+		glColor4f(ColorMap::GetCategory10D(nIndex, 0)
+			, ColorMap::GetCategory10D(nIndex, 1)
+			, ColorMap::GetCategory10D(nIndex, 2)
+			, dbOpacity);
+	}
+	else {
+		ColorMap* pColorMap=ColorMap::GetInstance(ColorMap::CP_T2);
+		MYGLColor color = pColorMap->GetColor(dbValue);
+		glColor4f(color._rgb[0] / 255.0
+			, color._rgb[1] / 255.0
+			, color._rgb[2] / 255.0
+			, dbOpacity);
+	}
+}
 void EnsembleLayer::draw(DisplayStates states){
-	// border
-	glBegin(GL_LINE_LOOP);
-	glVertex2f(_pLayout->_dbLeft, _pLayout->_dbBottom);
-	glVertex2f(_pLayout->_dbRight, _pLayout->_dbBottom);
-	glVertex2f(_pLayout->_dbRight, _pLayout->_dbTop);
-	glVertex2f(_pLayout->_dbLeft, _pLayout->_dbTop);
-	glEnd();
-
-
-
+	// 1.get variables
 	int nClusterIndex = -1;	// -1 means show all clusters
 
 	// the x radius and y radius of the map in drawing space
@@ -126,6 +134,20 @@ void EnsembleLayer::draw(DisplayStates states){
 
 	double scaleFocusX = (_pModel->GetFocusEast() - _pModel->GetFocusWest()) / 360.0;
 	double scaleFocusY = (_pModel->GetFocusNorth() - _pModel->GetFocusSouth()) / 180.0;
+
+
+
+	// border
+	glBegin(GL_LINE_LOOP);
+	glVertex2f(_pLayout->_dbLeft, _pLayout->_dbBottom);
+	glVertex2f(_pLayout->_dbRight, _pLayout->_dbBottom);
+	glVertex2f(_pLayout->_dbRight, _pLayout->_dbTop);
+	glVertex2f(_pLayout->_dbLeft, _pLayout->_dbTop);
+	glEnd();
+
+
+
+
 
 	// draw background
 	if (states._bShowBackground){
@@ -163,23 +185,45 @@ void EnsembleLayer::draw(DisplayStates states){
 
 	if (states._bShowGradientE)
 	{
-		for (size_t i = 0; i < g_nEnsembles; i++)
-		{
-			glColor4f(1.0, 1.0, 0.0, 0.06);
-			glCallList(_gllistG + i * 3 + 1);
-		}
+
 	}
 	// union
 	if (states._bShowUnionE)
+		drawBand();
+
+	// == lines ==
+	if (states._bShowContourLineOutlier)
+		drawContourLineOutlier();
+	if (states._bShowContourLineMin)
+		drawContourLineMin();
+	if (states._bShowContourLineMax)
+		drawContourLineMax();
+	if (states._bShowContourLineMean)
+		drawContourLineMean();
+	if (states._bShowContourLineMedian)
+		drawContourLineMedian();
+	if (states._bShowContourLine)
+		drawContourLine();
+	if (states._bShowContourLineSorted)
+		drawContourLineSorted();
+	if (states._bShowContourLineSortedSDF)
+		drawContourLineSortedSDF();
+	if (states._bShowContourLineSDF)
+		drawContourLineSDF();
+
+}
+
+void EnsembleLayer::drawBand() {
+	QList<double> listIsoValue = _pModel->GetIsoValues();
+	int nIsoValues = listIsoValue.length();
+	for (size_t i = 0; i < nIsoValues; i++)
 	{
+		int nBias = i * 9;
 		bool bContourBoxplot = true;
 		if (bContourBoxplot) {
-			glColor4f(.5, .5, .5, .3);
-			glCallList(_gllist + 4);
-
-			glColor4f(.5, .5, .5, .3);
-			glCallList(_gllist + 7);
-
+			SetColor(i, listIsoValue[i], .3);
+			glCallList(_gllist + nBias + 4);
+			glCallList(_gllist + nBias + 7);
 		}
 		else {
 			double fTransparency = .2;
@@ -187,21 +231,24 @@ void EnsembleLayer::draw(DisplayStates states){
 			if (g_bShowUncertaintyOnly) {
 
 				glColor4f(0, 1, 0, .5);
-				glCallList(_gllist + 1);
+				glCallList(_gllist + nBias + 1);
 			}
 			else
 				for (size_t j = 0; j < 3; j++)
 				{
 					glColor4f(ColorMap::GetRGB(j, 0), ColorMap::GetRGB(j, 1), ColorMap::GetRGB(j, 2), fTransparency);
-					glCallList(_gllist + j);
+					glCallList(_gllist + nBias + j);
 				}
 
 		}
 	}
+}
 
-
-	// == lines ==
-	if (states._bShowContourLineOutlier)
+void EnsembleLayer::drawContourLineOutlier() 
+{
+	QList<double> listIsoValue = _pModel->GetIsoValues();
+	int nIsoValues = listIsoValue.length();
+	for (size_t isoIndex = 0; isoIndex < nIsoValues; isoIndex++)
 	{
 		glColor4f(0.0, 0.0, 1.0, 1.0);
 		glPushAttrib(GL_ENABLE_BIT);
@@ -209,100 +256,109 @@ void EnsembleLayer::draw(DisplayStates states){
 		glLineStipple(1, 0xAAAA);
 		glEnable(GL_LINE_STIPPLE);
 
-		QList<QList<ContourLine>> outliers = _pModel->GetContourOutlier();
+		QList<QList<ContourLine>> outliers = _pModel->GetContourOutlier(isoIndex);
 		for each (QList<ContourLine> line in outliers)
 		{
 			drawContourLine(line);
 		}
 		glPopAttrib();
 	}
-	if (states._bShowContourLineMin)
+}
+
+void EnsembleLayer::drawContourLineMin(){
+	QList<double> listIsoValue = _pModel->GetIsoValues();
+	int nIsoValues = listIsoValue.length();
+	for (size_t isoIndex = 0; isoIndex < nIsoValues; isoIndex++)
 	{
 		glColor4f(1, 1, 0.0, 1.0);
-		drawContourLine(_pModel->GetContourMin());
+		drawContourLine(_pModel->GetContourMin(isoIndex));
 	}
-	if (states._bShowContourLineMax){
-		glColor4f(0.0, 1.0, 1.0, 1.0);
-		drawContourLine(_pModel->GetContourMax());
-	}
-	if (states._bShowContourLineMean)
+}
+
+void EnsembleLayer::drawContourLineMax(){
+	QList<double> listIsoValue = _pModel->GetIsoValues();
+	int nIsoValues = listIsoValue.length();
+	for (size_t isoIndex = 0; isoIndex < nIsoValues; isoIndex++)
 	{
 		glColor4f(0.0, 1.0, 1.0, 1.0);
-		drawContourLine(_pModel->GetContourMean());
+		drawContourLine(_pModel->GetContourMax(isoIndex));
 	}
-	if (states._bShowContourLineMedian)
+}
+
+void EnsembleLayer::drawContourLineMean(){
+	QList<double> listIsoValue = _pModel->GetIsoValues();
+	int nIsoValues = listIsoValue.length();
+	for (size_t isoIndex = 0; isoIndex < nIsoValues; isoIndex++)
+	{
+		glColor4f(0.0, 1.0, 1.0, 1.0);
+		drawContourLine(_pModel->GetContourMean(isoIndex));
+	}
+}
+
+void EnsembleLayer::drawContourLineMedian(){
+	QList<double> listIsoValue = _pModel->GetIsoValues();
+	int nIsoValues = listIsoValue.length();
+	for (size_t isoIndex = 0; isoIndex < nIsoValues; isoIndex++)
 	{
 		glColor4f(1.0, 1.0, 0.0, 1.0);
-		drawContourLine(_pModel->GetContourMedian());
-	}	
-	if (states._bShowContourLine)
-	{
-		bool bBrush = false;
-		if (bBrush) {
-			QList<QList<ContourLine>> contoursBrushed = _pModel->GetContourBrushed();
-			QList<QList<ContourLine>> contoursNotBrushed = _pModel->GetContourNotBrushed();
-			glColor4f(.8, 0.2, 0.0, .8);
-			for (int i = 0; i < contoursBrushed.size(); i++)
-			{
-				drawContourLine(contoursBrushed[i]);
-			}
-			glColor4f(.2, 0.8, 0.0, .2);
-			for (int i = 0; i < contoursNotBrushed.size(); i++)
-			{
-				drawContourLine(contoursNotBrushed[i]);
-			}
-		}
-		else {
-			bool bGroup = false;
-			if (bGroup) {
-				glColor4f(.8, 0.2, 0.0, .8);
-				QList<QList<ContourLine>> contours = _pModel->GetContour();
-				const ClusterResult* pCR = _pModel->GetClusterResultOfFocusedRegion();
-				for (int i = 0; i < contours.size(); i++)
-				{
-//					SetGroupColor(pCR->_arrLabels[i]);
-					drawContourLine(contours[i]);
-				}
+		drawContourLine(_pModel->GetContourMedian(isoIndex));
+	}
+}
 
-			}
-			else {
-				QList<QList<ContourLine>> contours = _pModel->GetContour();
-				glColor4f(.8, 0.2, 0.0, .8);
-				for (int i = 0; i < contours.size(); i++)
-				{
-					drawContourLine(contours[i]);
-				}
-			}
-		}		
-	}
-	if (states._bShowContourLineSorted)
+void EnsembleLayer::drawContourLine(){
+	QList<double> listIsoValue = _pModel->GetIsoValues();
+	int nIsoValues = listIsoValue.length();
+	for (size_t isoIndex = 0; isoIndex < nIsoValues; isoIndex++)
 	{
-		glColor4f(.8, 0.2, 0.0, .8);
-		QList<QList<ContourLine>> contours = _pModel->GetContourSorted();
+		QList<QList<ContourLine>> contours = _pModel->GetContour(isoIndex);
+		SetColor(isoIndex, listIsoValue[isoIndex]);
 		for (int i = 0; i < contours.size(); i++)
 		{
 			drawContourLine(contours[i]);
 		}
 	}
-	if (states._bShowContourLineSortedSDF)
-	{
-		glColor4f(.8, 0.2, 0.0, .8);
-		QList<QList<ContourLine>> contours = _pModel->GetContourSortedSDF();
-		for (int i = 0; i < contours.size(); i++)
-		{
-			drawContourLine(contours[i]);
-		}
-	}
-	if (states._bShowContourLineSDF)
-	{
-		glColor4f(.8, 0.2, 0.0, .8);
-		QList<QList<ContourLine>> contours = _pModel->GetContourSDF();
-		for (int i = 0; i < contours.size(); i++)
-		{
-			drawContourLine(contours[i]);
-		}
-	}
+}
 
+void EnsembleLayer::drawContourLineSorted(){
+	QList<double> listIsoValue = _pModel->GetIsoValues();
+	int nIsoValues = listIsoValue.length();
+	for (size_t isoIndex = 0; isoIndex < nIsoValues; isoIndex++)
+	{
+		SetColor(isoIndex, listIsoValue[isoIndex]);
+		QList<QList<ContourLine>> contours = _pModel->GetContourSorted(isoIndex);
+		for (int i = 0; i < contours.size(); i++)
+		{
+			drawContourLine(contours[i]);
+		}
+	}
+}
+
+void EnsembleLayer::drawContourLineSortedSDF(){
+	QList<double> listIsoValue = _pModel->GetIsoValues();
+	int nIsoValues = listIsoValue.length();
+	for (size_t isoIndex = 0; isoIndex < nIsoValues; isoIndex++)
+	{
+		SetColor(isoIndex, listIsoValue[isoIndex]);
+		QList<QList<ContourLine>> contours = _pModel->GetContourSortedSDF(isoIndex);
+		for (int i = 0; i < contours.size(); i++)
+		{
+			drawContourLine(contours[i]);
+		}
+	}
+}
+
+void EnsembleLayer::drawContourLineSDF(){
+	QList<double> listIsoValue = _pModel->GetIsoValues();
+	int nIsoValues = listIsoValue.length();
+	for (size_t isoIndex = 0; isoIndex < nIsoValues; isoIndex++)
+	{
+		SetColor(isoIndex, listIsoValue[isoIndex]);
+		QList<QList<ContourLine>> contours = _pModel->GetContourSDF(isoIndex);
+		for (int i = 0; i < contours.size(); i++)
+		{
+			drawContourLine(contours[i]);
+		}
+	}
 }
 
 void EnsembleLayer::ReloadTexture() {
@@ -649,8 +705,8 @@ void EnsembleLayer::generateColorBarTexture() {
 
 // build the tess for uncertainty regions
 void EnsembleLayer::buildTess() {
-	_gllist = glGenLists(9);					// generate the display lists
-	_gllistG = glGenLists(g_gradient_l * 3);	// generate the display lists
+	int nIsoValues = _pModel->GetIsoValues().length();
+	_gllist = glGenLists(9*nIsoValues);					// generate the display lists
 
 
 	_tobj = gluNewTess();
@@ -664,19 +720,15 @@ void EnsembleLayer::buildTess() {
 		(void(__stdcall*)())errorCallback);
 
 
+
 	// 4.tess the areas
-	tessSegmentation(_gllist, _pModel->GetUncertaintyArea());
-	tessSegmentation(_gllist+3, _pModel->GetUncertaintyAreaValid());
-	tessSegmentation(_gllist+6, _pModel->GetUncertaintyAreaHalf());
-
-
-	/*
-	QList<QList<UnCertaintyArea*> > listAreas = _pModel->GetUncertaintyAreaG();
-	for (size_t i = 0, len = listAreas.length(); i < len; i++)
+	for (size_t i = 0; i < nIsoValues; i++)
 	{
-	tessSegmentation(_gllistG + i * 3, listAreas[i]);
+		tessSegmentation(_gllist + i * 9, _pModel->GetUncertaintyArea(i));
+		tessSegmentation(_gllist + i * 9 + 3, _pModel->GetUncertaintyAreaValid(i));
+		tessSegmentation(_gllist + i * 9 + 6, _pModel->GetUncertaintyAreaHalf(i));
 	}
-	*/
+
 }
 
 	

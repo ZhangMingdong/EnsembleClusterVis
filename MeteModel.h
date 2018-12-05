@@ -6,6 +6,8 @@
 #include "ClusterResult.h"
 #include "SpatialCluster.h"
 
+#include "GridFrame.h"
+
 class DataField;
 class FeatureSet;
 
@@ -14,30 +16,12 @@ class FeatureSet;
 	Mingdong
 	2017/05/05
 */
-class MeteModel
+class MeteModel:public GridFrame
 {
 public:
 	MeteModel();
 	virtual ~MeteModel();
 
-protected:
-	int _nWidth;
-	int _nHeight;
-	int _nLen;								// _nWidth*_nHeight
-	int _nFocusX;
-	int _nFocusY;
-	int _nFocusW;
-	int _nFocusH;
-	int _nFocusLen;							//_nFocusW*_nFocusH
-	int _nWest;
-	int _nEast;
-	int _nSouth;
-	int _nNorth;
-	int _nFocusWest;
-	int _nFocusEast;
-	int _nFocusSouth;
-	int _nFocusNorth;
-	int _nEnsembleLen;						// number of ensemble members
 public:
 	// initialize the model
 	virtual void InitModel(int nEnsembleLen, int nWidth, int nHeight, int nFocusX, int nFocusY, int nFocusW, int nFocusH
@@ -47,40 +31,24 @@ public:
 	// generate color mapping texture
 	virtual GLubyte* generateTextureNew();
 
-	virtual int GetW(){ return _nWidth; }
-	virtual int GetH(){ return _nHeight; }
-	virtual int GetFocusW(){ return _nFocusW; }
-	virtual int GetFocusH(){ return _nFocusH; }
-	virtual int GetFocusX(){ return _nFocusX; }
-	virtual int GetFocusY(){ return _nFocusY; }
-	virtual int GetWest() { return _nWest; }
-	virtual int GetEast() { return _nEast; }
-	virtual int GetSouth() { return _nSouth; }
-	virtual int GetNorth() { return _nNorth; }
-	virtual int GetFocusWest() { return _nFocusWest; }
-	virtual int GetFocusEast() { return _nFocusEast; }
-	virtual int GetFocusSouth() { return _nFocusSouth; }
-	virtual int GetFocusNorth() { return _nFocusNorth; }
-	virtual int GetEnsembleLen() { return _nEnsembleLen; }
 
 	virtual DataField* GetData() { return _pData; }
 
-	virtual QList<ContourLine> GetContourMin();
-	virtual QList<ContourLine> GetContourMax();
-	virtual QList<ContourLine> GetContourMean();
-	virtual QList<ContourLine> GetContourMedian();
-	virtual QList<QList<ContourLine>> GetContour();
-	virtual QList<QList<ContourLine>> GetContourOutlier();
-	virtual QList<QList<ContourLine>> GetContourSorted();
-	virtual QList<QList<ContourLine>> GetContourSDF();
-	virtual QList<QList<ContourLine>> GetContourSortedSDF();
+	virtual QList<ContourLine> GetContourMin(int isoIndex = 0);
+	virtual QList<ContourLine> GetContourMax(int isoIndex = 0);
+	virtual QList<ContourLine> GetContourMean(int isoIndex = 0);
+	virtual QList<ContourLine> GetContourMedian(int isoIndex = 0);
+	virtual QList<QList<ContourLine>> GetContour(int isoIndex=0);
+	virtual QList<QList<ContourLine>> GetContourOutlier(int isoIndex =0);
+	virtual QList<QList<ContourLine>> GetContourSorted(int isoIndex = 0);
+	virtual QList<QList<ContourLine>> GetContourSDF(int isoIndex = 0);
+	virtual QList<QList<ContourLine>> GetContourSortedSDF(int isoIndex = 0);
 	virtual QList<QList<ContourLine>> GetContourBrushed();
 	virtual QList<QList<ContourLine>> GetContourNotBrushed();
-	virtual QList<UnCertaintyArea*> GetUncertaintyArea(){ return _listUnionAreaE; }
-	virtual QList<UnCertaintyArea*> GetUncertaintyAreaValid();
-	virtual QList<UnCertaintyArea*> GetUncertaintyAreaHalf() ;
+	virtual QList<UnCertaintyArea*> GetUncertaintyArea(int isoIndex = 0);
+	virtual QList<UnCertaintyArea*> GetUncertaintyAreaValid(int isoIndex = 0);
+	virtual QList<UnCertaintyArea*> GetUncertaintyAreaHalf(int isoIndex = 0) ;
 	virtual int GetUncertaintyAreas() { return _nUncertaintyRegions; }
-	virtual int GetDepth(int l);
 
 	virtual const QList<QList<UnCertaintyArea*> > GetUncertaintyAreaG() {
 		return _listUnionAreaEG;
@@ -103,17 +71,6 @@ protected:
 	// read data from text file for global area, set the left line according to the right line.
 	virtual void readDataFromTextG();
 
-	/*
-		calculate the signed distance function
-		arrData:	the input data
-		arrSDF:		the calculated sdf
-		isoValue:	the iso value
-		contour:	the generated contour
-	*/
-	void calculateSDF(const double* arrData, double* arrSDF, int nW, int nH, double isoValue, QList<ContourLine> contour);
-	// use direction instead of isovalue
-	void calculateSDF_v2(const double* arrData, double* arrSDF, int nW, int nH, double isoValue, QList<ContourLine> contour);
-	
 
 	// read data from binary file
 	void readData();
@@ -143,37 +100,23 @@ protected:
 
 	// 1.raw data
 	DataField* _pData=0;					// the data	
-	FeatureSet* _pFeature=0;				// the feature
+//	FeatureSet* _pFeature=0;				// the feature
+
+	QList<FeatureSet*> _listFeature;
 	double* _bufObs = 0;					// observation data
 
 
 	// 2.basic contours and areas
-
-
-
-
-
-	QList<UnCertaintyArea*> _listUnionAreaE;			// list of the uncertainty area of union of E
-	QList<QList<ContourLine>> _listContourSorted;		// list of contours of sorted ensemble members
-	QList<QList<ContourLine>> _listContourSDF;			// list of contours generated form SDF
-	QList<QList<ContourLine>> _listContourSortedSDF;	// list of contours generated form sorted SDF
-	QList<QList<ContourLine>> _listMemberContour[g_nEnsembles];			// list of contours of each ensemble member
-	QList<QList<ContourLine>> _listEnsClusterContour[g_nEnsClusterLen];			// list of contours of each ensemble cluster
 	QList<QList<ContourLine>> _listContourBrushed;		// list of brushed contours of ensemble members
 	QList<QList<ContourLine>> _listContourNotBrushed;	// list of not brushed contours of ensemble members
-
+	QList<QList<ContourLine>> _listContourEOF;			// list of contours of EOF
+	QList<QList<ContourLine>> _listMemberContour[g_nEnsembles];			// list of contours of each ensemble member
+	QList<QList<ContourLine>> _listEnsClusterContour[g_nEnsClusterLen];			// list of contours of each ensemble cluster
 	QList<QList<UnCertaintyArea*>> _listUnionAreaEG;	// list of the uncertainty area of union of E	(for gradient)
 	QList<QList<ContourLine>> _listContourMinEG;
 	QList<QList<ContourLine>> _listContourMaxEG;
 
-
-	QList<QList<ContourLine>> _listContourEOF;			// list of contours of EOF
-
-
-
-
-
-
+	QList<double> _listIsoValues;						// list of iso values
 
 	// 3.cluster related
 	int _nUncertaintyRegions = 6;				// number of uncertainty regions
@@ -301,12 +244,15 @@ public:
 	int GetFocusedRegion() { return _nFocusedRegion; }
 
 
-	int GetGridLength() { return _nLen; }
+	int GetGridLength() { return _nGrids; }
 	int GetThresholdedGridLength() { return _nThresholdedGridPoints; }
 
 	const std::vector<UncertaintyRegion> GetUncertaintyRegions() { return _vecRegions; }
 
 	void SetFocusedRegion(int nRegion);
+
+	void SetIsoValues(QList<double> listIsoValues);
+	QList<double> GetIsoValues() { return _listIsoValues; }
 
 private:
 	// detail level of the contours, 0-1;1-3;2-7...

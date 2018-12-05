@@ -1,6 +1,7 @@
 #pragma once
 #include <QList>
 #include "def.h"
+#include "GridFrame.h"
 /*
 	represent a data field
 	author: Mingdong
@@ -8,7 +9,7 @@
 	functionality: provide grid related informations
 	2017/10/24
 */
-class DataField
+class DataField:public GridFrame
 {
 public:
 	DataField(int w,int h,int l);
@@ -24,10 +25,6 @@ private:
 	double* _gridUMin;				// minimum of union of each grid among different ensemble results
 	double* _pSortedBuf;			// data sorted at each grid point
 
-	int _nW;						// width
-	int _nH;						// height
-	int _nGrids;					// width*height
-	int _nL;						// number of ensemble members
 	int _nSmooth = 0;				// level of smooth
 	int _nEOF = 0;					// level of EOF
 	double* _gridEOF[g_nEOFLen];	// eof fields
