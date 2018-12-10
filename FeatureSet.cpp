@@ -4,6 +4,10 @@
 #include "UnCertaintyArea.h"
 #include "ContourStripGenerator.h"
 
+#include "MyPCA.h"
+#include <KMeansClustering.h>
+#include <AHCClustering.h>
+
 #include <qDebug>
 
 
@@ -36,7 +40,6 @@ FeatureSet::FeatureSet(DataField* pData, double dbIsoValue, int nWidth, int nHei
 	_nFocusH = nFocusH;
 	_nEnsembleLen = nEnsembleLen;
 
-
 	_gridHalfMax = new double[_nGrids];
 	_gridHalfMin = new double[_nGrids];
 	_gridValidMax = new double[_nGrids];
@@ -44,8 +47,39 @@ FeatureSet::FeatureSet(DataField* pData, double dbIsoValue, int nWidth, int nHei
 	_pSDF = new double[_nGrids*_nEnsembleLen];
 	_pSortedSDF = new double[_nGrids*_nEnsembleLen];
 	_pSet = new bool[_nGrids*_nEnsembleLen];
+	_pGridDiverse = new bool[_nGrids];
 	_pSetBandDepth = new int[_nEnsembleLen];
-	_pRegionType = new int[_nEnsembleLen];
+	_pMemberType = new int[_nEnsembleLen];
+
+	// 1.calculate set
+	calculateSet();
+
+	// 2.calculate band depth
+	calculateBandDepth();
+
+	// 3.calculate member type
+	calculateMemberType();
+
+	// 4.calculate valid max and min and mean
+	doStatistics();
+
+	// 5.generate all the contours and the bands
+	generateContours();
+
+	// 6.calculate signed distance function, according to a given isovalue
+	CalculateSDF(_dbIsoValue);
+
+	// 7.sort according to sdf and generate contours according to sdf
+	buildSortedSDF();
+
+//==Clustering==
+	calculateDiverse();
+
+	calculatePCA();	
+
+	//doClustering();
+
+	//doPCAClustering();
 }
 
 FeatureSet::~FeatureSet()
@@ -57,8 +91,9 @@ FeatureSet::~FeatureSet()
 	delete[] _pSDF;
 	delete[] _pSortedSDF;
 	delete[] _pSet;
+	delete[] _pGridDiverse;
 	delete[] _pSetBandDepth;
-	delete[] _pRegionType;
+	delete[] _pMemberType;
 
 	for each (UnCertaintyArea* pArea in _listAreaValid)
 		delete pArea;
@@ -66,10 +101,9 @@ FeatureSet::~FeatureSet()
 		delete pArea;
 	for each (UnCertaintyArea* pArea in _listUnionAreaE)
 		delete pArea;
-
 }
 
-void FeatureSet::GenerateContours() {
+void FeatureSet::generateContours() {
 	for (size_t i = 0; i < _nEnsembleLen; i++)
 	{
 		// spaghetti
@@ -77,9 +111,6 @@ void FeatureSet::GenerateContours() {
 			QList<ContourLine> contour;
 			ContourGenerator::GetInstance()->Generate(_pData->GetLayer(i), contour, _dbIsoValue, _nWidth, _nHeight, _nFocusX, _nFocusY, _nFocusW, _nFocusH);
 			_listContour.push_back(contour);
-
-			// calculate sdf
-			calculateSDF(_pData->GetData(i), GetSDF(i), _nWidth, _nHeight, _dbIsoValue, contour);
 		}
 		// sorted spaghetti
 		{
@@ -87,8 +118,6 @@ void FeatureSet::GenerateContours() {
 			ContourGenerator::GetInstance()->Generate(_pData->GetSortedLayer(i), contour, _dbIsoValue, _nWidth, _nHeight, _nFocusX, _nFocusY, _nFocusW, _nFocusH);
 			_listContourSorted.push_back(contour);
 		}
-
-
 	}
 	ContourGenerator::GetInstance()->Generate(_pData->GetUMin(), _listContourMinE, _dbIsoValue, _nWidth, _nHeight, _nFocusX, _nFocusY, _nFocusW, _nFocusH);
 	ContourGenerator::GetInstance()->Generate(_pData->GetUMax(), _listContourMaxE, _dbIsoValue, _nWidth, _nHeight, _nFocusX, _nFocusY, _nFocusW, _nFocusH);
@@ -102,10 +131,10 @@ void FeatureSet::GenerateContours() {
 
 	generateContourImp(_listContourMinValid, _listContourMaxValid, _listAreaValid);
 	generateContourImp(_listContourMinHalf, _listContourMaxHalf, _listAreaHalf);
-
 }
 
-void FeatureSet::BuildSortedSDF() {
+void FeatureSet::buildSortedSDF() {
+
 	sortBuf(_pSDF, _pSortedSDF);
 
 	for (size_t i = 0; i < _nEnsembleLen; i++)
@@ -141,98 +170,49 @@ void FeatureSet::sortBuf(const double* pS, double* pD) {
 	}
 }
 
-void FeatureSet::CalculateSet() {
-	for (int l = 0; l < _nEnsembleLen; l++)
-	{
-		for (int i = 0; i < _nGrids; i++) {
-			_pSet[l*_nGrids + i] = (_pData->GetData(l,i) > _dbIsoValue);
-		}
-	}
-
-	int nThreshold = 30;
-	// caclulate sBand depth
+void FeatureSet::calculateMemberType() {
 	for (size_t i = 0; i < _nEnsembleLen; i++)
 	{
-		_pSetBandDepth[i] = 0;
-		for (size_t j = 0; j < _nEnsembleLen; j++)
-		{
-			if (i == j) continue;
-			for (size_t k = 0; k < _nEnsembleLen; k++)
-			{
-				if (i == k || j == k) continue;
-				int nFailed = 0;
-				for (int l = 0; l < _nGrids; l++)
-				{
-					if ((_pSet[i*_nGrids + l] && !_pSet[j*_nGrids + l] && !_pSet[k*_nGrids + l])
-						|| (!_pSet[i*_nGrids + l] && _pSet[j*_nGrids + l] && _pSet[k*_nGrids + l])) {
-						nFailed++;
-					}
-					if (nFailed > nThreshold) break;
-				}
-				if (nFailed < nThreshold) _pSetBandDepth[i]++;
-			}
-		}
-	}
-	/*
-	// print depth value
-	qDebug() << "Set Band Depth:";
-	for (size_t i = 0; i < _nL; i++)
-		qDebug() << _pSetBandDepth[i];
-
-	qDebug() << "Set Band Depth Finished";
-	*/
-
-	// calculate region type
-
-	for (size_t i = 0; i < _nEnsembleLen; i++)
-	{
-		_pRegionType[i] = 1;
+		_pMemberType[i] = 1;
 	}
 	int nOutliers = 0;
+	// find outlier
 	for (size_t i = 0; i < _nEnsembleLen; i++)
 	{
 		if (_pSetBandDepth[i] < _nOutlierThreshold) {
-			_pRegionType[i] = 0;
+			_pMemberType[i] = 0;
 			nOutliers++;
 		}
 	}
 	int nValidLen = (_nEnsembleLen - nOutliers) / 2;
+	// find valid and 50%
 	for (int i = 0; i < nValidLen; i++)
 	{
 		int nMaxDepth = 0;
 		int nIndex = -1;
 		for (size_t j = 0; j < _nEnsembleLen; j++)
 		{
-			if (_pRegionType[j] == 1 && _pSetBandDepth[j] > nMaxDepth)
+			if (_pMemberType[j] == 1 && _pSetBandDepth[j] > nMaxDepth)
 			{
 				nIndex = j;
 				nMaxDepth = _pSetBandDepth[j];
 			}
 		}
-		_pRegionType[nIndex] = 2;
+		_pMemberType[nIndex] = 2;
 	}
+}
 
-	qDebug() << "Region Types";
-	for (size_t i = 0; i < _nEnsembleLen; i++)
-		qDebug() << _pRegionType[i];
-
-	qDebug() << "Region Types Finished";
-
-
-
-	// migrate from calculate()
-
-	// calculate valid max and min and mean
+void FeatureSet::doStatistics() {
 	for (int i = 0; i < _nGrids; i++) {
 		std::vector<double> vecDataValid;
 		std::vector<double> vecDataHalf;
 		// 1.calculate mean
 		for (int j = 0; j < _nEnsembleLen; j++)
 		{
-			if (_pRegionType[j])
+			if (_pMemberType[j])
 			{
 				vecDataValid.push_back(_pData->GetData(j, i));
-				if (_pRegionType[j] == 2)
+				if (_pMemberType[j] == 2)
 				{
 					vecDataHalf.push_back(_pData->GetData(j, i));
 				}
@@ -259,7 +239,106 @@ void FeatureSet::CalculateSet() {
 			_nMedianIndex = i;
 		}
 	}
+}
 
+void FeatureSet::calculateSet() {
+	// 1.calculate set
+	for (int l = 0; l < _nEnsembleLen; l++)
+	{
+		for (int i = 0; i < _nGrids; i++) {
+			_pSet[l*_nGrids + i] = (_pData->GetData(l,i) > _dbIsoValue);
+		}
+	}
+}
+
+// caclulate sBand depth
+void FeatureSet::calculateBandDepth() {
+	int mSet = (_nEnsembleLen - 1) * (_nEnsembleLen - 2) / 2;	// count of j=2 sets
+	int* arrMatrix = new int[_nEnsembleLen*mSet];				// the matrix
+	// 1.calculate the matrix
+	for (size_t i = 0; i < _nEnsembleLen; i++){					// for each member
+		int nSetIndex = 0;										// index of current set
+		for (size_t j = 0; j < _nEnsembleLen; j++){
+			if (i == j) continue;
+			for (size_t k = 0; k < j; k++){
+				if (i == k) continue;
+				// for each set
+				int nIntersection = 0;				// count intersection breaks
+				int nUnion = 0;						// count uniton breaks
+				for (int l = 0; l < _nGrids; l++)
+				{
+					if ((_pSet[i*_nGrids + l] && !_pSet[j*_nGrids + l] && !_pSet[k*_nGrids + l])) nIntersection++;
+					if ((!_pSet[i*_nGrids + l] && _pSet[j*_nGrids + l] && _pSet[k*_nGrids + l])) nUnion++;
+				}
+				arrMatrix[i*mSet + nSetIndex] = (nIntersection > nUnion) ? nIntersection: nUnion;
+				nSetIndex++;
+			}
+		}
+	}
+	// 2.calculate epsilon
+	int nMatrixLength = _nEnsembleLen * mSet;
+	double dbThreshold = nMatrixLength / 6.0;
+	int epsilon = 1;
+	while (true) {	// break when find a proper epsilon
+		int nCount = 0;
+		for (size_t i = 0; i < nMatrixLength; i++)
+		{
+			if (arrMatrix[i] < epsilon) nCount++;
+		}
+		if (nCount > dbThreshold) break;
+		else epsilon++;
+	}
+//	qDebug() <<"epsilon:"<< epsilon;
+//	qDebug() << "band depth:";
+	// 3.claculate band depth
+	for (size_t i = 0; i < _nEnsembleLen; i++)
+	{
+		_pSetBandDepth[i] = 0;
+		for (size_t j = 0; j < mSet; j++) {
+			if (arrMatrix[i*mSet + j] < epsilon)_pSetBandDepth[i]++;
+		}
+//		qDebug() << _pSetBandDepth[i];
+	}
+//	qDebug() << "~band depth:";
+	/*
+	qDebug() << "test:";
+	for (size_t j = 0; j < mSet; j++) {
+		qDebug() << arrMatrix[j];
+	}
+	qDebug() << "test finished";
+	*/
+
+	delete[] arrMatrix;
+}
+
+void FeatureSet::calculateBandDepth_v1() {
+	int nThreshold = 18;
+	qDebug() << "test:";
+	// caclulate sBand depth
+	for (size_t i = 0; i < _nEnsembleLen; i++)
+	{
+		_pSetBandDepth[i] = 0;
+		for (size_t j = 0; j < _nEnsembleLen; j++)
+		{
+			if (i == j) continue;
+			for (size_t k = 0; k < j; k++)
+			{
+				if (i == k) continue;
+				int nFailed = 0;
+				for (int l = 0; l < _nGrids; l++)
+				{
+					if ((_pSet[i*_nGrids + l] && !_pSet[j*_nGrids + l] && !_pSet[k*_nGrids + l])
+						|| (!_pSet[i*_nGrids + l] && _pSet[j*_nGrids + l] && _pSet[k*_nGrids + l])) {
+						nFailed++;
+					}
+					//if (nFailed == nThreshold) break;
+				}
+				if (i == 0) qDebug() << nFailed;
+				if (nFailed < nThreshold) _pSetBandDepth[i]++;
+			}
+		}
+	}
+	qDebug() << "test finished";
 }
 
 const double* FeatureSet::GetMedian() { return _pData->GetData(_nMedianIndex); }
@@ -269,28 +348,165 @@ void FeatureSet::generateContourImp(const QList<ContourLine>& contourMin, const 
 	generator.Generate(areas, contourMin, contourMax, _nWidth, _nHeight, _nFocusX, _nFocusY, _nFocusW, _nFocusH);
 }
 
-void FeatureSet::calculateSDF(const double* arrData, double* arrSDF, int nW, int nH, double isoValue, QList<ContourLine> contour) {
-	for (size_t i = 0; i < nH; i++)
-	{
-		for (size_t j = 0; j < nW; j++)
+void FeatureSet::CalculateSDF(double dbIsoValue) {
+	for (size_t l = 0; l < _nEnsembleLen; l++) {
+		// calculate sdf
+		const double* arrData = _pData->GetData(l);
+		double* arrSDF = GetSDF(l);
+		QList<ContourLine> contour = _listContour[l];
+		for (size_t i = 0; i < _nHeight; i++)
 		{
-			double dbMinDis = nW * nH;
-			for (size_t k = 0, lenK = contour.length(); k < lenK; k++)
+			for (size_t j = 0; j < _nWidth; j++)
 			{
-				for (size_t l = 0, lenL = contour[k]._listPt.length() - 1; l < lenL; l++)
+				double dbMinDis = _nGrids;
+				for (size_t k = 0, lenK = contour.length(); k < lenK; k++)
 				{
-					double dbDis = PointToSegDist(j, i
-						, contour[k]._listPt[l].x(), contour[k]._listPt[l].y()
-						, contour[k]._listPt[l + 1].x(), contour[k]._listPt[l + 1].y());
-					if (dbDis < dbMinDis)
+					for (size_t l = 0, lenL = contour[k]._listPt.length() - 1; l < lenL; l++)
 					{
-						dbMinDis = dbDis;
-					}
+						double dbDis = PointToSegDist(j, i
+							, contour[k]._listPt[l].x(), contour[k]._listPt[l].y()
+							, contour[k]._listPt[l + 1].x(), contour[k]._listPt[l + 1].y());
+						if (dbDis < dbMinDis)
+						{
+							dbMinDis = dbDis;
+						}
 
+					}
 				}
+				if (arrData[i*_nWidth + j] < dbIsoValue) dbMinDis = -dbMinDis;	// sign
+				arrSDF[i*_nWidth + j] = dbMinDis;
 			}
-			if (arrData[i*_nWidth + j] < isoValue) dbMinDis = -dbMinDis;	// sign
-			arrSDF[i*_nWidth + j] = dbMinDis;
 		}
 	}
+}
+
+void FeatureSet::calculatePCA() {
+
+	// 1.set parameter
+	int mI = _nDiverseCount;
+	int mO = 2;
+	int n = _nEnsembleLen;
+	// 2.allocate input and output buffer
+	double* arrInput = createDiverseArray();
+	double* arrOutput = new double[mO*n];
+
+	// 3.pca
+	MyPCA pca;
+	pca.DoPCA(arrInput, arrOutput, n, mI, mO, true);
+	// 4.generate points from the output
+	for (size_t i = 0; i < n; i++)
+	{
+		//qDebug() << arrOutput[i];
+		qDebug() << arrOutput[i * 2] << "," << arrOutput[i * 2 + 1];
+		//qDebug() << arrOutput[i * 3] << "," << arrOutput[i * 3 + 1] << "," << arrOutput[i * 3 + 2];
+	}
+	// 5.release the buffer
+
+	delete[] arrOutput;
+	delete[] arrInput;
+}
+
+void FeatureSet::calculateDiverse() {
+	_nDiverseCount = 0;
+	for (size_t i = 0; i < _nGrids; i++)
+	{
+		bool bDiverse = false;
+
+		for (size_t l = 1; l < _nEnsembleLen; l++)
+		{
+			if (_pSet[l*_nGrids + i] != _pSet[(l - 1)*_nGrids + i]) {
+				bDiverse = true;
+				_nDiverseCount++;
+				break;
+			}
+		}
+		_pGridDiverse[i] = bDiverse;
+
+	}
+	qDebug() << "Diverse count: " << _nDiverseCount;
+}
+
+double* FeatureSet::createDiverseArray() {
+	double* arrBuf = new double[_nEnsembleLen*_nDiverseCount];
+	for (size_t l = 0; l < _nEnsembleLen; l++)
+	{
+		for (size_t i = 0, j = 0; i < _nGrids; i++)
+		{
+			if (_pGridDiverse[i]) {
+				arrBuf[l * _nDiverseCount + j] = _pSDF[l*_nGrids + i];
+				j++;
+			}
+		}
+	}
+	return arrBuf;
+}
+
+void FeatureSet::doClustering() {
+	// 2.cluster
+	CLUSTER::Clustering* pClusterer = new CLUSTER::KMeansClustering();
+	int nN = _nEnsembleLen;			// number of data items
+	int nM = _nDiverseCount;		// dimension
+	int nK = 2;						// clusters
+	int* arrLabel = new int[nN];
+	double* arrBuf = createDiverseArray();
+
+
+	pClusterer->DoCluster(nN, nM, nK, arrBuf, arrLabel);
+	qDebug() << "Labels";
+	for (size_t i = 0; i < nN; i++)
+	{
+		qDebug() << arrLabel[i];
+	}
+
+	// 4.record label
+
+	// 5.release the resouse
+	delete arrLabel;
+	delete pClusterer;
+	delete arrBuf;
+}
+
+void FeatureSet::doPCAClustering() {
+
+	// 1.set parameter
+	int mI = _nDiverseCount;
+	int mO = 5;
+	int n = _nEnsembleLen;
+	// 2.allocate input and output buffer
+	double* arrInput = createDiverseArray();
+	double* arrOutput = new double[mO*n];
+
+	// 3.pca
+	MyPCA pca;
+	pca.DoPCA(arrInput, arrOutput, n, mI, mO, true);
+
+	// clustering
+	{
+		// 2.cluster
+		CLUSTER::Clustering* pClusterer = new CLUSTER::KMeansClustering();
+		int nN = _nEnsembleLen;			// number of data items
+		int nM = mO;		// dimension
+		int nK = 2;						// clusters
+		int* arrLabel = new int[nN];
+		double* arrBuf = arrOutput;
+
+
+		pClusterer->DoCluster(nN, nM, nK, arrBuf, arrLabel);
+		qDebug() << "Labels";
+		for (size_t i = 0; i < nN; i++)
+		{
+			qDebug() << arrLabel[i];
+		}
+
+		// 4.record label
+
+		// 5.release the resouse
+		delete arrLabel;
+		delete pClusterer;
+	}
+
+
+
+	delete[] arrOutput;
+	delete[] arrInput;
 }

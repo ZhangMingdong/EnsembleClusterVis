@@ -250,7 +250,8 @@ void EnsembleLayer::drawContourLineOutlier()
 	int nIsoValues = listIsoValue.length();
 	for (size_t isoIndex = 0; isoIndex < nIsoValues; isoIndex++)
 	{
-		glColor4f(0.0, 0.0, 1.0, 1.0);
+		SetColor(isoIndex, listIsoValue[isoIndex]);
+		//glColor4f(0.0, 0.0, 1.0, 1.0);
 		glPushAttrib(GL_ENABLE_BIT);
 
 		glLineStipple(1, 0xAAAA);

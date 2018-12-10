@@ -386,12 +386,14 @@ void MyPCA::DoPCA(const double* arrInput, double* arrOutput, int n, int mI,int m
 	double dbSum = 0;
 	for (size_t i = 0; i < _nCol; i++)
 	{
-		cout << (*_pEigenvalue)[i][i] << endl;
+		if (debug) 
+			cout << (*_pEigenvalue)[i][i] << endl;
 		dbSum += (*_pEigenvalue)[i][i];
 	}
 	for (size_t i = 0; i < _nCol; i++)
 	{
-		cout << (*_pEigenvalue)[i][i]/dbSum << endl;
+		if (debug) 
+			cout << (*_pEigenvalue)[i][i]/dbSum << endl;
 	}
 
 
@@ -549,7 +551,6 @@ void MyPCA::writeMatrices() {
 	output_binary.write((char*)buf, nLen*sizeof(double));
 	delete[] buf;
 }
-
 
 void MyPCA::generateEllipse(std::vector<DPoint3>& points, int* arrGridLabel, int label, int nWidth, int nHeight, double dbDis) {
 	// calculate the confidence eclipse

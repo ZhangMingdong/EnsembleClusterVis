@@ -55,8 +55,8 @@ MainWindow::MainWindow()
 	// finished read config file
 	setWindowState(Qt::WindowMaximized);
 
-	_pModel = MeteModel::CreateModel();
-	//_pModel = MeteModel::CreateModel(true);
+	//_pModel = MeteModel::CreateModel();
+	_pModel = MeteModel::CreateModel(true);
 
 	createSceneAndView();
 	createActions();
@@ -391,6 +391,8 @@ void MainWindow::closeEvent(QCloseEvent *event)
 		settings.setValue(ShowContourLineMin, viewShowContourLineMinAction->isChecked());
 		settings.setValue(ShowContourLineSDF, viewShowContourLineSDFAction->isChecked());
 		settings.setValue(ShowContourLineMax, viewShowContourLineMaxAction->isChecked());
+		settings.setValue(ShowContourLineSorted, viewShowContourLineSortedAction->isChecked());
+		settings.setValue(ShowContourLineSortedSDF, viewShowContourLineSortedSDFAction->isChecked());
 		settings.setValue(ShowContourLineMean, viewShowContourLineMeanAction->isChecked());
 		settings.setValue(ShowContourLineMedian, viewShowContourLineMedianAction->isChecked());
 		settings.setValue(ShowContourLineOutlier, viewShowContourLineOutlierAction->isChecked());

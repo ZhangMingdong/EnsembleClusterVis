@@ -9,5 +9,7 @@ public:
 protected:
 	// specialized model initialization
 	virtual void initializeModel();
+private:
+	void regenerateData();		// regenerate data from contours
 };
 

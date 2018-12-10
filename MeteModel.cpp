@@ -128,16 +128,9 @@ void MeteModel::InitModel(int nEnsembleLen, int nWidth, int nHeight, int nFocusX
 	_strFile = strFile;
 	_bBinaryFile = bBinary;
 
-	// 2.allocate resource
+	// 1.build data
 	_pData = new DataField(_nWidth, _nHeight, _nEnsembleLen);
-	for each (double isoValue in _listIsoValues)
-	{
-		_listFeature.append(new FeatureSet(_pData, isoValue, _nWidth, _nHeight, _nEnsembleLen, _nFocusX, _nFocusY, _nFocusW, _nFocusH));
-	}
-
-//	_pFeature = new FeatureSet(_pData,g_fThreshold,_nWidth,_nHeight,_nEnsembleLen,_nFocusX,_nFocusY,_nFocusW,_nFocusH);
-
-	// 3.read data
+	// maybe should migrate into DataField
 	if (_bBinaryFile)
 	{
 		readData();
@@ -160,58 +153,14 @@ void MeteModel::InitModel(int nEnsembleLen, int nWidth, int nHeight, int nFocusX
 	readDipValue("../../data/t2-2007-2017-jan-144 and 240h-50(1Degree, single timestep)_dipValue_P.txt");
 #endif
 
-	// calculate set
-	// the depth result is used in statistic
-
-	for each (FeatureSet* pFeaturen in _listFeature)
-	{
-		pFeaturen->CalculateSet();
-	}
-	// 4.statistic
+	// statistic
 	_pData->DoStatistic();
 
-
-
-	for each (FeatureSet* pFeature in _listFeature)
+	// 2.generate feature;
+	for each (double isoValue in _listIsoValues)
 	{
-		pFeature->GenerateContours();
-
-
-		// contours from sorted SDF
-		pFeature->BuildSortedSDF();
+		_listFeature.append(new FeatureSet(_pData, isoValue, _nWidth, _nHeight, _nEnsembleLen, _nFocusX, _nFocusY, _nFocusW, _nFocusH));
 	}
-
-
-
-	// ensemble clustering
-	//doEnsCluster();
-
-	/*
-	// foreach ensemble cluster
-	for (size_t i = 0; i < g_nEnsClusterLen; i++)
-	{
-		// for each isovalue
-		for (size_t j = 0; j < g_nIsoValuesLen; j++)
-		{
-			QList<ContourLine> contour;
-			_generator.Generate(_arrEnsClusterData[i]->GetMean(), contour, g_arrIsoValues[j], _nWidth, _nHeight, _nFocusX, _nFocusY, _nFocusW, _nFocusH);
-			_listEnsClusterContour[i].push_back(contour);
-		}
-	}
-	*/
-
-
-
-	/*
-	for (size_t j = 0; j < g_nIsoValuesLen; j++)
-	{
-		_generator.Generate(_pData->GetMean(), _listContourMeanE, g_arrIsoValues[j], _nWidth, _nHeight, _nFocusX, _nFocusY, _nFocusW, _nFocusH);
-	}
-	*/
-
-//	generateContourImp(_listContourMinE, _listContourMaxE, _listUnionAreaE);
-
-
 
 	// specializaed initialization
 	initializeModel();
@@ -804,7 +753,7 @@ QList<QList<ContourLine>> MeteModel::GetContourOutlier(int isoIndex)
 	QList<QList<ContourLine>> result;
 	for (size_t i = 0; i < _nEnsembleLen; i++)
 	{
-		if (_listFeature[isoIndex]->GetRegionType(i)==0)
+		if (_listFeature[isoIndex]->GetMemberType(i)==0)
 		{
 			result.push_back(listContour[i]);
 		}
@@ -862,10 +811,10 @@ MeteModel* MeteModel::CreateModel(bool bA) {
 	MeteModel* pModel = bA ? new ArtificialModel() : new MeteModel();
 	QList<double> listIsoValue;
 	listIsoValue.append(273.16);
-	listIsoValue.append(273.16+5);
-	listIsoValue.append(273.16+10);
-	listIsoValue.append(273.16 + 15);
-	listIsoValue.append(273.16 + 20);
+	//listIsoValue.append(273.16+5);
+	//listIsoValue.append(273.16+10);
+	//listIsoValue.append(273.16 + 15);
+	//listIsoValue.append(273.16 + 20);
 	pModel->SetIsoValues(listIsoValue);
 	int nWidth = g_nWidth;
 	int nHeight		= g_nHeight		;
