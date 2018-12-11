@@ -334,8 +334,6 @@ void MeteModel::buildTextureSDF() {
 			if (pData[nIndex] < dbMin) dbMin = pData[nIndex];
 		}
 	}
-		qDebug() << "Max: " << dbMax;
-		qDebug() << "Min: " << dbMin;
 }
 
 void MeteModel::buildTextureThresholdDipValue() {

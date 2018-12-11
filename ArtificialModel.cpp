@@ -76,8 +76,12 @@ void ArtificialModel::regenerateData() {
 			//qDebug() << j / 100.0*(i > (_nEnsembleLen / 2) ?  1: -1);
 
 			double y = _nHeight / 2
-				+ sin((j + rand() / (double)RAND_MAX) / 2) * 2 * (rand() / (double)RAND_MAX)
-				+ (j / 10.0*(i > (_nEnsembleLen / 2) ? 1 : -1));
+				+ sin((j + rand() / (double)RAND_MAX) / 2) * 2 * (rand() / (double)RAND_MAX);
+				//+ (j / 10.0*(i > (_nEnsembleLen / 2) ? 1 : -1));
+			if (i > 40)
+				y += j / 10.0;
+			else if (i < 10)
+				y -= j / 10.0;
 
 			/*
 			double y = _nHeight / 2

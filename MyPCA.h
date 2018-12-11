@@ -29,17 +29,26 @@ public:
 
 	/*
 		recover nRow of vectors
+		nRow: how many data item
+		nCol: length of pca
 	*/
-	void Recover(double* arrInput, double* arrOutput,int nRow);
+	void Recover(double* arrInput, double* arrOutput,int nRow,int nCol);
+	/*
+		recover 1 data item
+		nCol: length of pca
+	*/
+	void Recover(double* arrInput, double* arrOutput, int nCol);
+
+	// test pca and recover
+	void TestPCARecover(double* arrInput, int n, int mI, int mO, bool bNewData = false);
 private:
 	int _nRow;
 	int _nCol;
-	double* _arrDataMean;
-
+	double* _arrDataMean;					// array of data means
 	TNT::Array2D<double>* _pR;				// function to transform back
-	TNT::Array2D<double>* _pCovar_matrix;
-	TNT::Array2D<double>* _pEigenvector;
-	TNT::Array2D<double>* _pEigenvalue;
+	TNT::Array2D<double>* _pCovar_matrix;	// covariance matrix
+	TNT::Array2D<double>* _pEigenvector;	// eigen vector
+	TNT::Array2D<double>* _pEigenvalue;		// eigen value
 	TNT::Array2D<double>* _pD;				// input data
 private:
 	// read the four matrices

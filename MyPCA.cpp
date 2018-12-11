@@ -329,9 +329,9 @@ void MyPCA::DoPCA(const double* arrInput, double* arrOutput, int n, int mI,int m
 	_pD = new Array2D<double>(_nRow, _nCol);
 
 
+	_arrDataMean = new double[_nCol];
 	int nPCALen = mO;
 
-	_arrDataMean = new double[_nCol];
 	// 0.calculate mean
 	for (size_t i = 0; i < _nCol; i++)
 	{
@@ -371,29 +371,29 @@ void MyPCA::DoPCA(const double* arrInput, double* arrOutput, int n, int mI,int m
 
 	// 3.projection
 	Array2D<double> final_data(_nRow, nPCALen);							// projected data
-	Array2D<double> pca_eigenvector(nPCALen, _nCol);					// pca of eigenvector members
+	Array2D<double> projection_matrix(_nCol, nPCALen);					// pca of eigenvector members
 	for (size_t i = _nCol - nPCALen, ii = 0; i < _nCol; i++, ii++)
 	{
 		for (size_t j = 0; j < _nCol; j++)
 		{
-			pca_eigenvector[ii][j] = (*_pEigenvector)[i][j];
+			projection_matrix[j][ii] = (*_pEigenvector)[j][i];
 		}
 	}
-	Array2D<double> transpose_pca_eigenvector(_nCol, nPCALen);			// transposed pca of eigenvector members
-	transpose(pca_eigenvector, transpose_pca_eigenvector);
-	multiply(*_pD, transpose_pca_eigenvector, final_data);							// project the data
+	multiply(*_pD, projection_matrix, final_data);							// project the data
 
-	double dbSum = 0;
-	for (size_t i = 0; i < _nCol; i++)
+
+	if (debug) 
 	{
-		if (debug) 
+		double dbSum = 0;
+		for (size_t i = 0; i < _nCol; i++)
+		{
 			cout << (*_pEigenvalue)[i][i] << endl;
-		dbSum += (*_pEigenvalue)[i][i];
-	}
-	for (size_t i = 0; i < _nCol; i++)
-	{
-		if (debug) 
-			cout << (*_pEigenvalue)[i][i]/dbSum << endl;
+			dbSum += (*_pEigenvalue)[i][i];
+		}
+		for (size_t i = 0; i < _nCol; i++)
+		{
+			cout << (*_pEigenvalue)[i][i] / dbSum << endl;
+		}
 	}
 
 
@@ -407,23 +407,123 @@ void MyPCA::DoPCA(const double* arrInput, double* arrOutput, int n, int mI,int m
 	}
 }
 
-void MyPCA::Recover(double* arrInput, double* arrOutput, int nRow) {
-	int nPCALen = _nRow - 1;
-	Array2D<double> back_data(nRow, _nCol);
-	Array2D<double> transposed_r(_nCol, _nCol);
-	transpose(*_pR, transposed_r);
+void MyPCA::TestPCARecover(double* arrInput, int n, int mI, int mO, bool bNewData) {
+	// -1.release the resource, and reallocate
+	if (_arrDataMean) delete[] _arrDataMean;
+	if (_pR) delete _pR;
+	if (_pCovar_matrix) delete _pCovar_matrix;
+	if (_pEigenvalue) delete _pEigenvalue;
+	if (_pEigenvector) delete _pEigenvector;
+	_nRow = n;
+	_nCol = mI;
+	_pR = new Array2D<double>(_nCol, _nCol);
+	_pCovar_matrix = new Array2D<double>(_nCol, _nCol);
+	_pEigenvalue = new Array2D<double>(_nCol, _nCol);
+	_pEigenvector = new Array2D<double>(_nCol, _nCol);
+	_pD = new Array2D<double>(_nRow, _nCol);
 
-	Array2D<double> pca_data(nRow, _nCol);
-	for (size_t i = 0; i < nRow; i++)
+
+	_arrDataMean = new double[_nCol];
+	int nPCALen = mO;
+
+	// 0.calculate mean
+	for (size_t i = 0; i < _nCol; i++)
+	{
+		double fMean = 0;
+		for (size_t j = 0; j < _nRow; j++)
+		{
+			fMean += arrInput[j*_nCol + i];
+		}
+		_arrDataMean[i] = fMean / _nRow;
+	}
+	// 1.build the data struture, minus mean
+	for (int i = 0; i < _nRow; i++)
+	{
+		for (int j = 0; j < _nCol; j++)
+		{
+			(*_pD)[i][j] = arrInput[i*_nCol + j] - _arrDataMean[j];
+		}
+	}
+	if (false)
+	{
+		calculateMatrices();
+	}
+	else {
+		// old codes, write the matrix
+		cout << "to calculate matrix" << endl;
+		// 2.PCA
+		if (bNewData)
+		{
+			calculateMatrices();
+			writeMatrices();
+		}
+		else {
+			readMatrices();
+		}
+		cout << "finished calculate matrix" << endl;
+	}
+
+	// 3.projection
+	Array2D<double> final_data(_nRow, nPCALen);							// projected data
+	Array2D<double> pca_eigenvector(nPCALen, _nCol);					// pca of eigenvector members
+	for (size_t i = _nCol - nPCALen, ii = 0; i < _nCol; i++, ii++)
 	{
 		for (size_t j = 0; j < _nCol; j++)
 		{
-			if (j < _nCol - nPCALen) pca_data[i][j] = 0;
-			else  pca_data[i][j] = arrInput[i*nPCALen + j - (_nCol - nPCALen)];
+			pca_eigenvector[ii][j] = (*_pEigenvector)[i][j];
+		}
+	}
+	Array2D<double> transpose_pca_eigenvector(_nCol, nPCALen);			// transposed pca of eigenvector members
+	transpose(pca_eigenvector, transpose_pca_eigenvector);
+	multiply(*_pD, transpose_pca_eigenvector, final_data);							// project the data
+
+	for (size_t j = 0; j < _nRow; j++) {
+		cout << final_data[j][nPCALen - 1] << endl;
+	}
+	return;
+
+	for (size_t i = nPCALen-50; i < nPCALen; i++)
+	{
+		for (size_t j = 0; j < _nRow; j++)
+		{
+			final_data[j][i] = 0;
+		}
+
+	}
+
+	// recover
+
+	Array2D<double> back_data(_nRow, _nCol);
+	Array2D<double> transposed_r(_nCol, _nCol);
+	transpose(*_pR, transposed_r);
+	
+	multiply(final_data, transposed_r, back_data);
+
+
+	for (size_t i = 0; i < _nRow; i++)
+	{
+		for (size_t j = 0; j < _nCol; j++)
+		{
+			arrInput[i*_nCol + j] = _arrDataMean[j] + back_data[i][j];
+		}
+	}
+}
+
+void MyPCA::Recover(double* arrInput, double* arrOutput, int nRow, int nCol) {
+	Array2D<double> back_data(nRow, _nCol);
+
+	Array2D<double> pca_data(nRow, _nCol);
+	for (int i = 0; i < nRow; i++)
+	{
+		for (int j = 0; j < _nCol; j++)
+		{
+			if(j<(_nCol-nCol)) pca_data[i][j] = 0;
+			else pca_data[i][j] = arrInput[i*nCol + j- (_nCol - nCol)];
 		}
 	}
 
-	multiply(pca_data, transposed_r, back_data);
+	multiply(pca_data, *_pR, back_data);
+
 
 	for (size_t i = 0; i < nRow; i++)
 	{
@@ -431,6 +531,25 @@ void MyPCA::Recover(double* arrInput, double* arrOutput, int nRow) {
 		{
 			arrOutput[i*_nCol + j] = _arrDataMean[j] + back_data[i][j];
 		}
+	}
+}
+
+void MyPCA::Recover(double* arrInput, double* arrOutput, int nCol) {
+	Array2D<double> back_data(1, _nCol);
+
+	Array2D<double> pca_data(1, _nCol);
+
+	for (int j = 0; j < _nCol; j++)
+	{
+		if (j < (_nCol - nCol)) pca_data[0][j] = 0;
+		else pca_data[0][j] = arrInput[j - (_nCol - nCol)];
+	}
+
+	multiply(pca_data, *_pR, back_data);
+
+	for (size_t j = 0; j < _nCol; j++)
+	{
+		arrOutput[j] = _arrDataMean[j] + back_data[0][j];
 	}
 }
 
@@ -491,23 +610,38 @@ void MyPCA::readMatrices() {
 }
 
 void MyPCA::calculateMatrices() {
-	int t0 = GetTickCount();
+	//int t0 = GetTickCount();
+
 	// 1.calculate covariance matrix
 	compute_covariance_matrix(*_pD, *_pCovar_matrix);
 
-	int t = GetTickCount();
-	cout << "covariance finished:\t" << t - t0 << endl;
-	t0 = t;
+	//int t = GetTickCount();
+	//cout << "covariance finished:\t" << t - t0 << endl;
+	//t0 = t;
 
 	// 2.get the eigenvectors and eigenvalues
 	eigen(*_pCovar_matrix, *_pEigenvector, *_pEigenvalue);
-	t = GetTickCount();
-	cout << "eigen finished:\t" << t - t0 << endl;
-	t0 = t;
+
+	//t = GetTickCount();
+	//cout << "eigen finished:\t" << t - t0 << endl;
+	//t0 = t;
+
 	GetMatrixInverse_2(*_pEigenvector, _nCol, *_pR);
-	t = GetTickCount();
-	cout << "R finished:\t" << t - t0 << endl;
-	t0 = t;
+
+	/*
+	cout << "nCol:" << _nCol << endl;
+	for (int i = 0; i < _nCol; i++)
+	{
+		for (int j = 0; j < _nCol; j++)
+		{
+			cout << "hehe: " << (*_pR)[i][j] << endl;
+		}
+	}
+	*/
+
+	//t = GetTickCount();
+	//cout << "R finished:\t" << t - t0 << endl;
+	//t0 = t;
 }
 
 void MyPCA::writeMatrices() {

@@ -93,11 +93,12 @@ public:
 
 // dimension-reduction and clustering
 private:
-	void calculateDiverse();
-	void calculatePCA();
-	void doClustering();
-	void doPCAClustering();
-	double* createDiverseArray();		// the result should be manually freed.
-
+	void calculateDiverse();			// calculate diverse grids and diverse count
+	void calculatePCA();				// calculate pca
+	void doClustering();				// clustering
+	void doPCAClustering();				// clustering based on pca result
+	double* createDiverseArray();		// create diverse grids array, the result should be manually freed.
+	void calculatePCARecovery();		// test, recovering,calculate the box of pca
+	void calculatePCABox();				// test, recovering,calculate the box of pca
 };
 

@@ -75,11 +75,15 @@ FeatureSet::FeatureSet(DataField* pData, double dbIsoValue, int nWidth, int nHei
 //==Clustering==
 	calculateDiverse();
 
-	calculatePCA();	
+	//calculatePCA();	
 
 	//doClustering();
 
 	//doPCAClustering();
+
+	calculatePCABox();
+
+
 }
 
 FeatureSet::~FeatureSet()
@@ -384,7 +388,7 @@ void FeatureSet::calculatePCA() {
 
 	// 1.set parameter
 	int mI = _nDiverseCount;
-	int mO = 2;
+	int mO = 4;
 	int n = _nEnsembleLen;
 	// 2.allocate input and output buffer
 	double* arrInput = createDiverseArray();
@@ -397,8 +401,9 @@ void FeatureSet::calculatePCA() {
 	for (size_t i = 0; i < n; i++)
 	{
 		//qDebug() << arrOutput[i];
-		qDebug() << arrOutput[i * 2] << "," << arrOutput[i * 2 + 1];
+		//qDebug() << arrOutput[i * 2] << "," << arrOutput[i * 2 + 1];
 		//qDebug() << arrOutput[i * 3] << "," << arrOutput[i * 3 + 1] << "," << arrOutput[i * 3 + 2];
+		qDebug() << arrOutput[i * 4] << "," << arrOutput[i * 4 + 1] << "," << arrOutput[i * 4 + 2] << "," << arrOutput[i * 4 + 3];
 	}
 	// 5.release the buffer
 
@@ -510,3 +515,172 @@ void FeatureSet::doPCAClustering() {
 	delete[] arrOutput;
 	delete[] arrInput;
 }
+
+void FeatureSet::calculatePCARecovery() {
+
+	// 1.set parameter
+	int mI = _nDiverseCount;
+	int mO = 1;
+	int n = _nEnsembleLen;
+	// 2.allocate input and output buffer
+	double* arrInput = createDiverseArray();
+	double* arrOutput = new double[mO*n];
+
+	// 3.pca
+	MyPCA pca;
+	pca.DoPCA(arrInput, arrOutput, n, mI, mO, true);
+
+	/*
+	double dbMax0 = -100;
+	double dbMax1 = -100;
+	double dbMin0 = 100;
+	double dbMin1 = 100;
+	// 4.generate points from the output
+	for (size_t i = 0; i < n; i++)
+	{
+		if (arrOutput[i * 2] > dbMax0)
+			dbMax0 = arrOutput[i * 2];
+		if (arrOutput[i * 2] < dbMin0)
+			dbMin0 = arrOutput[i * 2];
+		if (arrOutput[i * 2 + 1] > dbMax1)
+			dbMax1 = arrOutput[i * 2];
+		if (arrOutput[i * 2 + 1] < dbMin1)
+			dbMin1 = arrOutput[i * 2];
+	}
+	qDebug() << dbMin0 << "," << dbMin1 << "," << dbMax0 << "," << dbMax1;
+	// recover
+	double box[8] = {dbMin0, dbMin1
+		, dbMin0, dbMax1
+		, dbMax0, dbMin1
+		, dbMax0, dbMax1 };
+	double box[8] = { arrOutput[0],arrOutput[1]
+		, arrOutput[2],arrOutput[3]
+		, arrOutput[60],arrOutput[61]
+		, arrOutput[62],arrOutput[63] };
+
+	double *arrRecoveredBuf = new double[4 * _nDiverseCount];
+	//pca.Recover(box, arrRecoveredBuf, 4,mO);
+	for (size_t i = 0; i < 4; i++)
+	{
+		pca.Recover(box+i*2, arrRecoveredBuf+i*_nDiverseCount, 2);
+	}
+*/
+
+/*
+for (size_t i = 0; i < 10; i++)
+{
+	qDebug() << arrRecoveredBuf[i];
+}
+*/
+
+	int nTestLen = 10;
+	double *arrRecoveredBuf = new double[nTestLen* _nDiverseCount];
+	//pca.Recover(box, arrRecoveredBuf, 4,mO);
+
+	//pca.Recover(arrOutput, arrRecoveredBuf, nTestLen,mO);
+
+	for (size_t l = 0; l < nTestLen; l++)
+	{
+		pca.Recover(arrOutput + l * mO, arrRecoveredBuf + l * _nDiverseCount, 1, mO);
+		for (size_t i = 0, j = 0; i < _nGrids; i++)
+		{
+			if (_pGridDiverse[i]) {
+				_pSDF[l*_nGrids + i] = arrRecoveredBuf[l * _nDiverseCount + j];
+				j++;
+			}
+		}
+		{
+			QList<ContourLine> contour;
+			ContourGenerator::GetInstance()->Generate(GetSDF(l), contour, 0, _nWidth, _nHeight, _nFocusX, _nFocusY, _nFocusW, _nFocusH);
+			_listContourSDF[l] = contour;
+		}
+	}
+
+	// 5.release the buffer
+	delete[] arrRecoveredBuf;
+
+	delete[] arrOutput;
+	delete[] arrInput;
+
+}
+
+void FeatureSet::calculatePCABox() {
+
+	// 1.set parameter
+	int mI = _nDiverseCount;
+	int mO = 2;
+	int n = _nEnsembleLen;
+	// 2.allocate input and output buffer
+	double* arrInput = createDiverseArray();
+	double* arrOutput = new double[mO*n];
+
+	// 3.pca
+	MyPCA pca;
+	pca.DoPCA(arrInput, arrOutput, n, mI, mO, true);
+	if(false)
+		for (size_t i = 0; i < n; i++)
+		{
+			//qDebug() << arrOutput[i];
+			qDebug() << arrOutput[i * 2] << "," << arrOutput[i * 2 + 1];
+			//qDebug() << arrOutput[i * 3] << "," << arrOutput[i * 3 + 1] << "," << arrOutput[i * 3 + 2];
+			//qDebug() << arrOutput[i * 4] << "," << arrOutput[i * 4 + 1] << "," << arrOutput[i * 4 + 2] << "," << arrOutput[i * 4 + 3];
+		}
+
+	double dbMax0 = -10000;
+	double dbMax1 = -10000;
+	double dbMin0 = 10000;
+	double dbMin1 = 10000;
+	// 4.generate points from the output
+	for (size_t i = 0; i < n; i++)
+	{
+		if (arrOutput[i * 2] > dbMax0)
+			dbMax0 = arrOutput[i * 2];
+		if (arrOutput[i * 2] < dbMin0)
+			dbMin0 = arrOutput[i * 2];
+		if (arrOutput[i * 2 + 1] > dbMax1)
+			dbMax1 = arrOutput[i * 2 + 1];
+		if (arrOutput[i * 2 + 1] < dbMin1)
+			dbMin1 = arrOutput[i * 2 + 1];
+	}
+
+	qDebug() << dbMin0 << "," << dbMin1 << "," << dbMax0 << "," << dbMax1;
+	// recover
+	double box[8] = {dbMin0, dbMin1
+		, dbMin0, dbMax1
+		, dbMax0, dbMin1
+		, dbMax0, dbMax1 };
+	/*
+	double box[8] = { arrOutput[0],arrOutput[1]
+		, arrOutput[2],arrOutput[3]
+		, arrOutput[60],arrOutput[61]
+		, arrOutput[62],arrOutput[63] };
+		*/
+
+	double *arrRecoveredBuf = new double[4 * _nDiverseCount];
+	pca.Recover(box, arrRecoveredBuf, 4,mO);
+
+
+	for (size_t l = 0; l < 4; l++)
+	{
+		for (size_t i = 0, j = 0; i < _nGrids; i++)
+		{
+			if (_pGridDiverse[i]) {
+				_pSDF[l*_nGrids + i] = arrRecoveredBuf[l * _nDiverseCount + j];
+				j++;
+			}			
+		}
+		{
+			QList<ContourLine> contour;
+			ContourGenerator::GetInstance()->Generate(GetSDF(l), contour, 0, _nWidth, _nHeight, _nFocusX, _nFocusY, _nFocusW, _nFocusH);
+			_listContourSDF[l]=contour;
+		}
+	}
+
+	// 5.release the buffer
+	delete[] arrRecoveredBuf;
+
+	delete[] arrOutput;
+	delete[] arrInput;
+
+}
+

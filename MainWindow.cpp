@@ -55,8 +55,8 @@ MainWindow::MainWindow()
 	// finished read config file
 	setWindowState(Qt::WindowMaximized);
 
-	//_pModel = MeteModel::CreateModel();
-	_pModel = MeteModel::CreateModel(true);
+	_pModel = MeteModel::CreateModel();
+	//_pModel = MeteModel::CreateModel(true);
 
 	createSceneAndView();
 	createActions();
