@@ -43,7 +43,6 @@ private slots:
 	void updateSmooth(int nSmooth);
 	void updateUncertaintyAreas(int nArea);
 	void updateFocusedCluster(int nFocusedCluster);
-	void updateFocusedRegion(int nFocusedRegion);
 	void updateEOF(int nEOF);
 	void updateMember(int nMember);
 	void updateEnsCluster(int nEnsCluster);

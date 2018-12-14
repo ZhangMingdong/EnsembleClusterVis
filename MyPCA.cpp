@@ -382,15 +382,15 @@ void MyPCA::DoPCA(const double* arrInput, double* arrOutput, int n, int mI,int m
 	multiply(*_pD, projection_matrix, final_data);							// project the data
 
 
-	if (debug) 
+	if (true) 
 	{
 		double dbSum = 0;
 		for (size_t i = 0; i < _nCol; i++)
 		{
-			cout << (*_pEigenvalue)[i][i] << endl;
+			//cout << (*_pEigenvalue)[i][i] << endl;
 			dbSum += (*_pEigenvalue)[i][i];
 		}
-		for (size_t i = 0; i < _nCol; i++)
+		for (size_t i = _nCol-1; i > _nCol-50; i--)
 		{
 			cout << (*_pEigenvalue)[i][i] / dbSum << endl;
 		}

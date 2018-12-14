@@ -29,7 +29,7 @@ public:
 		, int nWest = -180, int nEast = 180, int nSouth = -90, int nNorth = 90
 		, int nFocusWest = -180, int nFocusEast = 180, int nFocusSouth = -90, int nFocusNorth = 90);
 	// generate color mapping texture
-	virtual GLubyte* generateTextureNew();
+	virtual GLubyte* GenerateTexture();
 
 
 	virtual DataField* GetData() { return _pData; }
@@ -87,7 +87,8 @@ public:
 		bg_EOF,					// EOF
 		bg_Obs,					// obs
 		bg_err,					// error
-		bg_SDF					// SDF
+		bg_SDF,					// SDF
+		bg_IsoContourDensity	// density of the iso-contour
 	};
 protected:
 	// using which background function
@@ -142,10 +143,7 @@ protected:
 
 	// vector of uncertainty regions
 	std::vector<UncertaintyRegion> _vecRegions;
-
-	// index of the focused region
-	int _nFocusedRegion = 0;
-
+	
 	// 4.cluster the ensemble member directly
 	QList<DataField*> _arrEnsClusterData;	// data of each cluster
 	int _arrLabels[g_nEnsembles];	// labels of each member
@@ -171,6 +169,9 @@ private:
 
 	// generate texture of signed distance function
 	void buildTextureSDF();
+
+	// generate texture of iso-contour density
+	void buildTextureICD();
 	
 	// generate PCA points from a spatial cluster
 	void generatePCAPoint(UncertaintyRegion& cluster, std::vector<DPoint3>& points);
@@ -190,8 +191,6 @@ private:
 	// calculate similarities between regions
 	void calculateSimilarity();
 
-	// align the cluster results
-	void alignClusters();
 
 
 	/*
@@ -239,17 +238,11 @@ public:
 	const ClusterResult* GetClusterResults() { return _mxClusterResult[0]; }	
 
 
-	const ClusterResult* GetClusterResultOfFocusedRegion() { return _mxClusterResult[0]+_nFocusedRegion; }
-
-	int GetFocusedRegion() { return _nFocusedRegion; }
-
-
 	int GetGridLength() { return _nGrids; }
 	int GetThresholdedGridLength() { return _nThresholdedGridPoints; }
 
 	const std::vector<UncertaintyRegion> GetUncertaintyRegions() { return _vecRegions; }
 
-	void SetFocusedRegion(int nRegion);
 
 	void SetIsoValues(QList<double> listIsoValues);
 	QList<double> GetIsoValues() { return _listIsoValues; }

@@ -34,6 +34,7 @@ void DisplayCtrlWidget::createWidgets() {
 	_pCombBgFunction->addItem("Obs", 8);
 	_pCombBgFunction->addItem("Error", 9);
 	_pCombBgFunction->addItem("SDF", 10);
+	_pCombBgFunction->addItem("ContourDensity", 11);
 
 	_pSpinBoxSmooth = new QSpinBox;
 	_pSpinBoxSmooth->setRange(1, 10);
@@ -107,7 +108,6 @@ void DisplayCtrlWidget::createConnections() {
 	connect(_pSpinBoxSmooth, SIGNAL(valueChanged(int)), this, SLOT(updateSmooth(int)));
 	connect(_pSpinBoxAreas, SIGNAL(valueChanged(int)), this, SLOT(updateUncertaintyAreas(int)));
 	connect(_pSpinBoxFocusedCluster, SIGNAL(valueChanged(int)), this, SLOT(updateFocusedCluster(int)));
-	connect(_pSpinBoxFocusedRegion, SIGNAL(valueChanged(int)), this, SLOT(updateFocusedRegion(int)));
 	connect(_pSpinBoxEOF, SIGNAL(valueChanged(int)), this, SLOT(updateEOF(int)));
 	connect(_pSpinBoxMember, SIGNAL(valueChanged(int)), this, SLOT(updateMember(int)));
 	connect(_pSpinBoxEnsCluster, SIGNAL(valueChanged(int)), this, SLOT(updateEnsCluster(int)));
@@ -134,24 +134,16 @@ void DisplayCtrlWidget::updateFocusedCluster(int nFocusedCluster) {
 	emit focusedClusterChanged(nFocusedCluster);
 }
 
-void DisplayCtrlWidget::updateFocusedRegion(int nFocusedRegion) {
-//	qDebug() << "updateFocusedRegion";
-
-	emit focusedRegionChanged(nFocusedRegion);
-}
 
 void DisplayCtrlWidget::updateEOF(int nEOF) {
-	//	qDebug() << "updateFocusedRegion";
 
 	emit EOFChanged(nEOF);
 }
 void DisplayCtrlWidget::updateMember(int nMember) {
-	//	qDebug() << "updateFocusedRegion";
 
 	emit MemberChanged(nMember);
 }
 void DisplayCtrlWidget::updateEnsCluster(int nEnsCluster) {
-	//	qDebug() << "updateFocusedRegion";
 
 	emit EnsClusterChanged(nEnsCluster);
 }

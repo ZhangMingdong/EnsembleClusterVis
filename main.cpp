@@ -33,11 +33,11 @@ int main(int argc, char *argv[])
 
 //	const char* strConfigFileName = "../../data/config/t2-mod-ecmwf-20160105-00-72.ini";
 //	const char* strConfigFileName = "../../data/config/t2-mod-ecmwf-20160105-00-96.ini";
-	const char* strConfigFileName = "../../data/config/t2-mod-ecmwf-20160105-00-120.ini";
+//	const char* strConfigFileName = "../../data/config/t2-mod-ecmwf-20160105-00-120.ini";
 //	const char* strConfigFileName = "../../data/config/t2-mod-ecmwf-20160105-00-144.ini";
 //	const char* strConfigFileName = "../../data/config/t2-mod-ecmwf-20160105-00-168.ini";
 //	const char* strConfigFileName = "../../data/config/t2-mod-ecmwf-20160105-00-192.ini";
-//	const char* strConfigFileName = "../../data/config/t2-mod-ecmwf-20160105-00-216.ini";
+	const char* strConfigFileName = "../../data/config/t2-mod-ecmwf-20160105-00-216.ini";
 //	const char* strConfigFileName = "../../data/config/pre_20171016_0-360-by-6.ini";
 	// read config file
 	INIReader reader(strConfigFileName);

@@ -43,7 +43,61 @@ void ArtificialModel::initializeModel() {
 
 }
 
+double generateY_1(int i, int j,int _nHeight,int _nEnsembleLen) {
+	double y = _nHeight / 2
+		+ sin((j + rand() / (double)RAND_MAX) / 2) * 2 * (rand() / (double)RAND_MAX)
+		+ (2.0*(i > (_nEnsembleLen / 2) ? 1 : -1));
 
+	return y;
+}
+
+double generateY_2(int i, int j,int _nHeight,int _nEnsembleLen) {
+	double y = _nHeight / 2
+		+ sin((j + rand() / (double)RAND_MAX) / 2) * 2 * (rand() / (double)RAND_MAX)
+		+ (j / 10.0*(i > (_nEnsembleLen / 2) ? 1 : -1));
+
+	return y;
+}
+
+double generateY_3(int i, int j, int _nHeight, int _nEnsembleLen) {
+	double y = _nHeight / 2
+		+ sin((j + rand() / (double)RAND_MAX) / 2) * 2 * (rand() / (double)RAND_MAX);
+	//+ (j / 10.0*(i > (_nEnsembleLen / 2) ? 1 : -1));
+	if (i > 40)
+		y += j / 10.0;
+	else if (i < 10)
+		y -= j / 10.0;
+
+	return y;
+}
+
+
+double generateY_4(int i, int j,int _nWidth, int _nHeight, int _nEnsembleLen) {
+	double y = _nHeight / 2
+		+ sin((j + rand() / (double)RAND_MAX) / 2) * 2 * (rand() / (double)RAND_MAX);
+	//+ (j / 10.0*(i > (_nEnsembleLen / 2) ? 1 : -1));
+
+	if (i < 25) {
+		if (j > _nWidth / 2)
+			j = _nWidth / 2;
+		if (i < 12)
+			y += j / 8.0;
+		else
+			y -= j / 8.0;
+	}
+	else {
+		j = _nWidth - 1 - j;
+		if (j > _nWidth / 2)
+			j = _nWidth / 2;
+		if (i < 38)
+			y += j / 12.0;
+		else
+			y -= j / 12.0;
+
+	}
+
+	return y;
+}
 void ArtificialModel::regenerateData() {
 	// 1.clear contours
 	QList<QList<ContourLine>>& listContour = _listFeature[0]->GetContours();
@@ -75,19 +129,12 @@ void ArtificialModel::regenerateData() {
 			//qDebug() << "new data";
 			//qDebug() << j / 100.0*(i > (_nEnsembleLen / 2) ?  1: -1);
 
-			double y = _nHeight / 2
-				+ sin((j + rand() / (double)RAND_MAX) / 2) * 2 * (rand() / (double)RAND_MAX);
-				//+ (j / 10.0*(i > (_nEnsembleLen / 2) ? 1 : -1));
-			if (i > 40)
-				y += j / 10.0;
-			else if (i < 10)
-				y -= j / 10.0;
 
-			/*
-			double y = _nHeight / 2
-				+ sin((j + rand() / (double)RAND_MAX) / 2) * 2 * (rand() / (double)RAND_MAX)
-				+ (2.0*(i > (_nEnsembleLen / 2) ? 1 : -1));
-				*/
+			//double y = generateY_3(i, j, _nHeight, _nEnsembleLen);
+			double y = generateY_4(i, j,_nWidth, _nHeight, _nEnsembleLen);
+
+
+
 
 			line._listPt.append(QPointF(j, y));
 			for (int k = 0; k < y; k++)
@@ -101,3 +148,22 @@ void ArtificialModel::regenerateData() {
 		listContour.push_back(contour);
 	}
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -35,6 +35,7 @@ private:
 	double* _gridValidMin;			// minimum of valid ensemble results
 	int _nMedianIndex = -1;			// index of median of the contour
 	double* _pSDF;					// data of signed distance function
+	double* _pICD;					// data of iso-contour density
 	double* _pSortedSDF;			// data of signed distance function
 	bool * _pSet;					// set state of the grid point given iso-value
 	bool* _pGridDiverse;			// diversed grid points
@@ -65,20 +66,22 @@ public:
 	const double* GetHalfMax() { return _gridHalfMax; };
 	const double* GetHalfMin() { return _gridHalfMin; };
 	const double* GetMedian();
-	double* GetSDF() { return _pSDF; }
-	double* GetSDF(int l) { return _pSDF + l * _nGrids; }
-	double* GetSortedSDF(int l) { return _pSortedSDF + l * _nGrids; }
+	const double* GetSDF() { return _pSDF; }
+	const double* GetSDF(int l) const { return _pSDF + l * _nGrids; }
+	const double* GetSortedSDF(int l) { return _pSortedSDF + l * _nGrids; }
 	bool* GetSet(int l) { return _pSet + l * _nGrids; }
 	int GetMemberType(int l) { return _pMemberType[l]; }
 	virtual QList<UnCertaintyArea*> GetUncertaintyAreaValid() { return _listAreaValid; }
 	virtual QList<UnCertaintyArea*> GetUncertaintyAreaHalf() { return _listAreaHalf; }
 	virtual QList<UnCertaintyArea*> GetUncertaintyArea() { return _listUnionAreaE; }
+	double* GetICD() { return _pICD; }
 
 
 private:
 	void sortBuf(const double* pS, double* pD);	// space segmentation
 	void generateContourImp(const QList<ContourLine>& contourMin, const QList<ContourLine>& contourMax, QList<UnCertaintyArea*>& areas);
 
+	double* getSDF(int l) { return _pSDF + l * _nGrids; }
 // basic operation
 private:
 	void calculateSet();
@@ -88,6 +91,7 @@ private:
 	void doStatistics();			// calculate meadian, valid, and 50%
 	void generateContours();
 	void buildSortedSDF();
+	void calculateICD();
 public:
 	void CalculateSDF(double dbIsovalue);	// used in constructor and Artificial Model
 

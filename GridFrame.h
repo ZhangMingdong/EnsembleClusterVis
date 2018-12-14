@@ -9,19 +9,23 @@ protected:
 	int _nWidth;
 	int _nHeight;
 	int _nGrids;								// _nWidth*_nHeight
+
 	int _nFocusX;
 	int _nFocusY;
 	int _nFocusW;
 	int _nFocusH;
 	int _nFocusGrids;							//_nFocusW*_nFocusH
+
 	int _nWest;
 	int _nEast;
 	int _nSouth;
 	int _nNorth;
+
 	int _nFocusWest;
 	int _nFocusEast;
 	int _nFocusSouth;
 	int _nFocusNorth;
+
 	int _nEnsembleLen;						// number of ensemble members
 public:
 	int GetW() { return _nWidth; }

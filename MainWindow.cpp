@@ -362,7 +362,6 @@ void MainWindow::createConnections(){
 	connect(_pDisplayCtrlWidget, SIGNAL(smoothChanged(int)), _view3D, SLOT(updateVarSmooth(int)));
 	connect(_pDisplayCtrlWidget, SIGNAL(areasChanged(int)), _view3D, SLOT(updateUncertaintyAreas(int)));
 	connect(_pDisplayCtrlWidget, SIGNAL(focusedClusterChanged(int)), _view3D, SLOT(updateFocusedCluster(int)));
-	connect(_pDisplayCtrlWidget, SIGNAL(focusedRegionChanged(int)), _view3D, SLOT(updateFocusedRegion(int)));
 	connect(_pDisplayCtrlWidget, SIGNAL(EOFChanged(int)), _view3D, SLOT(updateEOF(int)));
 	connect(_pDisplayCtrlWidget, SIGNAL(MemberChanged(int)), _view3D, SLOT(updateMember(int)));
 	connect(_pDisplayCtrlWidget, SIGNAL(EnsClusterChanged(int)), _view3D, SLOT(updateEnsCluster(int)));

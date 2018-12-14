@@ -336,6 +336,23 @@ void MeteModel::buildTextureSDF() {
 	}
 }
 
+void MeteModel::buildTextureICD() {
+	const double* pData= _listFeature[0]->GetICD();	// the data
+
+	for (int i = _nFocusY, iLen = _nFocusY + _nFocusH; i < iLen; i++) {
+		for (int j = _nFocusX, jLen = _nFocusX + _nFocusW; j < jLen; j++) {
+
+			int nIndex = i * _nWidth + j;
+			int nIndexFocus = (i - _nFocusY)*_nFocusW + j - _nFocusX;
+			// using transparency and the blue tunnel
+			_dataTexture[4 * nIndexFocus + 0] = 100;
+			_dataTexture[4 * nIndexFocus + 1] = 100;
+			_dataTexture[4 * nIndexFocus + 2] = 100;
+			_dataTexture[4 * nIndexFocus + 3] = (GLubyte)(pData[nIndex]*255);
+		}
+	}
+}
+
 void MeteModel::buildTextureThresholdDipValue() {
 	double dbThreshold = 7;
 	const double* pData = _pData->GetDipValue();
@@ -377,11 +394,6 @@ void MeteModel::buildTextureClusteredVariance() {
 
 	generateRegions();
 
-	// cluster in each region
-//	regionCluster();
-
-	// align them
-//	alignClusters();
 
 	// 6.Generate texture
 	// 6.1.initialize the texture
@@ -483,18 +495,17 @@ void MeteModel::generateRegions() {
 
 // generate texture of colormap of mean or variance
 void MeteModel::buildTextureColorMap() {
-	const double* pData;	// color map
-	ColorMap* colormap;
+	const double* pData;	// the data
+	ColorMap* colormap;		// color map function
+
 	switch (_bgFunction)
 	{
 	case MeteModel::bg_mean:
 	case MeteModel::bg_Obs:
-
 		if (g_usedModel == T2_ECMWF)
 			colormap = ColorMap::GetInstance(ColorMap::CP_T2);
 		else
 			colormap = ColorMap::GetInstance();
-//		colormap = ColorMap::GetInstance(ColorMap::CP_T);
 		if (_bgFunction== MeteModel::bg_Obs)
 		{
 			pData = _bufObs;
@@ -525,7 +536,6 @@ void MeteModel::buildTextureColorMap() {
 		break;
 	case MeteModel::bg_EOF:
 		pData = _pData->GetEOF(_nEOF-1);
-//		colormap = ColorMap::GetInstance();
 		colormap = ColorMap::GetInstance(ColorMap::CP_EOF);
 		break;
 	case MeteModel::bg_err:
@@ -550,14 +560,7 @@ void MeteModel::buildTextureColorMap() {
 				int nRow = i / _nWidth;
 				int nCol = i% _nWidth;
 
-
-//				if (nRow>_nHeight - 11 && nCol<10)
-					_gridErr[i] = _pBiasBuf[i] - _bufObs[i];
-//				else _gridErr[i] = -20;
-
-
-//				if (nRow>_nHeight-11 && nCol<10)
-//					dbAccum += abs(_gridErr[i]);
+				_gridErr[i] = _pBiasBuf[i] - _bufObs[i];
 			}
 			// accumulate errors for the given region
 			for (size_t i = 0; i < g_nClusterRegionR; i++)
@@ -1056,6 +1059,9 @@ void MeteModel::regenerateTexture() {
 	case MeteModel::bg_SDF:
 		buildTextureSDF();
 		break;
+	case MeteModel::bg_IsoContourDensity:
+		buildTextureICD();
+		break;
 	default:
 		break;
 	}
@@ -1074,7 +1080,7 @@ void MeteModel::SetUncertaintyAreas(int nAreas)
 	regenerateTexture();
 }
 
-GLubyte* MeteModel::generateTextureNew() {
+GLubyte* MeteModel::GenerateTexture() {
 	if (!_dataTexture) {
 		regenerateTexture();
 	}
@@ -1131,43 +1137,6 @@ void MeteModel::calculateSimilarity() {
 	}
 }
 
-void MeteModel::SetFocusedRegion(int nRegion) {
-	_nFocusedRegion = nRegion;
-
-	alignClusters();
-}
-
-// align the cluster results
-void MeteModel::alignClusters() {
-	qDebug() << "Align Clusters: " << _nFocusedRegion;
-	// first region, sort the clusters according to the number of their members
-	_mxClusterResult[0][_nFocusedRegion].Sort();
-
-	int nRegionSize = std::min((int)_vecRegions.size(), _nUncertaintyRegions);
-
-	// 2.cluster in each uncertainty region
-	for (size_t i = _nFocusedRegion+1; i < nRegionSize; i++)
-	{
-		// the following region match the region before
-		_mxClusterResult[0][i].Match(_mxClusterResult[0][i - 1]);
-	}
-	for (int i = _nFocusedRegion-1; i >=0; i--)
-	{
-		// the following region match the region before
-		_mxClusterResult[0][i].Match(_mxClusterResult[0][i + 1]);
-	}
-	// 3.align the results
-	ClusterResult::Align(_mxClusterResult[0], _nUncertaintyRegions,_nFocusedRegion);
-
-	// 4.reset labels for pca
-	for (size_t i = 0; i < _nUncertaintyRegions; i++)
-	{
-		setLabelsForPCAPoints(_vecPCAPoints[i], _mxClusterResult[0][i]);
-	}
-
-	// 5.calculate the similarity between different uncertainty regions
-	calculateSimilarity();
-}
 
 void MeteModel::doEnsCluster() {
 	CLUSTER::Clustering* pClusterer = new CLUSTER::KMeansClustering();

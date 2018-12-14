@@ -45,6 +45,7 @@ FeatureSet::FeatureSet(DataField* pData, double dbIsoValue, int nWidth, int nHei
 	_gridValidMax = new double[_nGrids];
 	_gridValidMin = new double[_nGrids];
 	_pSDF = new double[_nGrids*_nEnsembleLen];
+	_pICD = new double[_nGrids];
 	_pSortedSDF = new double[_nGrids*_nEnsembleLen];
 	_pSet = new bool[_nGrids*_nEnsembleLen];
 	_pGridDiverse = new bool[_nGrids];
@@ -72,16 +73,21 @@ FeatureSet::FeatureSet(DataField* pData, double dbIsoValue, int nWidth, int nHei
 	// 7.sort according to sdf and generate contours according to sdf
 	buildSortedSDF();
 
+	// 8.calculate ICD
+	calculateICD();
+
 //==Clustering==
 	calculateDiverse();
 
-	//calculatePCA();	
+	calculatePCA();	
 
 	//doClustering();
 
 	//doPCAClustering();
 
-	calculatePCABox();
+	//calculatePCABox();
+
+	//calculatePCARecovery();
 
 
 }
@@ -94,6 +100,7 @@ FeatureSet::~FeatureSet()
 	delete[] _gridValidMin;
 	delete[] _pSDF;
 	delete[] _pSortedSDF;
+	delete[] _pICD;
 	delete[] _pSet;
 	delete[] _pGridDiverse;
 	delete[] _pSetBandDepth;
@@ -146,7 +153,7 @@ void FeatureSet::buildSortedSDF() {
 		// contours from SDF
 		{
 			QList<ContourLine> contour;
-			ContourGenerator::GetInstance()->Generate(GetSDF(i), contour, 0, _nWidth, _nHeight, _nFocusX, _nFocusY, _nFocusW, _nFocusH);
+			ContourGenerator::GetInstance()->Generate(getSDF(i), contour, 0, _nWidth, _nHeight, _nFocusX, _nFocusY, _nFocusW, _nFocusH);
 			_listContourSDF.push_back(contour);
 		}
 		// contours from sorted SDF
@@ -356,7 +363,7 @@ void FeatureSet::CalculateSDF(double dbIsoValue) {
 	for (size_t l = 0; l < _nEnsembleLen; l++) {
 		// calculate sdf
 		const double* arrData = _pData->GetData(l);
-		double* arrSDF = GetSDF(l);
+		double* arrSDF = getSDF(l);
 		QList<ContourLine> contour = _listContour[l];
 		for (size_t i = 0; i < _nHeight; i++)
 		{
@@ -388,7 +395,7 @@ void FeatureSet::calculatePCA() {
 
 	// 1.set parameter
 	int mI = _nDiverseCount;
-	int mO = 4;
+	int mO = 2;
 	int n = _nEnsembleLen;
 	// 2.allocate input and output buffer
 	double* arrInput = createDiverseArray();
@@ -400,10 +407,15 @@ void FeatureSet::calculatePCA() {
 	// 4.generate points from the output
 	for (size_t i = 0; i < n; i++)
 	{
-		//qDebug() << arrOutput[i];
+		qDebug() << arrOutput[2*i];
 		//qDebug() << arrOutput[i * 2] << "," << arrOutput[i * 2 + 1];
 		//qDebug() << arrOutput[i * 3] << "," << arrOutput[i * 3 + 1] << "," << arrOutput[i * 3 + 2];
-		qDebug() << arrOutput[i * 4] << "," << arrOutput[i * 4 + 1] << "," << arrOutput[i * 4 + 2] << "," << arrOutput[i * 4 + 3];
+		//qDebug() << arrOutput[i * 4] << "," << arrOutput[i * 4 + 1] << "," << arrOutput[i * 4 + 2] << "," << arrOutput[i * 4 + 3];
+	}
+	qDebug() << "===========================";
+	for (size_t i = 0; i < n; i++)
+	{
+		qDebug() << arrOutput[2 * i+1];
 	}
 	// 5.release the buffer
 
@@ -577,11 +589,11 @@ for (size_t i = 0; i < 10; i++)
 	double *arrRecoveredBuf = new double[nTestLen* _nDiverseCount];
 	//pca.Recover(box, arrRecoveredBuf, 4,mO);
 
-	//pca.Recover(arrOutput, arrRecoveredBuf, nTestLen,mO);
+	pca.Recover(arrOutput, arrRecoveredBuf, nTestLen,mO);
 
 	for (size_t l = 0; l < nTestLen; l++)
 	{
-		pca.Recover(arrOutput + l * mO, arrRecoveredBuf + l * _nDiverseCount, 1, mO);
+		//pca.Recover(arrOutput + l * mO, arrRecoveredBuf + l * _nDiverseCount, 1, mO);
 		for (size_t i = 0, j = 0; i < _nGrids; i++)
 		{
 			if (_pGridDiverse[i]) {
@@ -591,7 +603,7 @@ for (size_t i = 0; i < 10; i++)
 		}
 		{
 			QList<ContourLine> contour;
-			ContourGenerator::GetInstance()->Generate(GetSDF(l), contour, 0, _nWidth, _nHeight, _nFocusX, _nFocusY, _nFocusW, _nFocusH);
+			ContourGenerator::GetInstance()->Generate(getSDF(l), contour, 0, _nWidth, _nHeight, _nFocusX, _nFocusY, _nFocusW, _nFocusH);
 			_listContourSDF[l] = contour;
 		}
 	}
@@ -671,7 +683,7 @@ void FeatureSet::calculatePCABox() {
 		}
 		{
 			QList<ContourLine> contour;
-			ContourGenerator::GetInstance()->Generate(GetSDF(l), contour, 0, _nWidth, _nHeight, _nFocusX, _nFocusY, _nFocusW, _nFocusH);
+			ContourGenerator::GetInstance()->Generate(getSDF(l), contour, 0, _nWidth, _nHeight, _nFocusX, _nFocusY, _nFocusW, _nFocusH);
 			_listContourSDF[l]=contour;
 		}
 	}
@@ -684,3 +696,40 @@ void FeatureSet::calculatePCABox() {
 
 }
 
+void FeatureSet::calculateICD() {
+	double dbMin = 100;
+	double dbMax = -100;
+	for (size_t i = 0; i < _nGrids; i++)
+	{
+		double dbSum = 0;
+		for (size_t l = 0; l < _nEnsembleLen; l++)
+		{
+			double dbValue = _pData->GetData(l, i);
+			dbSum += dbValue;
+		}
+		double dbMean = dbSum / _nEnsembleLen;
+		double dbVar = 0;
+		for (size_t l = 0; l < _nEnsembleLen; l++)
+		{
+			double dbValue = _pData->GetData(l, i);
+			double dbBias = dbValue - dbMean;
+			dbVar += dbBias * dbBias;
+		}
+
+		double dbBias = _dbIsoValue - dbMean;
+		_pICD[i] = pow(Ed,-dbBias*dbBias/2*dbVar);
+
+		if (_pICD[i] > dbMax) dbMax = _pICD[i];
+		if (_pICD[i] < dbMin) dbMin = _pICD[i];
+
+	}
+	qDebug() << "Min:" << dbMin;
+	qDebug() << "Max:" << dbMax;
+
+
+	return;
+	for (size_t i = 0; i < _nGrids; i++)
+	{
+		_pICD[i] = .5;
+	}
+}

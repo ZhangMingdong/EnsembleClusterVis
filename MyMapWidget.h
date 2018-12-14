@@ -119,7 +119,6 @@ public slots:
 	void updateBgFunction(int nBgFunction);
 	void updateUncertaintyAreas(int nAreas);
 	void updateFocusedCluster(int nFocusedCluster);
-	void updateFocusedRegion(int nFocusedRegion);
 	void updateEOF(int nEOF);
 	void updateMember(int nMember);
 	void updateEnsCluster(int nEnsCluster);

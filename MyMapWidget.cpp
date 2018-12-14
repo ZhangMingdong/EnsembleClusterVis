@@ -11,7 +11,6 @@
 #include "MeteLayer.h"
 #include "CostLineLayer.h"
 #include "EnsembleLayer.h"
-#include "ClusterLayer.h"
 #include "MeteModel.h"
 #include "VarAnalysis.h"
 #include "LayerLayout.h"
@@ -510,13 +509,6 @@ void MyMapWidget::updateFocusedCluster(int nFocusedCluster) {
 	{
 		pLayer->SetFocusedCluster(nFocusedCluster);
 	}
-
-	updateGL();
-}
-
-void MyMapWidget::updateFocusedRegion(int nFocusedRegion) {
-//	qDebug() << "updateFocusedRegion";
-	_pModelE->SetFocusedRegion(nFocusedRegion);
 
 	updateGL();
 }

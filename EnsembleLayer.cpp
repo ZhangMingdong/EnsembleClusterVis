@@ -363,14 +363,8 @@ void EnsembleLayer::drawContourLineSDF(){
 }
 
 void EnsembleLayer::ReloadTexture() {
-//	_dataTexture = _pModel->generateTexture();
-//	_dataTexture = _pModel->generateTextureGridCluster();
-//	_dataTexture = _pModel->generateTextureRange(0);
-//	_dataTexture = _pModel->generateTextureMean();
-//	_dataTexture = _pModel->generateTextureDiscreteSummary();
 
-	_dataTexture = _pModel->generateTextureNew();
-//	_dataTexture = _pModel->generateTextureSDF();
+	_dataTexture = _pModel->GenerateTexture();
 
 	glBindTexture(GL_TEXTURE_2D, _uiTexID[0]);
 // 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
