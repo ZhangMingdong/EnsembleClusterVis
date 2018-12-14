@@ -38,10 +38,6 @@ public:
 		, double fValue
 		, int nWidth
 		, int nHeight
-		, int nFocusX
-		, int nFocusY
-		, int nFocusW
-		, int nFocusH
 		);
 
 private:
@@ -54,10 +50,6 @@ private:
 
 	int _nWidth;
 	int _nHeight;
-	int _nFocusX;
-	int _nFocusY;
-	int _nFocusW;
-	int _nFocusH;
 private:
 	// generate the line strips by marching triangle
 	void generateLineStrip_old();

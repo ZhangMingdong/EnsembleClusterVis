@@ -20,10 +20,6 @@ public:
 		, const QList<ContourLine>& contourMax
 		, int nWidth
 		, int nHeight
-		, int nFocusX
-		, int nFocusY
-		, int nFocusW
-		, int nFocusH
 		);
 private:
 	// generate uncertainty areas from the unclosed contours
@@ -89,10 +85,6 @@ private:
 
 	int _nWidth;
 	int _nHeight;
-	int _nFocusX;
-	int _nFocusY;
-	int _nFocusW;
-	int _nFocusH;
 
 
 	// list of corner points

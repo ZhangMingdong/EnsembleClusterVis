@@ -24,10 +24,9 @@ public:
 
 public:
 	// initialize the model
-	virtual void InitModel(int nEnsembleLen, int nWidth, int nHeight, int nFocusX, int nFocusY, int nFocusW, int nFocusH
+	virtual void InitModel(int nEnsembleLen, int nWidth, int nHeight
 		, QString strFile, bool bBinary = false
-		, int nWest = -180, int nEast = 180, int nSouth = -90, int nNorth = 90
-		, int nFocusWest = -180, int nFocusEast = 180, int nFocusSouth = -90, int nFocusNorth = 90);
+		, int nWest = -180, int nEast = 180, int nSouth = -90, int nNorth = 90);
 	// generate color mapping texture
 	virtual GLubyte* GenerateTexture();
 

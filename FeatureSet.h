@@ -13,7 +13,7 @@ class UnCertaintyArea;
 class FeatureSet:public GridFrame
 {
 public:
-	FeatureSet(DataField* pData,double _dbIsoValue,int nWidth,int nHeight,int _nEnsembleLen,int nFocusX,int nFocusY,int nFocusW,int nFocusH);
+	FeatureSet(DataField* pData,double _dbIsoValue,int nWidth,int nHeight,int _nEnsembleLen);
 	~FeatureSet();
 private:
 	DataField* _pData;									// reference to the data set

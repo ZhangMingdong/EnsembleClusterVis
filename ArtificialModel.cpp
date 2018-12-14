@@ -35,7 +35,7 @@ void ArtificialModel::initializeModel() {
 	_pData->DoStatistic();
 
 	// 5.update the feature
-	FeatureSet* pFeature = new FeatureSet(_pData, 0, _nWidth, _nHeight, _nEnsembleLen, _nFocusX, _nFocusY, _nFocusW, _nFocusH);
+	FeatureSet* pFeature = new FeatureSet(_pData, 0, _nWidth, _nHeight, _nEnsembleLen);
 	for each (FeatureSet* pFeature in _listFeature)
 		delete pFeature;
 	_listFeature.clear();

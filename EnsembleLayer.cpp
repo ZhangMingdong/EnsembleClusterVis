@@ -129,11 +129,11 @@ void EnsembleLayer::draw(DisplayStates states){
 	double biasY = (_pModel->GetSouth() + _pModel->GetNorth()) / 2.0*_fScaleH;
 
 	// the focused x radius and y radius of the map in drawing space
-	double biasFocusX = (_pModel->GetFocusWest() + _pModel->GetFocusEast()) / 2.0 *_fScaleW;
-	double biasFocusY = (_pModel->GetFocusSouth() + _pModel->GetFocusNorth()) / 2.0*_fScaleH;
+	double biasFocusX = (_pModel->GetWest() + _pModel->GetEast()) / 2.0 *_fScaleW;
+	double biasFocusY = (_pModel->GetSouth() + _pModel->GetNorth()) / 2.0*_fScaleH;
 
-	double scaleFocusX = (_pModel->GetFocusEast() - _pModel->GetFocusWest()) / 360.0;
-	double scaleFocusY = (_pModel->GetFocusNorth() - _pModel->GetFocusSouth()) / 180.0;
+	double scaleFocusX = (_pModel->GetEast() - _pModel->GetWest()) / 360.0;
+	double scaleFocusY = (_pModel->GetNorth() - _pModel->GetSouth()) / 180.0;
 
 
 
@@ -374,7 +374,7 @@ void EnsembleLayer::ReloadTexture() {
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
 
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, _pModel->GetFocusW(), _pModel->GetFocusH(), 0, GL_RGBA, GL_UNSIGNED_BYTE, _dataTexture);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, _pModel->GetW(), _pModel->GetH(), 0, GL_RGBA, GL_UNSIGNED_BYTE, _dataTexture);
 
 	generateColorBarTexture();
 }

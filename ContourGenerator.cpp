@@ -30,20 +30,12 @@ void ContourGenerator::Generate(const double* data
 	, double fValue
 	, int nWidth
 	, int nHeight
-	, int nFocusX
-	, int nFocusY
-	, int nFocusW
-	, int nFocusH
 	){
 	// 0.set value
 	_data = data;
 	_fValue = fValue+0.0001;
 	_nWidth = nWidth;
 	_nHeight = nHeight;
-	_nFocusX = nFocusX;
-	_nFocusY = nFocusY;
-	_nFocusW = nFocusW;
-	_nFocusH = nFocusH;
 	// 1.generate line strips
 // 	generateLineStrip_old();
 	generateLineStrip();
@@ -56,8 +48,8 @@ void ContourGenerator::generateLineStrip(){
 	// 1.generate segment
 // 	for (int i = 1; i < _nHeight; i++){
 // 		for (int j = 1; j < _nWidth; j++){
-	for (int i = _nFocusY + 1, iLen = _nFocusY + _nFocusH; i < iLen; i++){
-		for (int j = _nFocusX + 1, jLen = _nFocusX + _nFocusW; j < jLen; j++){
+	for (int i = 1; i < _nHeight; i++){
+		for (int j = 1; j < _nWidth; j++){
 			int grid[4][2] = {
 				{ i - 1, j - 1 }
 				, { i - 1, j }

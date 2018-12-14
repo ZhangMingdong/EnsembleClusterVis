@@ -8,10 +8,10 @@
 int ContourStripGenerator::CheckBorderPoint(const QPointF& pt){
 	double fX = pt.x();
 	double fY = pt.y();
-	if (abs(fX - _nFocusX) < g_fDifference) return 0;
-	else if (abs(fY - _nFocusY) < g_fDifference) return 1;
-	else if (abs(fX - _nFocusX - _nFocusW + 1) < g_fDifference) return 2;
-	else if (abs(fY - _nFocusY - _nFocusH + 1) < g_fDifference) return 3;
+	if (abs(fX) < g_fDifference) return 0;
+	else if (abs(fY) < g_fDifference) return 1;
+	else if (abs(fX - _nWidth + 1) < g_fDifference) return 2;
+	else if (abs(fY - _nHeight + 1) < g_fDifference) return 3;
 	else{		
 		qDebug() << "error";
 		return -1;
@@ -21,10 +21,10 @@ int ContourStripGenerator::CheckBorderPoint(const QPointF& pt){
 // calculate the relative distance of the point from the corner point 0
 double ContourStripGenerator::PointDistance(const QPointF& pt){
 	double fDis = 0;
-	double fX = pt.x() - _nFocusX;
-	double fY = pt.y() - _nFocusY;
-	double fBiasX = fX / (_nFocusW - 1);
-	double fBiasY = fY / (_nFocusH - 1);
+	double fX = pt.x();
+	double fY = pt.y();
+	double fBiasX = fX / (_nWidth - 1);
+	double fBiasY = fY / (_nHeight - 1);
 	if (fBiasX < g_fDifference) return 1 - fBiasY;
 	else if (fBiasY < g_fDifference) return 1 + fBiasX;
 	else if (abs(fBiasX - 1) < g_fDifference) return 2 + fBiasY;
@@ -80,23 +80,15 @@ void ContourStripGenerator::Generate(QList<UnCertaintyArea*>& areas
 	, const QList<ContourLine>& contourMin
 	, const QList<ContourLine>& contourMax
 	, int nWidth
-	, int nHeight
-	, int nFocusX
-	, int nFocusY
-	, int nFocusW
-	, int nFocusH){
+	, int nHeight){
 	// 0.set value
 	_nWidth = nWidth;
 	_nHeight = nHeight;
-	_nFocusX = nFocusX;
-	_nFocusY = nFocusY;
-	_nFocusW = nFocusW;
-	_nFocusH = nFocusH;
 
-	arrCorners[0] = QPointF(_nFocusX, _nFocusY + _nFocusH - 1);
-	arrCorners[1] = QPointF(_nFocusX, _nFocusY);
-	arrCorners[2] = QPointF(_nFocusX + nFocusW - 1, _nFocusY);
-	arrCorners[3] = QPointF(_nFocusX + nFocusW - 1, _nFocusY + _nFocusH - 1);
+	arrCorners[0] = QPointF(0, _nHeight - 1);
+	arrCorners[1] = QPointF(0, 0);
+	arrCorners[2] = QPointF(0 + _nWidth - 1, 0);
+	arrCorners[3] = QPointF(0 + _nWidth - 1, 0 + _nHeight - 1);
 
 	// 1.put the contours into two lists
 	for each (ContourLine contour in contourMin)

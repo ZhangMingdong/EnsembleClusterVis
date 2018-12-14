@@ -27,17 +27,13 @@ double PointToSegDist(double x, double y, double x1, double y1, double x2, doubl
 	return sqrt((x - px) * (x - px) + (y - py) * (y - py));
 }
 
-FeatureSet::FeatureSet(DataField* pData, double dbIsoValue, int nWidth, int nHeight, int nEnsembleLen, int nFocusX, int nFocusY, int nFocusW, int nFocusH):
+FeatureSet::FeatureSet(DataField* pData, double dbIsoValue, int nWidth, int nHeight, int nEnsembleLen):
 	_pData(pData)
 	,_dbIsoValue(dbIsoValue)
 {
 	_nWidth = nWidth;
 	_nHeight = nHeight;
 	_nGrids = nWidth * nHeight;
-	_nFocusX = nFocusX;
-	_nFocusY = nFocusY;
-	_nFocusW = nFocusW;
-	_nFocusH = nFocusH;
 	_nEnsembleLen = nEnsembleLen;
 
 	_gridHalfMax = new double[_nGrids];
@@ -120,24 +116,24 @@ void FeatureSet::generateContours() {
 		// spaghetti
 		{
 			QList<ContourLine> contour;
-			ContourGenerator::GetInstance()->Generate(_pData->GetLayer(i), contour, _dbIsoValue, _nWidth, _nHeight, _nFocusX, _nFocusY, _nFocusW, _nFocusH);
+			ContourGenerator::GetInstance()->Generate(_pData->GetLayer(i), contour, _dbIsoValue, _nWidth, _nHeight);
 			_listContour.push_back(contour);
 		}
 		// sorted spaghetti
 		{
 			QList<ContourLine> contour;
-			ContourGenerator::GetInstance()->Generate(_pData->GetSortedLayer(i), contour, _dbIsoValue, _nWidth, _nHeight, _nFocusX, _nFocusY, _nFocusW, _nFocusH);
+			ContourGenerator::GetInstance()->Generate(_pData->GetSortedLayer(i), contour, _dbIsoValue, _nWidth, _nHeight);
 			_listContourSorted.push_back(contour);
 		}
 	}
-	ContourGenerator::GetInstance()->Generate(_pData->GetUMin(), _listContourMinE, _dbIsoValue, _nWidth, _nHeight, _nFocusX, _nFocusY, _nFocusW, _nFocusH);
-	ContourGenerator::GetInstance()->Generate(_pData->GetUMax(), _listContourMaxE, _dbIsoValue, _nWidth, _nHeight, _nFocusX, _nFocusY, _nFocusW, _nFocusH);
-	ContourGenerator::GetInstance()->Generate(_pData->GetMean(), _listContourMeanE, _dbIsoValue, _nWidth, _nHeight, _nFocusX, _nFocusY, _nFocusW, _nFocusH);
-	ContourGenerator::GetInstance()->Generate(GetValidMin(), _listContourMinValid, _dbIsoValue, _nWidth, _nHeight, _nFocusX, _nFocusY, _nFocusW, _nFocusH);
-	ContourGenerator::GetInstance()->Generate(GetValidMax(), _listContourMaxValid, _dbIsoValue, _nWidth, _nHeight, _nFocusX, _nFocusY, _nFocusW, _nFocusH);
-	ContourGenerator::GetInstance()->Generate(GetHalfMin(), _listContourMinHalf, _dbIsoValue, _nWidth, _nHeight, _nFocusX, _nFocusY, _nFocusW, _nFocusH);
-	ContourGenerator::GetInstance()->Generate(GetHalfMax(), _listContourMaxHalf, _dbIsoValue, _nWidth, _nHeight, _nFocusX, _nFocusY, _nFocusW, _nFocusH);
-	ContourGenerator::GetInstance()->Generate(GetMedian(), _listContourMedianE, _dbIsoValue, _nWidth, _nHeight, _nFocusX, _nFocusY, _nFocusW, _nFocusH);
+	ContourGenerator::GetInstance()->Generate(_pData->GetUMin(), _listContourMinE, _dbIsoValue, _nWidth, _nHeight);
+	ContourGenerator::GetInstance()->Generate(_pData->GetUMax(), _listContourMaxE, _dbIsoValue, _nWidth, _nHeight);
+	ContourGenerator::GetInstance()->Generate(_pData->GetMean(), _listContourMeanE, _dbIsoValue, _nWidth, _nHeight);
+	ContourGenerator::GetInstance()->Generate(GetValidMin(), _listContourMinValid, _dbIsoValue, _nWidth, _nHeight);
+	ContourGenerator::GetInstance()->Generate(GetValidMax(), _listContourMaxValid, _dbIsoValue, _nWidth, _nHeight);
+	ContourGenerator::GetInstance()->Generate(GetHalfMin(), _listContourMinHalf, _dbIsoValue, _nWidth, _nHeight);
+	ContourGenerator::GetInstance()->Generate(GetHalfMax(), _listContourMaxHalf, _dbIsoValue, _nWidth, _nHeight);
+	ContourGenerator::GetInstance()->Generate(GetMedian(), _listContourMedianE, _dbIsoValue, _nWidth, _nHeight);
 
 
 	generateContourImp(_listContourMinValid, _listContourMaxValid, _listAreaValid);
@@ -153,13 +149,13 @@ void FeatureSet::buildSortedSDF() {
 		// contours from SDF
 		{
 			QList<ContourLine> contour;
-			ContourGenerator::GetInstance()->Generate(getSDF(i), contour, 0, _nWidth, _nHeight, _nFocusX, _nFocusY, _nFocusW, _nFocusH);
+			ContourGenerator::GetInstance()->Generate(getSDF(i), contour, 0, _nWidth, _nHeight);
 			_listContourSDF.push_back(contour);
 		}
 		// contours from sorted SDF
 		{
 			QList<ContourLine> contour;
-			ContourGenerator::GetInstance()->Generate(GetSortedSDF(i), contour, 0, _nWidth, _nHeight, _nFocusX, _nFocusY, _nFocusW, _nFocusH);
+			ContourGenerator::GetInstance()->Generate(GetSortedSDF(i), contour, 0, _nWidth, _nHeight);
 			_listContourSortedSDF.push_back(contour);
 		}
 	}
@@ -356,7 +352,7 @@ const double* FeatureSet::GetMedian() { return _pData->GetData(_nMedianIndex); }
 
 void FeatureSet::generateContourImp(const QList<ContourLine>& contourMin, const QList<ContourLine>& contourMax, QList<UnCertaintyArea*>& areas) {
 	ContourStripGenerator generator;
-	generator.Generate(areas, contourMin, contourMax, _nWidth, _nHeight, _nFocusX, _nFocusY, _nFocusW, _nFocusH);
+	generator.Generate(areas, contourMin, contourMax, _nWidth, _nHeight);
 }
 
 void FeatureSet::CalculateSDF(double dbIsoValue) {
@@ -603,7 +599,7 @@ for (size_t i = 0; i < 10; i++)
 		}
 		{
 			QList<ContourLine> contour;
-			ContourGenerator::GetInstance()->Generate(getSDF(l), contour, 0, _nWidth, _nHeight, _nFocusX, _nFocusY, _nFocusW, _nFocusH);
+			ContourGenerator::GetInstance()->Generate(getSDF(l), contour, 0, _nWidth, _nHeight);
 			_listContourSDF[l] = contour;
 		}
 	}
@@ -683,7 +679,7 @@ void FeatureSet::calculatePCABox() {
 		}
 		{
 			QList<ContourLine> contour;
-			ContourGenerator::GetInstance()->Generate(getSDF(l), contour, 0, _nWidth, _nHeight, _nFocusX, _nFocusY, _nFocusW, _nFocusH);
+			ContourGenerator::GetInstance()->Generate(getSDF(l), contour, 0, _nWidth, _nHeight);
 			_listContourSDF[l]=contour;
 		}
 	}

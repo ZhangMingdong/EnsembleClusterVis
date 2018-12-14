@@ -45,21 +45,12 @@ MeteModel::MeteModel()
 {
 	_nWidth = g_nWidth;
 	_nHeight = g_nHeight;
-	_nFocusX = g_nFocusX;
-	_nFocusY = g_nFocusY;
-	_nFocusW = g_nFocusW;
-	_nFocusH = g_nFocusH;
 	_nWest = g_nWest;
 	_nEast = g_nEast;
 	_nNorth = g_nNorth;
 	_nSouth = g_nSouth;
-	_nFocusWest = g_nWest;
-	_nFocusEast = g_nEast;
-	_nFocusNorth = g_nNorth;
-	_nFocusSouth = g_nSouth;
 
 	_nGrids = _nWidth*_nHeight;
-	_nFocusGrids = _nFocusW*_nFocusH;
 
 	_bufObs = new double[_nGrids];
 
@@ -100,30 +91,19 @@ MeteModel::~MeteModel()
 	ContourGenerator::Release();
 }
 
-void MeteModel::InitModel(int nEnsembleLen, int nWidth, int nHeight, int nFocusX, int nFocusY, int nFocusW, int nFocusH
-	, QString strFile, bool bBinary, int nWest, int nEast, int nSouth, int nNorth
-	, int nFocusWest, int nFocusEast, int nFocusSouth, int nFocusNorth) {
+void MeteModel::InitModel(int nEnsembleLen, int nWidth, int nHeight
+	, QString strFile, bool bBinary, int nWest, int nEast, int nSouth, int nNorth) {
 	// 0.record states variables
 	_nEnsembleLen = nEnsembleLen;
 	_nWidth = nWidth;
 	_nHeight = nHeight;
 	_nGrids = nHeight*nWidth;
 
-	_nFocusX = nFocusX;
-	_nFocusY = nFocusY;
-	_nFocusW = nFocusW;
-	_nFocusH = nFocusH;
-
-	_nFocusGrids = _nFocusW*_nFocusH;
 
 	_nWest = nWest;
 	_nEast = nEast;
 	_nSouth = nSouth;
 	_nNorth = nNorth;
-	_nFocusWest = nFocusWest;
-	_nFocusEast = nFocusEast;
-	_nFocusSouth = nFocusSouth;
-	_nFocusNorth = nFocusNorth;
 
 	_strFile = strFile;
 	_bBinaryFile = bBinary;
@@ -159,7 +139,7 @@ void MeteModel::InitModel(int nEnsembleLen, int nWidth, int nHeight, int nFocusX
 	// 2.generate feature;
 	for each (double isoValue in _listIsoValues)
 	{
-		_listFeature.append(new FeatureSet(_pData, isoValue, _nWidth, _nHeight, _nEnsembleLen, _nFocusX, _nFocusY, _nFocusW, _nFocusH));
+		_listFeature.append(new FeatureSet(_pData, isoValue, _nWidth, _nHeight, _nEnsembleLen));
 	}
 
 	// specializaed initialization
@@ -288,24 +268,23 @@ void MeteModel::buildTextureThresholdVariance() {
 	_nThresholdedGridPoints = 0;
 	// color map
 	ColorMap* colormap = ColorMap::GetInstance();
-	for (int i = _nFocusY, iLen = _nFocusY + _nFocusH; i < iLen; i++) {
-		for (int j = _nFocusX, jLen = _nFocusX + _nFocusW; j < jLen; j++) {
-			int nIndexFocus = (i - _nFocusY)*_nFocusW + j - _nFocusX;
+	for (int i = 0; i < _nHeight; i++) {
+		for (int j = 0; j < _nWidth; j++) {
 			int nIndex = i*_nWidth + j;
 			if (pData[nIndex]>_dbVarThreshold)
 			{
-				_dataTexture[4 * nIndexFocus + 0] = ColorMap::GetThresholdColorI(0);
-				_dataTexture[4 * nIndexFocus + 1] = ColorMap::GetThresholdColorI(1);
-				_dataTexture[4 * nIndexFocus + 2] = ColorMap::GetThresholdColorI(2);
-				_dataTexture[4 * nIndexFocus + 3] = (GLubyte)255;
+				_dataTexture[4 * nIndex + 0] = ColorMap::GetThresholdColorI(0);
+				_dataTexture[4 * nIndex + 1] = ColorMap::GetThresholdColorI(1);
+				_dataTexture[4 * nIndex + 2] = ColorMap::GetThresholdColorI(2);
+				_dataTexture[4 * nIndex + 3] = (GLubyte)255;
 
 				_nThresholdedGridPoints++;
 			}
 			else {
-				_dataTexture[4 * nIndexFocus + 0] = (GLubyte)255;
-				_dataTexture[4 * nIndexFocus + 1] = (GLubyte)255;
-				_dataTexture[4 * nIndexFocus + 2] = (GLubyte)255;
-				_dataTexture[4 * nIndexFocus + 3] = (GLubyte)255;
+				_dataTexture[4 * nIndex + 0] = (GLubyte)255;
+				_dataTexture[4 * nIndex + 1] = (GLubyte)255;
+				_dataTexture[4 * nIndex + 2] = (GLubyte)255;
+				_dataTexture[4 * nIndex + 3] = (GLubyte)255;
 
 			}
 		}
@@ -318,18 +297,16 @@ void MeteModel::buildTextureSDF() {
 
 
 	double dbMax = -1000;
-	double dbMin = 1000;
-	for (int i = _nFocusY, iLen = _nFocusY + _nFocusH; i < iLen; i++) {
-		for (int j = _nFocusX, jLen = _nFocusX + _nFocusW; j < jLen; j++) {
+	double dbMin = 1000;	for (int i = 0; i < _nHeight; i++) {
+		for (int j = 0; j < _nWidth; j++) {
 
 			int nIndex = i * _nWidth + j;
-			int nIndexFocus = (i - _nFocusY)*_nFocusW + j - _nFocusX;
 			MYGLColor color = colormap->GetColor(pData[nIndex]);
 			// using transparency and the blue tunnel
-			_dataTexture[4 * nIndexFocus + 0] = color._rgb[0];
-			_dataTexture[4 * nIndexFocus + 1] = color._rgb[1];
-			_dataTexture[4 * nIndexFocus + 2] = color._rgb[2];
-			_dataTexture[4 * nIndexFocus + 3] = (GLubyte)255;
+			_dataTexture[4 * nIndex + 0] = color._rgb[0];
+			_dataTexture[4 * nIndex + 1] = color._rgb[1];
+			_dataTexture[4 * nIndex + 2] = color._rgb[2];
+			_dataTexture[4 * nIndex + 3] = (GLubyte)255;
 			if (pData[nIndex] > dbMax) dbMax = pData[nIndex];
 			if (pData[nIndex] < dbMin) dbMin = pData[nIndex];
 		}
@@ -339,16 +316,16 @@ void MeteModel::buildTextureSDF() {
 void MeteModel::buildTextureICD() {
 	const double* pData= _listFeature[0]->GetICD();	// the data
 
-	for (int i = _nFocusY, iLen = _nFocusY + _nFocusH; i < iLen; i++) {
-		for (int j = _nFocusX, jLen = _nFocusX + _nFocusW; j < jLen; j++) {
+
+	for (int i = 0; i < _nHeight; i++) {
+		for (int j = 0; j < _nWidth; j++) {
 
 			int nIndex = i * _nWidth + j;
-			int nIndexFocus = (i - _nFocusY)*_nFocusW + j - _nFocusX;
 			// using transparency and the blue tunnel
-			_dataTexture[4 * nIndexFocus + 0] = 100;
-			_dataTexture[4 * nIndexFocus + 1] = 100;
-			_dataTexture[4 * nIndexFocus + 2] = 100;
-			_dataTexture[4 * nIndexFocus + 3] = (GLubyte)(pData[nIndex]*255);
+			_dataTexture[4 * nIndex + 0] = 100;
+			_dataTexture[4 * nIndex + 1] = 100;
+			_dataTexture[4 * nIndex + 2] = 100;
+			_dataTexture[4 * nIndex + 3] = (GLubyte)(pData[nIndex]*255);
 		}
 	}
 }
@@ -359,24 +336,23 @@ void MeteModel::buildTextureThresholdDipValue() {
 	_nThresholdedGridPoints = 0;
 	// color map
 	ColorMap* colormap = ColorMap::GetInstance();
-	for (int i = _nFocusY, iLen = _nFocusY + _nFocusH; i < iLen; i++) {
-		for (int j = _nFocusX, jLen = _nFocusX + _nFocusW; j < jLen; j++) {
-			int nIndexFocus = (i - _nFocusY)*_nFocusW + j - _nFocusX;
+	for (int i = 0; i < _nHeight; i++) {
+		for (int j = 0; j < _nWidth; j++) {
 			int nIndex = i*_nWidth + j;
 			if (pData[nIndex]<dbThreshold)
 			{
-				_dataTexture[4 * nIndexFocus + 0] = ColorMap::GetThresholdColorI(0);
-				_dataTexture[4 * nIndexFocus + 1] = ColorMap::GetThresholdColorI(1);
-				_dataTexture[4 * nIndexFocus + 2] = ColorMap::GetThresholdColorI(2);
-				_dataTexture[4 * nIndexFocus + 3] = (GLubyte)255;
+				_dataTexture[4 * nIndex + 0] = ColorMap::GetThresholdColorI(0);
+				_dataTexture[4 * nIndex + 1] = ColorMap::GetThresholdColorI(1);
+				_dataTexture[4 * nIndex + 2] = ColorMap::GetThresholdColorI(2);
+				_dataTexture[4 * nIndex + 3] = (GLubyte)255;
 
 				_nThresholdedGridPoints++;
 			}
 			else {
-				_dataTexture[4 * nIndexFocus + 0] = (GLubyte)255;
-				_dataTexture[4 * nIndexFocus + 1] = (GLubyte)255;
-				_dataTexture[4 * nIndexFocus + 2] = (GLubyte)255;
-				_dataTexture[4 * nIndexFocus + 3] = (GLubyte)255;
+				_dataTexture[4 * nIndex + 0] = (GLubyte)255;
+				_dataTexture[4 * nIndex + 1] = (GLubyte)255;
+				_dataTexture[4 * nIndex + 2] = (GLubyte)255;
+				_dataTexture[4 * nIndex + 3] = (GLubyte)255;
 
 			}
 		}
@@ -397,7 +373,7 @@ void MeteModel::buildTextureClusteredVariance() {
 
 	// 6.Generate texture
 	// 6.1.initialize the texture
-	for (size_t i = 0; i < _nFocusGrids; i++)
+	for (size_t i = 0; i < _nGrids; i++)
 	{
 		_dataTexture[4 * i + 0] = (GLubyte)100;
 		_dataTexture[4 * i + 1] = (GLubyte)100;
@@ -586,17 +562,16 @@ void MeteModel::buildTextureColorMap() {
 
 	double dbMax = -1000;
 	double dbMin = 1000;
-	for (int i = _nFocusY, iLen = _nFocusY + _nFocusH; i < iLen; i++) {
-		for (int j = _nFocusX, jLen = _nFocusX + _nFocusW; j < jLen; j++) {
+	for (int i = 0; i < _nHeight; i++) {
+		for (int j = 0; j < _nWidth; j++) {
 
 			int nIndex = i*_nWidth + j;
-			int nIndexFocus = (i - _nFocusY)*_nFocusW + j - _nFocusX;
 			MYGLColor color = colormap->GetColor(pData[nIndex]);
 			// using transparency and the blue tunnel
-			_dataTexture[4 * nIndexFocus + 0] = color._rgb[0];
-			_dataTexture[4 * nIndexFocus + 1] = color._rgb[1];
-			_dataTexture[4 * nIndexFocus + 2] = color._rgb[2];
-			_dataTexture[4 * nIndexFocus + 3] = (GLubyte)255;
+			_dataTexture[4 * nIndex + 0] = color._rgb[0];
+			_dataTexture[4 * nIndex + 1] = color._rgb[1];
+			_dataTexture[4 * nIndex + 2] = color._rgb[2];
+			_dataTexture[4 * nIndex + 3] = (GLubyte)255;
 			if (pData[nIndex] > dbMax) dbMax = pData[nIndex];
 			if (pData[nIndex] < dbMin) dbMin = pData[nIndex];
 		}
@@ -609,10 +584,9 @@ vector<double> MeteModel::GetVariance() {
 
 	const double* pData = _pData->GetVari(_nSmooth);
 	vector<double> vecVar;
-	for (int i = _nFocusY, iLen = _nFocusY + _nFocusH; i < iLen; i++) {
-		for (int j = _nFocusX, jLen = _nFocusX + _nFocusW; j < jLen; j++) {
+	for (int i = 0; i < _nHeight; i++) {
+		for (int j = 0; j < _nWidth; j++) {
 			int nIndex = i*_nWidth + j;
-			int nIndexFocus = (i - _nFocusY)*_nFocusW + j - _nFocusX;
 			vecVar.push_back(pData[nIndex]);
 		}
 	}
@@ -838,21 +812,21 @@ MeteModel* MeteModel::CreateModel(bool bA) {
 	switch (g_usedModel)
 	{
 	case PRE_CMA:		
-		pModel->InitModel(14, nWidth, nHeight, nFocusX, nFocusY, nFocusW, nFocusH, "../../data/data10/pre-mod-cma-20160802-00-96.txt"); break;
+		pModel->InitModel(14, nWidth, nHeight, "../../data/data10/pre-mod-cma-20160802-00-96.txt"); break;
 	case PRE_CPTEC:
-		pModel->InitModel(14, nWidth, nHeight, nFocusX, nFocusY, nFocusW, nFocusH, "../../data/data10/pre-mod-cptec-20160802-00-96.txt"); break;
+		pModel->InitModel(14, nWidth, nHeight, "../../data/data10/pre-mod-cptec-20160802-00-96.txt"); break;
 	case PRE_ECCC:
-		pModel->InitModel(20, nWidth, nHeight, nFocusX, nFocusY, nFocusW, nFocusH, "../../data/data10/pre-mod-eccc-20160802-00-96.txt"); break;
+		pModel->InitModel(20, nWidth, nHeight, "../../data/data10/pre-mod-eccc-20160802-00-96.txt"); break;
 	case PRE_ECMWF:
-		pModel->InitModel(50, nWidth, nHeight, nFocusX, nFocusY, nFocusW, nFocusH, "../../data/data10/pre-mod-ecmwf-20160802-00-96.txt"); break;
+		pModel->InitModel(50, nWidth, nHeight, "../../data/data10/pre-mod-ecmwf-20160802-00-96.txt"); break;
 	case PRE_JMA:
-		pModel->InitModel(26, nWidth, nHeight, nFocusX, nFocusY, nFocusW, nFocusH, "../../data/data10/pre-mod-jma-20160802-00-96.txt"); break;
+		pModel->InitModel(26, nWidth, nHeight, "../../data/data10/pre-mod-jma-20160802-00-96.txt"); break;
 	case PRE_KMA:
-		pModel->InitModel(24, nWidth, nHeight, nFocusX, nFocusY, nFocusW, nFocusH, "../../data/data10/pre-mod-kma-20160802-00-96.txt"); break;
+		pModel->InitModel(24, nWidth, nHeight, "../../data/data10/pre-mod-kma-20160802-00-96.txt"); break;
 	case PRE_NCEP:
-		pModel->InitModel(20, nWidth, nHeight, nFocusX, nFocusY, nFocusW, nFocusH, "../../data/data10/pre-mod-ncep-20160802-00-96.txt"); break;
+		pModel->InitModel(20, nWidth, nHeight, "../../data/data10/pre-mod-ncep-20160802-00-96.txt"); break;
 	case T2_ECMWF:
-		pModel->InitModel(50, nWidth, nHeight, nFocusX, nFocusY, nFocusW, nFocusH
+		pModel->InitModel(50, nWidth, nHeight
 			//, "../../data/t2-2007-2017-jan-144 and 240h-50(1Degree).txt", false
 			//, "../../data/t2-2007-2017-jan-144 and 240h-50(1Degree, single timestep).txt", false
 			//, "../../data/t2-2007-2017-jan-144 and 240h-50(1Degree, single timestep,skip 3).txt", false
@@ -860,8 +834,7 @@ MeteModel* MeteModel::CreateModel(bool bA) {
 			//, "../../data/t2-mod-ecmwf-20160105-00-72-216.txt", false
 			//, "../../data/t2-mod-ecmwf-20160105-00-216.txt", false
 			, g_strFileName,false
-			, nWest, nEast, nSouth, nNorth
-			, nFocusWest, nFocusEast, nFocusSouth, nFocusNorth);
+			, nWest, nEast, nSouth, nNorth);
 		/*
 		pModel = new ContourBandDepthModel();
 		if (bNewData) {
@@ -883,7 +856,7 @@ MeteModel* MeteModel::CreateModel(bool bA) {
 		break;
 	case PRE_ECMWF_2017:
 
-		pModel->InitModel(50, nWidth, nHeight, nFocusX, nFocusY, nFocusW, nFocusH, g_strFileName);
+		pModel->InitModel(50, nWidth, nHeight, g_strFileName);
 //		pModel->InitModel(50, nWidth, nHeight, nFocusX, nFocusY, nFocusW, nFocusH, "../../data/Pre_20171016_0-360-by-6.txt"); 
 //		pModel->InitModel(50, nWidth, nHeight, nFocusX, nFocusY, nFocusW, nFocusH, "../../data/Pre_20170701_0-360-by-6.txt"); 
 		
@@ -1009,7 +982,7 @@ void MeteModel::SetEOF(int nEOF) {
 	for (int i = -10; i <= 10; i += 20)
 	{
 		QList<ContourLine> contour;
-		ContourGenerator::GetInstance()->Generate(_pData->GetEOF(_nEOF-1), contour, i, _nWidth, _nHeight, _nFocusX, _nFocusY, _nFocusW, _nFocusH);
+		ContourGenerator::GetInstance()->Generate(_pData->GetEOF(_nEOF-1), contour, i, _nWidth, _nHeight);
 		_listContourEOF.push_back(contour);
 	}
 	regenerateTexture();
@@ -1032,7 +1005,7 @@ void MeteModel::SetContourLevel(int nLevel) {
 void MeteModel::regenerateTexture() {
 	if (!_dataTexture)
 	{
-		_dataTexture = new GLubyte[4 * _nFocusGrids];
+		_dataTexture = new GLubyte[4 * _nGrids];
 	}
 
 	switch (_bgFunction)

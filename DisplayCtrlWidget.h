@@ -52,7 +52,6 @@ signals:
 	void smoothChanged(int nSmooth);
 	void areasChanged(int nArea);
 	void focusedClusterChanged(int nFocusedCluster);
-	void focusedRegionChanged(int nFocusedRegion);
 	void EOFChanged(int nEOF);
 	void MemberChanged(int nMember);
 	void EnsClusterChanged(int nMember);
