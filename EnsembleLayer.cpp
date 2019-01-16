@@ -208,6 +208,8 @@ void EnsembleLayer::draw(DisplayStates states){
 		drawContourLineSorted();
 	if (states._bShowContourLineSortedSDF)
 		drawContourLineSortedSDF();
+	if (states._bShowContourLineResampled)
+		drawContourLineResampled();
 	if (states._bShowContourLineSDF)
 		drawContourLineSDF();
 
@@ -311,11 +313,27 @@ void EnsembleLayer::drawContourLine(){
 	int nIsoValues = listIsoValue.length();
 	for (size_t isoIndex = 0; isoIndex < nIsoValues; isoIndex++)
 	{
-		QList<QList<ContourLine>> contours = _pModel->GetContour(isoIndex);
-		SetColor(isoIndex, listIsoValue[isoIndex]);
-		for (int i = 0; i < contours.size(); i++)
+		// original
+		if(true)
 		{
-			drawContourLine(contours[i]);
+			QList<QList<ContourLine>> contours = _pModel->GetContour(isoIndex);
+			SetColor(isoIndex, listIsoValue[isoIndex]);
+			for (int i = 0; i < contours.size(); i++)
+			{
+				SetColor(_pModel->GetLabel(i), listIsoValue[isoIndex]);
+				drawContourLine(contours[i]);
+			}
+		}
+
+		// smooth
+		if(false)
+		{
+			QList<QList<ContourLine>> contours = _pModel->GetContourSmooth(isoIndex);
+			SetColor(isoIndex+1, listIsoValue[isoIndex]);
+			for (int i = 0; i < contours.size(); i++)
+			{
+				drawContourLine(contours[i]);
+			}
 		}
 	}
 }
@@ -348,6 +366,20 @@ void EnsembleLayer::drawContourLineSortedSDF(){
 	}
 }
 
+void EnsembleLayer::drawContourLineResampled(){
+	QList<double> listIsoValue = _pModel->GetIsoValues();
+	int nIsoValues = listIsoValue.length();
+	for (size_t isoIndex = 0; isoIndex < nIsoValues; isoIndex++)
+	{
+		SetColor(isoIndex, listIsoValue[isoIndex]);
+		QList<QList<ContourLine>> contours = _pModel->GetContourResampled(isoIndex);
+		for (int i = 0; i < contours.size(); i++)
+		{
+			drawContourLine(contours[i]);
+		}
+	}
+}
+
 void EnsembleLayer::drawContourLineSDF(){
 	QList<double> listIsoValue = _pModel->GetIsoValues();
 	int nIsoValues = listIsoValue.length();
@@ -364,7 +396,9 @@ void EnsembleLayer::drawContourLineSDF(){
 
 void EnsembleLayer::ReloadTexture() {
 
-	_dataTexture = _pModel->GenerateTexture();
+
+	// truth texture, generated from truth data
+	const GLubyte* dataTexture = _pModel->GenerateTexture();
 
 	glBindTexture(GL_TEXTURE_2D, _uiTexID[0]);
 // 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
@@ -374,7 +408,9 @@ void EnsembleLayer::ReloadTexture() {
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
 
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, _pModel->GetW(), _pModel->GetH(), 0, GL_RGBA, GL_UNSIGNED_BYTE, _dataTexture);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, _pModel->GetTexW(), _pModel->GetTexH(), 0, GL_RGBA, GL_UNSIGNED_BYTE, dataTexture);
+
+	qDebug() << _pModel->GetTexW() << "," << _pModel->GetTexH();
 
 	generateColorBarTexture();
 }

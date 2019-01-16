@@ -16,6 +16,8 @@ protected:
 	int _nNorth;
 
 	int _nEnsembleLen;						// number of ensemble members
+
+
 public:
 	int GetW() { return _nWidth; }
 	int GetH() { return _nHeight; }

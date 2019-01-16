@@ -102,6 +102,7 @@ public slots:
 	void viewShowContourLine(bool on);
 	void viewShowContourLineSorted(bool on);
 	void viewShowContourLineSortedSDF(bool on);
+	void viewShowContourLineResampled(bool on);
 	void viewShowContourLineSDF(bool on);
 	void viewShowContourLineMin(bool on);
 	void viewShowContourLineMax(bool on);

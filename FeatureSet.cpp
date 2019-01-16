@@ -10,6 +10,11 @@
 
 #include <qDebug>
 
+#include <Eigen/Core>
+#include <mathtoolbox/classical-mds.hpp>
+#include <iostream>
+
+using namespace Eigen;
 
 double PointToSegDist(double x, double y, double x1, double y1, double x2, double y2)
 {
@@ -41,12 +46,21 @@ FeatureSet::FeatureSet(DataField* pData, double dbIsoValue, int nWidth, int nHei
 	_gridValidMax = new double[_nGrids];
 	_gridValidMin = new double[_nGrids];
 	_pSDF = new double[_nGrids*_nEnsembleLen];
-	_pICD = new double[_nGrids];
+	_pICD_LineKernel = new double[_nGrids];
+	_pICDX = new double[_nGrids];
+	_pICDY = new double[_nGrids];
+	_pICDZ = new double[_nGrids];
+	_pICD = new double[((_nWidth - 1)*_nDetailScale + 1)*((_nHeight - 1)*_nDetailScale + 1)];
 	_pSortedSDF = new double[_nGrids*_nEnsembleLen];
 	_pSet = new bool[_nGrids*_nEnsembleLen];
 	_pGridDiverse = new bool[_nGrids];
 	_pSetBandDepth = new int[_nEnsembleLen];
 	_pMemberType = new int[_nEnsembleLen];
+
+	_arrLabels = new int[_nEnsembleLen];
+	_arrPC = new double[_nEnsembleLen*_nPCLen];
+
+	_pResampledSDF = new double[_nGrids*_nResampleLen];
 
 	// 1.calculate set
 	calculateSet();
@@ -62,6 +76,7 @@ FeatureSet::FeatureSet(DataField* pData, double dbIsoValue, int nWidth, int nHei
 
 	// 5.generate all the contours and the bands
 	generateContours();
+	smoothContours();
 
 	// 6.calculate signed distance function, according to a given isovalue
 	CalculateSDF(_dbIsoValue);
@@ -69,17 +84,24 @@ FeatureSet::FeatureSet(DataField* pData, double dbIsoValue, int nWidth, int nHei
 	// 7.sort according to sdf and generate contours according to sdf
 	buildSortedSDF();
 
+	resampleContours();
+
 	// 8.calculate ICD
 	calculateICD();
+	buildICD_LineKernel();
+	buildICD_Vector();
 
 //==Clustering==
 	calculateDiverse();
-
-	calculatePCA();	
+	bool bMDS = true;
+	if(bMDS)
+		calculatePCA_MDS_Whole();	
+	else
+		calculatePCA();
 
 	//doClustering();
 
-	//doPCAClustering();
+	doPCAClustering();
 
 	//calculatePCABox();
 
@@ -95,12 +117,19 @@ FeatureSet::~FeatureSet()
 	delete[] _gridValidMax;
 	delete[] _gridValidMin;
 	delete[] _pSDF;
+	delete[] _pICD_LineKernel;
+	delete[] _pICDX;
+	delete[] _pICDY;
+	delete[] _pICDZ;
 	delete[] _pSortedSDF;
 	delete[] _pICD;
 	delete[] _pSet;
 	delete[] _pGridDiverse;
 	delete[] _pSetBandDepth;
 	delete[] _pMemberType;
+	delete[] _pResampledSDF;
+	delete[] _arrLabels;
+	delete[] _arrPC;
 
 	for each (UnCertaintyArea* pArea in _listAreaValid)
 		delete pArea;
@@ -140,9 +169,60 @@ void FeatureSet::generateContours() {
 	generateContourImp(_listContourMinHalf, _listContourMaxHalf, _listAreaHalf);
 }
 
-void FeatureSet::buildSortedSDF() {
+void FeatureSet::smoothContours() {
+	double dbScale = .2;
+	for each (QList<ContourLine> contours in _listContour)
+	{
+		QList<ContourLine> contours_s;
+		for each (ContourLine contour in contours)
+		{
+			int nPoints = contour._listPt.length();
+			if (nPoints<4)
+			{
+				contours_s.append(contour);
+			}
+			else {
+				ContourLine contour_s;
+				contour_s._listPt.append(contour._listPt[0]);
+				contour_s._listPt.append(contour._listPt[1]);
+				for (size_t i = 1; i < nPoints-2; i++)
+				{
+					QPointF pt1 = contour._listPt[i-1];
+					QPointF pt2 = contour._listPt[i];
+					QPointF pt3 = contour._listPt[i+1];
+					QPointF pt4 = contour._listPt[i+2];
 
+					QPointF pt14 = (pt1 + pt4) / 2;
+					QPointF pt23 = (pt2 + pt3) / 2;
+					QPointF pt = pt23 + (pt23 - pt14)*dbScale;
+					contour_s._listPt.append(pt);
+					contour_s._listPt.append(pt3);
+				}
+
+
+
+				contour_s._listPt.append(contour._listPt[nPoints - 1]);
+				contours_s.append(contour_s);
+
+			}
+		}
+
+		_listContourSmooth.append(contours_s);
+	}
+}
+
+void FeatureSet::buildSortedSDF() {
 	sortBuf(_pSDF, _pSortedSDF);
+	double dbBiasMax = 0;
+	int index = -1;
+	for (size_t i = 0; i < _nGrids; i++)
+	{
+		double dbBias = abs(_pSortedSDF[i] - _pSortedSDF[(_nEnsembleLen - 1)*_nGrids + i]);
+		if (dbBias > dbBiasMax) {
+			dbBiasMax = dbBias;
+			index = i;
+		}
+	}
 
 	for (size_t i = 0; i < _nEnsembleLen; i++)
 	{
@@ -159,6 +239,90 @@ void FeatureSet::buildSortedSDF() {
 			_listContourSortedSDF.push_back(contour);
 		}
 	}
+}
+
+const double c_dbK = 1.0 / sqrt(PI2d);
+inline double KernelFun(double para) {
+	return c_dbK * exp(-para * para / 2.0);
+}
+void resampleBasedOnKDE(double* dbInput, double* dbOutput,int nInputLen,int nOutputLen) {
+
+	static bool bShow = true;
+	double dbMin = dbInput[0] - 5;						// resample min border
+	double dbMax = dbInput[nInputLen - 1] + 5;			// resample max border
+	double dbStep = 0.01;								// resample step
+	int resampleGridLen = (dbMax - dbMin) / dbStep;		// resample grid len
+	double* pDensity = new double[resampleGridLen];		// density field
+
+	// 1.calculate density function
+	double dbAccum = 0.0;								// accumulated density
+	//if(bShow) qDebug() << "Density:";
+	for (size_t i = 0; i < resampleGridLen; i++)
+	{
+		double x = dbMin + dbStep * i;
+		double y = 0;
+		double dbH = .1;
+		for (size_t j = 0; j < nInputLen; j++)
+		{
+			y += KernelFun((x - dbInput[j])/dbH)/dbH;
+		}
+		pDensity[i] = y;
+		//if(bShow) qDebug() << y;
+		dbAccum += y;
+	}
+	double dbCurrentAccum = 0.0;							// current accumulated density
+	double dbDensityStep = dbAccum / (nOutputLen + 1);		// steps for the result density
+	for (size_t i = 0, j = 0; i < resampleGridLen; i++)
+	{
+		double x = dbMin + dbStep * i;
+		dbCurrentAccum += pDensity[i];
+
+
+		//if (bShow) qDebug() << dbCurrentAccum << ",j:" << j << ",accum:" << j * dbDensityStep;
+		if (dbCurrentAccum > (j + 1)*dbDensityStep) {
+			dbOutput[j] = x;
+			//if (bShow) qDebug() << x;
+			j++;
+		}
+		if (j == nOutputLen)
+		{
+			break;
+		}
+	}
+
+
+	bShow = false;
+	delete[] pDensity;
+}
+
+void FeatureSet::resampleContours() {
+	double* dbSample = new double[_nEnsembleLen];
+	double* dbResample = new double[_nResampleLen];
+
+	// 1.calculate resampled SDF for each grid point
+	for (size_t i = 0; i < _nGrids; i++)
+	{
+		for (size_t l = 0; l < _nEnsembleLen; l++)
+		{
+			dbSample[l] = _pSortedSDF[l*_nGrids + i];
+		}
+		resampleBasedOnKDE(dbSample, dbResample,_nEnsembleLen,_nResampleLen);
+		for (size_t l = 0; l < _nResampleLen; l++)
+		{
+			_pResampledSDF[l*_nGrids + i] = dbResample[l];
+		}
+	}
+
+	// 2.generate contours for each grid point
+	for (size_t l = 0; l < _nResampleLen; l++)
+	{
+		QList<ContourLine> contour;
+		ContourGenerator::GetInstance()->Generate(_pResampledSDF + l * _nGrids, contour, 0, _nWidth, _nHeight);
+		_listContourResampled.push_back(contour);
+	}
+
+	delete[] dbSample;
+	delete[] dbResample;
 }
 
 void FeatureSet::sortBuf(const double* pS, double* pD) {
@@ -391,19 +555,18 @@ void FeatureSet::calculatePCA() {
 
 	// 1.set parameter
 	int mI = _nDiverseCount;
-	int mO = 2;
+	int mO = _nPCLen;
 	int n = _nEnsembleLen;
 	// 2.allocate input and output buffer
 	double* arrInput = createDiverseArray();
-	double* arrOutput = new double[mO*n];
 
 	// 3.pca
 	MyPCA pca;
-	pca.DoPCA(arrInput, arrOutput, n, mI, mO, true);
+	pca.DoPCA(arrInput, _arrPC, n, mI, mO, true);
 	// 4.generate points from the output
 	for (size_t i = 0; i < n; i++)
 	{
-		qDebug() << arrOutput[2*i];
+		qDebug() << _arrPC[2*i];
 		//qDebug() << arrOutput[i * 2] << "," << arrOutput[i * 2 + 1];
 		//qDebug() << arrOutput[i * 3] << "," << arrOutput[i * 3 + 1] << "," << arrOutput[i * 3 + 2];
 		//qDebug() << arrOutput[i * 4] << "," << arrOutput[i * 4 + 1] << "," << arrOutput[i * 4 + 2] << "," << arrOutput[i * 4 + 3];
@@ -411,12 +574,158 @@ void FeatureSet::calculatePCA() {
 	qDebug() << "===========================";
 	for (size_t i = 0; i < n; i++)
 	{
-		qDebug() << arrOutput[2 * i+1];
+		qDebug() << _arrPC[2 * i+1];
 	}
 	// 5.release the buffer
 
-	delete[] arrOutput;
 	delete[] arrInput;
+}
+
+void FeatureSet::calculatePCA_MDS() {
+
+	// 2.allocate input buffer
+	double* arrInput = createDiverseArray();
+
+	int n = _nEnsembleLen;
+	std::vector<VectorXd> points(n);
+	for (size_t i = 0; i < n; i++)
+	{
+		points[i] = VectorXd(_nDiverseCount);
+		for (size_t j = 0; j < _nDiverseCount; j++)
+		{
+			points[i](j) = arrInput[i*_nDiverseCount + j];
+		}
+	}
+
+	MatrixXd D(n, n);
+	for (unsigned i = 0; i < n; ++i)
+	{
+		for (unsigned j = i; j < n; ++j)
+		{
+			const double d = (points[i] - points[j]).norm();
+			D(i, j) = d;
+			D(j, i) = d;
+		}
+	}
+
+	// Compute metric MDS (embedding into a 2-dimensional space)
+	const MatrixXd X = mathtoolbox::ComputeClassicalMds(D, _nPCLen);
+	for (size_t i = 0; i < n; i++)
+	{
+		for (size_t j = 0; j < _nPCLen; j++)
+		{
+			_arrPC[i*_nPCLen + j] = X(j, i);
+		}
+	}
+
+	for (size_t i = 0; i < n; i++)
+	{
+		qDebug() << X(0, i);
+	}
+	qDebug() << "======================";
+	for (size_t i = 0; i < n; i++)
+	{
+		qDebug() << X(1, i);
+	}
+	delete[] arrInput;
+}
+
+void FeatureSet::calculatePCA_MDS_Whole() {
+	int nClusterWidth = 11;// _nWidth;// / 4;
+	int nStartX = 70;
+	qDebug() << "Width:" << _nWidth;
+	int n = _nEnsembleLen;
+	std::vector<VectorXd> points(n);
+	for (size_t l = 0; l < n; l++)
+	{
+
+		points[l] = VectorXd(_nHeight*nClusterWidth);
+		/*
+		for (size_t i = 0; i < _nGrids; i++)
+		{
+			points[l](i) = _pSDF[l*_nGrids + i];
+		}*/
+		for (size_t i = 0; i < _nHeight; i++)
+		{
+			for (size_t j = 0; j < nClusterWidth; j++)
+			{
+				points[l](i*nClusterWidth + j) = _pSDF[l*_nWidth*_nHeight + i * _nWidth + nStartX + j];
+			}
+
+		}
+	}
+
+	MatrixXd D(n, n);
+	for (unsigned i = 0; i < n; ++i)
+	{
+		for (unsigned j = i; j < n; ++j)
+		{
+			const double d = (points[i] - points[j]).norm();
+			D(i, j) = d;
+			D(j, i) = d;
+		}
+	}
+
+	// Compute metric MDS (embedding into a 2-dimensional space)
+	const MatrixXd X = mathtoolbox::ComputeClassicalMds(D, _nPCLen);
+	for (size_t i = 0; i < _nEnsembleLen; i++)
+	{
+		for (size_t j = 0; j < _nPCLen; j++)
+		{
+			_arrPC[i*_nPCLen + j] = X(j, i);
+		}
+	}
+	/*
+	for (size_t i = 0; i < n; i++)
+	{
+		qDebug() << X(0, i);
+	}
+	qDebug() << "======================";
+	for (size_t i = 0; i < n; i++)
+	{
+		qDebug() << X(1, i);
+	}
+	*/
+}
+
+void FeatureSet::calculatePCA_MDS_Dis() {	
+	int n = _nEnsembleLen;
+
+	MatrixXd D(n, n);
+	for (unsigned i = 0; i < n; ++i)
+	{
+		for (unsigned j = i; j < n; ++j)
+		{
+			int dis = 0;
+			for (size_t k = 0; k < _nGrids; k++)
+			{
+				if (_pSet[i*_nGrids + k] != _pSet[j*_nGrids + k])
+					dis++;
+			}
+			D(i, j) = dis;
+			D(j, i) = dis;
+		}
+	}
+
+	// Compute metric MDS (embedding into a 2-dimensional space)
+	const MatrixXd X = mathtoolbox::ComputeClassicalMds(D, _nPCLen);
+	for (size_t i = 0; i < n; i++)
+	{
+		for (size_t j = 0; j < _nPCLen; j++)
+		{
+			_arrPC[i*_nPCLen + j] = X(j, i);
+		}
+	}
+
+	for (size_t i = 0; i < n; i++)
+	{
+		qDebug() << X(0, i);
+	}
+	qDebug() << "======================";
+	for (size_t i = 0; i < n; i++)
+	{
+		qDebug() << X(1, i);
+	}
 }
 
 void FeatureSet::calculateDiverse() {
@@ -481,47 +790,24 @@ void FeatureSet::doClustering() {
 
 void FeatureSet::doPCAClustering() {
 
-	// 1.set parameter
-	int mI = _nDiverseCount;
-	int mO = 5;
-	int n = _nEnsembleLen;
-	// 2.allocate input and output buffer
-	double* arrInput = createDiverseArray();
-	double* arrOutput = new double[mO*n];
+	// 2.cluster
+	CLUSTER::Clustering* pClusterer = new CLUSTER::AHCClustering();
+	int nN = _nEnsembleLen;			// number of data items
+	int nM = _nPCLen;		// dimension
+	int nK = _nClusters;						// clusters
+	double* arrBuf = _arrPC;
 
-	// 3.pca
-	MyPCA pca;
-	pca.DoPCA(arrInput, arrOutput, n, mI, mO, true);
-
-	// clustering
+	pClusterer->DoCluster(nN, nM, nK, arrBuf, _arrLabels);
+	qDebug() << "Labels";
+	for (size_t i = 0; i < nN; i++)
 	{
-		// 2.cluster
-		CLUSTER::Clustering* pClusterer = new CLUSTER::KMeansClustering();
-		int nN = _nEnsembleLen;			// number of data items
-		int nM = mO;		// dimension
-		int nK = 2;						// clusters
-		int* arrLabel = new int[nN];
-		double* arrBuf = arrOutput;
-
-
-		pClusterer->DoCluster(nN, nM, nK, arrBuf, arrLabel);
-		qDebug() << "Labels";
-		for (size_t i = 0; i < nN; i++)
-		{
-			qDebug() << arrLabel[i];
-		}
-
-		// 4.record label
-
-		// 5.release the resouse
-		delete arrLabel;
-		delete pClusterer;
+		qDebug() << _arrLabels[i];
 	}
 
+	// 4.record label
 
-
-	delete[] arrOutput;
-	delete[] arrInput;
+	// 5.release the resouse
+	delete pClusterer;
 }
 
 void FeatureSet::calculatePCARecovery() {
@@ -693,8 +979,10 @@ void FeatureSet::calculatePCABox() {
 }
 
 void FeatureSet::calculateICD() {
-	double dbMin = 100;
-	double dbMax = -100;
+	// 0.allocate resource
+	double* pMeans = new double[_nGrids];
+	double* pVari2 = new double[_nGrids];
+	// 1.calculate means and variances
 	for (size_t i = 0; i < _nGrids; i++)
 	{
 		double dbSum = 0;
@@ -711,21 +999,180 @@ void FeatureSet::calculateICD() {
 			double dbBias = dbValue - dbMean;
 			dbVar += dbBias * dbBias;
 		}
-
-		double dbBias = _dbIsoValue - dbMean;
-		_pICD[i] = pow(Ed,-dbBias*dbBias/2*dbVar);
-
-		if (_pICD[i] > dbMax) dbMax = _pICD[i];
-		if (_pICD[i] < dbMin) dbMin = _pICD[i];
-
+		pMeans[i] = dbMean;
+		pVari2[i] = dbVar;
 	}
-	qDebug() << "Min:" << dbMin;
-	qDebug() << "Max:" << dbMax;
+	// 2.calculate probability
+	int nWidth = (_nWidth - 1) * _nDetailScale + 1;
+	int nHeight = (_nHeight - 1) * _nDetailScale + 1;
+	for (size_t i = 0; i < nHeight; i++)
+	{
+		for (size_t j = 0; j < nWidth; j++)
+		{
+			int i0 = i / _nDetailScale;
+			int j0 = j / _nDetailScale;
+			int i1 = i0 + 1;
+			int j1 = j0 + 1;
+			int id = i % _nDetailScale;
+			int jd = j % _nDetailScale;
+
+			double dbi1 = id / (double)((_nDetailScale - 1) > 0 ? (_nDetailScale - 1) : 1);
+			double dbi0 = 1.0 - dbi1;
+			double dbj1 = jd / (double)((_nDetailScale - 1) > 0 ? (_nDetailScale - 1) : 1);
+			double dbj0 = 1.0 - dbj1;
+
+			double dbM00 = pMeans[i0*_nWidth + j0];
+			double dbM01 = i1 < _nHeight ? pMeans[i1*_nWidth + j0] : 0;
+			double dbM10 = j1 < _nWidth ? pMeans[i0*_nWidth + j1] : 0;
+			double dbM11 = (i1 < _nHeight && j1 < _nWidth) ? pMeans[i1*_nWidth + j1] : 0;
+
+			double dbV00 = pVari2[i0*_nWidth + j0];
+			double dbV01 = i1 < _nHeight ? pVari2[i1*_nWidth + j0] : 0;
+			double dbV10 = j1 < _nWidth ? pVari2[i0*_nWidth + j1] : 0;
+			double dbV11 = (i1 < _nHeight && j1 < _nWidth) ? pVari2[i1*_nWidth + j1] : 0;
+
+			double dbMean = dbM00 * dbi0*dbj0
+				+ dbM01 * dbi1*dbj0
+				+ dbM10 * dbi0*dbj1
+				+ dbM11 * dbi1*dbj1;
+
+			/*
+			double dbVar2 = dbV00 * dbi0*dbj0 * dbi0*dbj0
+				+ dbV01 * dbi1*dbj0 * dbi1*dbj0
+				+ dbV10 * dbi0*dbj1 * dbi0*dbj1
+				+ dbV11 * dbi1*dbj1 * dbi1*dbj1;
+				*/
+
+			double dbVar2 = dbV00 * dbi0*dbj0
+				+ dbV01 * dbi1*dbj0
+				+ dbV10 * dbi0*dbj1
+				+ dbV11 * dbi1*dbj1;
+
+			double dbBias = _dbIsoValue - dbMean;
+			dbVar2 = sqrt(dbVar2);		// adjust the effect of variance
+			//qDebug() << dbMean << "\t" << dbVar2 << "\t" << i << "\t" << j;
+			//_pICD[i*nWidth + j] = pow(Ed, -dbBias * dbBias / 2 * dbVari);
+			_pICD[i*nWidth + j] = pow(Ed, -dbBias * dbBias / (2 * dbVar2)) /(sqrt(PI2d*dbVar2))*5;
 
 
-	return;
+
+		}
+	}
+	// free resource
+	delete pMeans;
+	delete pVari2;
+}
+
+void FeatureSet::buildICD_LineKernel() {
 	for (size_t i = 0; i < _nGrids; i++)
 	{
-		_pICD[i] = .5;
+		_pICD_LineKernel[i] = 0;
+	}
+	int nRadius = 10;
+	double dbH = 1.0;
+	double dbMax = 0;
+	for (size_t l = 0; l < _nEnsembleLen; l++) {
+		for each (QList<ContourLine> contours in _listContour)
+		{
+			for each (ContourLine contour in contours)
+			{
+				for each (QPointF pt in contour._listPt)
+				{
+					double x = pt.x();
+					double y = pt.y();
+					for (int iX=x- nRadius;iX<x+ nRadius;iX++)
+					{
+						if (iX < 0 || iX >= _nWidth) continue;
+						for (int iY = y - nRadius; iY < y + nRadius; iY++)
+						{
+							if (iY < 0 || iY >= _nHeight) continue;
+							double dbX = iX - x;
+							double dbY = iY - y;
+							double dbDis2 = dbX*dbX + dbY * dbY;
+							double dbV = pow(Ed, -dbDis2 / 2);
+							_pICD_LineKernel[iY*_nWidth + iX] += dbV;
+							if (_pICD_LineKernel[iY*_nWidth + iX] > dbMax)
+								dbMax = _pICD_LineKernel[iY*_nWidth + iX];
+						}
+					}
+				}
+			}
+		}
+	}
+
+	for (size_t i = 0; i < _nGrids; i++)
+	{
+		_pICD_LineKernel[i] /= (dbMax + 1);
+	}
+}
+
+void FeatureSet::buildICD_Vector() {
+	for (size_t i = 0; i < _nGrids; i++)
+	{
+		_pICDX[i] = 0;
+		_pICDY[i] = 0;
+		_pICDZ[i] = 0;
+	}
+	int nRadius = 10;
+	double dbH = 1.0;
+	double dbMaxX = 0;
+	double dbMaxY = 0;
+	double dbMaxZ = 0;
+	for (size_t l = 0; l < _nEnsembleLen; l++) {
+		for each (QList<ContourLine> contours in _listContour)
+		{
+			for each (ContourLine contour in contours)
+			{
+				int nLen = contour._listPt.length();
+				for (size_t i = 1; i < nLen; i++)
+				{
+					double x1 = contour._listPt[i - 1].x();
+					double y1 = contour._listPt[i - 1].y();
+					double x2 = contour._listPt[i].x();
+					double y2 = contour._listPt[i].y();
+
+					for (int iX = x1 - nRadius; iX < x1 + nRadius; iX++)
+					{
+						if (iX < 0 || iX >= _nWidth) continue;
+						for (int iY = y1 - nRadius; iY < y1 + nRadius; iY++)
+						{
+							if (iY < 0 || iY >= _nHeight) continue;
+							double dbX = iX - x1;
+							double dbY = iY - y1;
+							double dbDis2 = dbX * dbX + dbY * dbY;
+							double dbV = pow(Ed, -dbDis2 / 2);
+							int nIndex = iY * _nWidth + iX;
+							double dbVX = x2 - x1;
+							double dbVY = y2 - y1;
+							_pICDZ[nIndex] += abs(_pICDX[nIndex] * dbVY + _pICDY[nIndex] * dbVX)*dbV;
+
+							_pICDX[nIndex] += dbVX * dbV;
+							_pICDY[nIndex] += dbVY * dbV;
+
+						//	if (_pICDX[nIndex] > dbMaxX) dbMaxX = _pICDX[nIndex];
+						//	if (_pICDY[nIndex] > dbMaxY) dbMaxY = _pICDY[nIndex];
+							if (_pICDZ[nIndex] > dbMaxZ) dbMaxZ = _pICDZ[nIndex];
+						}
+					}
+				}
+			}
+		}
+	}
+
+
+	for (size_t i = 0; i < _nGrids; i++)
+	{
+		_pICDX[i] = sqrt(_pICDX[i] * _pICDX[i] + _pICDY[i] * _pICDY[i]);
+		if (_pICDX[i] > .1) _pICDY[i] = _pICDZ[i] / _pICDX[i];
+		else _pICDY[i] = 0;
+
+		if (_pICDX[i] > dbMaxX) dbMaxX = _pICDX[i];
+		if (_pICDY[i] > dbMaxY) dbMaxY = _pICDY[i];
+	}
+	for (size_t i = 0; i < _nGrids; i++)
+	{
+		_pICDX[i] /= (dbMaxX + 1);
+		_pICDY[i] /= (dbMaxY + 1);
+		_pICDZ[i] /= (dbMaxZ + 1);
 	}
 }

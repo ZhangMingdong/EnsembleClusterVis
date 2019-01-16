@@ -38,8 +38,6 @@ private:
 	// build the tess for uncertainty regions
 	void buildTess();
 private:
-	// truth texture, generated from truth data
-	const GLubyte* _dataTexture = NULL;
 	// texture of the color bar, 160*2
 	GLubyte* _colorbarTexture;
 	// texture id:0-data,1-colorbar
@@ -62,6 +60,7 @@ private:
 	void drawContourLine();
 	void drawContourLineSorted();
 	void drawContourLineSortedSDF();
+	void drawContourLineResampled();
 	void drawContourLineSDF();
 
 	void drawBand();

@@ -35,6 +35,7 @@ public:
 		bool _bShowContourLineSorted = false;
 		bool _bShowContourLineSDF = false;
 		bool _bShowContourLineSortedSDF = false;
+		bool _bShowContourLineResampled = false;
 		bool _bShowBeliefEllipse = false;
 	};
 public:

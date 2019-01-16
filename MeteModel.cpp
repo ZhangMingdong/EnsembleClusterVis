@@ -55,7 +55,7 @@ MeteModel::MeteModel()
 	_bufObs = new double[_nGrids];
 
 	_gridErr = new double[_nGrids];
-	readObsData();
+	//readObsData();
 }
 
 MeteModel::~MeteModel()
@@ -125,13 +125,15 @@ void MeteModel::InitModel(int nEnsembleLen, int nWidth, int nHeight
 		}
 	}
 	// read dip value (temp)
+	if (false) {
 #ifdef GLOBAL_PRE
-//	readDipValueG("../../data/data10/pre-mod-ecmwf-20160802-00-96_dipValue.txt");
-	readDipValueG("../../data/data10/pre-mod-jma-20160802-00-96_dipValue.txt");
+		//	readDipValueG("../../data/data10/pre-mod-ecmwf-20160802-00-96_dipValue.txt");
+		readDipValueG("../../data/data10/pre-mod-jma-20160802-00-96_dipValue.txt");
 #else
-	//	readDipValue("../../data/t2-2007-2017-jan-144 and 240h-50(1Degree, single timestep,skip 3)_dipValue.txt");
-	readDipValue("../../data/t2-2007-2017-jan-144 and 240h-50(1Degree, single timestep)_dipValue_P.txt");
+		//	readDipValue("../../data/t2-2007-2017-jan-144 and 240h-50(1Degree, single timestep,skip 3)_dipValue.txt");
+		readDipValue("../../data/t2-2007-2017-jan-144 and 240h-50(1Degree, single timestep)_dipValue_P.txt");
 #endif
+	}
 
 	// statistic
 	_pData->DoStatistic();
@@ -314,18 +316,98 @@ void MeteModel::buildTextureSDF() {
 }
 
 void MeteModel::buildTextureICD() {
+	int nDetaiScale = _listFeature[0]->GetDetailScale();
+	_nTexW = (_nWidth - 1) * nDetaiScale + 1;
+	_nTexH = (_nHeight - 1) * nDetaiScale + 1;
 	const double* pData= _listFeature[0]->GetICD();	// the data
 
 
-	for (int i = 0; i < _nHeight; i++) {
+	for (int i = 0; i < _nTexH; i++) {
+		for (int j = 0; j < _nTexW; j++) {
+
+			int nIndex = i * _nTexW + j;
+			// using transparency and the blue tunnel
+			_dataTexture[4 * nIndex + 0] = 100;
+			_dataTexture[4 * nIndex + 1] = 100;
+			_dataTexture[4 * nIndex + 2] = 200;
+			_dataTexture[4 * nIndex + 3] = (GLubyte)(pData[nIndex]*255);
+		}
+	}
+}
+
+void MeteModel::buildTextureICD_LineKernel(){
+	qDebug() << "line kernel" << endl;
+	const double* pData = _listFeature[0]->GetICD_LineKernel();
+
+
+	double dbMax = -1000;
+	double dbMin = 1000;	for (int i = 0; i < _nHeight; i++) {
 		for (int j = 0; j < _nWidth; j++) {
 
 			int nIndex = i * _nWidth + j;
 			// using transparency and the blue tunnel
 			_dataTexture[4 * nIndex + 0] = 100;
 			_dataTexture[4 * nIndex + 1] = 100;
-			_dataTexture[4 * nIndex + 2] = 100;
-			_dataTexture[4 * nIndex + 3] = (GLubyte)(pData[nIndex]*255);
+			_dataTexture[4 * nIndex + 2] = 200;
+			_dataTexture[4 * nIndex + 3] = (GLubyte)(pData[nIndex] * 255);
+		}
+	}
+}
+
+
+void MeteModel::buildTextureICDX() {
+	qDebug() << "line kernel X" << endl;
+	const double* pData = _listFeature[0]->GetICDX();
+
+
+	double dbMax = -1000;
+	double dbMin = 1000;	for (int i = 0; i < _nHeight; i++) {
+		for (int j = 0; j < _nWidth; j++) {
+
+			int nIndex = i * _nWidth + j;
+			// using transparency and the blue tunnel
+			_dataTexture[4 * nIndex + 0] = 100;
+			_dataTexture[4 * nIndex + 1] = 100;
+			_dataTexture[4 * nIndex + 2] = 200;
+			_dataTexture[4 * nIndex + 3] = (GLubyte)(pData[nIndex] * 255);
+		}
+	}
+}
+
+void MeteModel::buildTextureICDY() {
+	qDebug() << "line kernel Y" << endl;
+	const double* pData = _listFeature[0]->GetICDY();
+
+
+	double dbMax = -1000;
+	double dbMin = 1000;	for (int i = 0; i < _nHeight; i++) {
+		for (int j = 0; j < _nWidth; j++) {
+
+			int nIndex = i * _nWidth + j;
+			// using transparency and the blue tunnel
+			_dataTexture[4 * nIndex + 0] = 100;
+			_dataTexture[4 * nIndex + 1] = 100;
+			_dataTexture[4 * nIndex + 2] = 200;
+			_dataTexture[4 * nIndex + 3] = (GLubyte)(pData[nIndex] * 255);
+		}
+	}
+}
+
+void MeteModel::buildTextureICDZ() {
+	qDebug() << "line kernel Z" << endl;
+	const double* pData = _listFeature[0]->GetICDZ();
+
+
+	double dbMax = -1000;
+	double dbMin = 1000;	for (int i = 0; i < _nHeight; i++) {
+		for (int j = 0; j < _nWidth; j++) {
+
+			int nIndex = i * _nWidth + j;
+			// using transparency and the blue tunnel
+			_dataTexture[4 * nIndex + 0] = 100;
+			_dataTexture[4 * nIndex + 1] = 100;
+			_dataTexture[4 * nIndex + 2] = 200;
+			_dataTexture[4 * nIndex + 3] = (GLubyte)(pData[nIndex] * 255);
 		}
 	}
 }
@@ -486,10 +568,10 @@ void MeteModel::buildTextureColorMap() {
 		{
 			pData = _bufObs;
 		}
-		else if (_nEnsCluster)
-		{
-			pData = _arrEnsClusterData[_nEnsCluster-1]->GetMean();
-		}
+		//else if (_nEnsCluster)
+		//{
+		//	pData = _arrEnsClusterData[_nEnsCluster-1]->GetMean();
+		//}
 		else if (_nMember)
 		{
 			pData = _pData->GetLayer(_nMember - 1);
@@ -519,11 +601,12 @@ void MeteModel::buildTextureColorMap() {
 			const double* _pBiasBuf;
 
 
-			if (_nEnsCluster)
-			{
-				_pBiasBuf = _arrEnsClusterData[_nEnsCluster - 1]->GetMean();
-			}
-			else if (_nMember)
+			//if (_nEnsCluster)
+			//{
+			//	_pBiasBuf = _arrEnsClusterData[_nEnsCluster - 1]->GetMean();
+			//}
+			//else 
+			if (_nMember)
 			{
 				_pBiasBuf = _pData->GetLayer(_nMember - 1);
 			}
@@ -705,9 +788,22 @@ QList<QList<ContourLine>> MeteModel::GetContour(int isoIndex)
 	}
 	else 
 	{
+		//if (_nEnsCluster)
+		//{
+		//	return _listEnsClusterContour[_nEnsCluster - 1];
+		//}		
 		if (_nEnsCluster)
 		{
-			return _listEnsClusterContour[_nEnsCluster - 1];
+			QList<QList<ContourLine>> result;
+			QList<ContourLine> emptyContour;
+			for (size_t i = 0; i < _nEnsembleLen; i++)
+			{
+				if (GetLabel(i) == _nEnsCluster - 1)
+					result.push_back(listContour[i]);
+				else
+					result.push_back(emptyContour);
+			}
+			return result;
 		}
 		else if (_nMember)
 		{
@@ -715,12 +811,28 @@ QList<QList<ContourLine>> MeteModel::GetContour(int isoIndex)
 			QList<QList<ContourLine>> result;
 			result.push_back(listContour[_nMember - 1]);
 			return result;
-
 		}
 		else return listContour;
 	}
 }
 
+int MeteModel::GetLabel(int l) {
+	return _listFeature[0]->nGetLabel(l);
+}
+
+QList<QList<ContourLine>> MeteModel::GetContourSmooth(int isoIndex)
+{
+	QList<QList<ContourLine>>& listContour = _listFeature[isoIndex]->GetContoursSmooth();
+	if (_nMember)
+	{
+		//return _listMemberContour[_nMember - 1];
+		QList<QList<ContourLine>> result;
+		result.push_back(listContour[_nMember - 1]);
+		return result;
+
+	}
+	else return listContour;
+}
 
 QList<QList<ContourLine>> MeteModel::GetContourOutlier(int isoIndex)
 {
@@ -767,6 +879,14 @@ QList<QList<ContourLine>> MeteModel::GetContourSortedSDF(int isoIndex)
 	return listResult;
 }
 
+QList<QList<ContourLine>> MeteModel::GetContourResampled(int isoIndex)
+{
+	QList<QList<ContourLine>> listResult;
+	QList<QList<ContourLine>> contours = _listFeature[isoIndex]->GetContourResampled();
+	addContour(contours, listResult, 0, contours.size(), _nContourLevel);
+	return listResult;
+}
+
 
 QList<QList<ContourLine>> MeteModel::GetContourSDF(int isoIndex)
 {
@@ -782,8 +902,11 @@ QList<QList<ContourLine>> MeteModel::GetContourSDF(int isoIndex)
 }
 
 MeteModel* MeteModel::CreateModel(bool bA) {
+	// 1.Create model instance
 	//MeteModel* pModel = new MeteModel();
 	MeteModel* pModel = bA ? new ArtificialModel() : new MeteModel();
+
+	// 2.Set isovalues
 	QList<double> listIsoValue;
 	listIsoValue.append(273.16);
 	//listIsoValue.append(273.16+5);
@@ -791,23 +914,22 @@ MeteModel* MeteModel::CreateModel(bool bA) {
 	//listIsoValue.append(273.16 + 15);
 	//listIsoValue.append(273.16 + 20);
 	pModel->SetIsoValues(listIsoValue);
+
+	// 3.Initialize model
 	int nWidth = g_nWidth;
-	int nHeight		= g_nHeight		;
-	int nFocusX		= g_nFocusX		;
-	int nFocusY		= g_nFocusY		;
-	int nFocusW		= g_nFocusW		;
-	int nFocusH		= g_nFocusH		;
-	int nWest		= g_nWest		;
-	int nEast		= g_nEast		;
-	int nNorth		= g_nNorth		;
-	int nSouth		= g_nSouth		;
-	int nFocusWest	= g_nWest	;
-	int nFocusEast	= g_nEast	;
+	int nHeight		= g_nHeight;
+	int nFocusX		= g_nFocusX;
+	int nFocusY		= g_nFocusY;
+	int nFocusW		= g_nFocusW;
+	int nFocusH		= g_nFocusH;
+	int nWest		= g_nWest;
+	int nEast		= g_nEast;
+	int nNorth		= g_nNorth;
+	int nSouth		= g_nSouth;
+	int nFocusWest	= g_nWest;
+	int nFocusEast	= g_nEast;
 	int nFocusNorth	= g_nNorth;
 	int nFocusSouth	= g_nSouth;
-	
-
-	bool bNewData = true;
 
 	switch (g_usedModel)
 	{
@@ -826,42 +948,11 @@ MeteModel* MeteModel::CreateModel(bool bA) {
 	case PRE_NCEP:
 		pModel->InitModel(20, nWidth, nHeight, "../../data/data10/pre-mod-ncep-20160802-00-96.txt"); break;
 	case T2_ECMWF:
-		pModel->InitModel(50, nWidth, nHeight
-			//, "../../data/t2-2007-2017-jan-144 and 240h-50(1Degree).txt", false
-			//, "../../data/t2-2007-2017-jan-144 and 240h-50(1Degree, single timestep).txt", false
-			//, "../../data/t2-2007-2017-jan-144 and 240h-50(1Degree, single timestep,skip 3).txt", false
-			//, "../../data/t2-mod-ecmwf-200701-00-360.txt", false
-			//, "../../data/t2-mod-ecmwf-20160105-00-72-216.txt", false
-			//, "../../data/t2-mod-ecmwf-20160105-00-216.txt", false
-			, g_strFileName,false
-			, nWest, nEast, nSouth, nNorth);
-		/*
-		pModel = new ContourBandDepthModel();
-		if (bNewData) {
-		pModel->InitModel(50, nWidth, nHeight, nFocusX, nFocusY, nFocusW, nFocusH
-		//				, "../../data/t2-mod-ecmwf-20160105-00-72-216.txt", false
-		//				, "../../data/t2-2007-2017-jan-120h-50.txt", false				// 这个区域小一点
-		, "../../data/t2-2007-2017-jan-144 and 240h-50.txt", false
-		, nWest, nEast, nSouth, nNorth
-		, nFocusWest, nFocusEast, nFocusSouth, nFocusNorth);
-		}
-		else {
-
-		pModel->InitModel(50, nWidth, nHeight, nFocusX, nFocusY, nFocusW, nFocusH
-		, "../../data/t2_mod_20080101-96h.dat", true
-		, nWest, nEast, nSouth, nNorth
-		, nFocusWest, nFocusEast, nFocusSouth, nFocusNorth, g_bFilter);
-		}
-		*/
+		pModel->InitModel(50, nWidth, nHeight, g_strFileName,false, nWest, nEast, nSouth, nNorth);
 		break;
 	case PRE_ECMWF_2017:
-
-		pModel->InitModel(50, nWidth, nHeight, g_strFileName);
-//		pModel->InitModel(50, nWidth, nHeight, nFocusX, nFocusY, nFocusW, nFocusH, "../../data/Pre_20171016_0-360-by-6.txt"); 
-//		pModel->InitModel(50, nWidth, nHeight, nFocusX, nFocusY, nFocusW, nFocusH, "../../data/Pre_20170701_0-360-by-6.txt"); 
-		
+		pModel->InitModel(50, nWidth, nHeight, g_strFileName);		
 		break;
-
 	defaut:
 		break;
 	}
@@ -1003,9 +1094,11 @@ void MeteModel::SetContourLevel(int nLevel) {
 }
 
 void MeteModel::regenerateTexture() {
+	_nTexW = _nWidth;
+	_nTexH = _nHeight;
 	if (!_dataTexture)
 	{
-		_dataTexture = new GLubyte[4 * _nGrids];
+		_dataTexture = new GLubyte[4 * _nGrids*_listFeature[0]->GetDetailScale()*_listFeature[0]->GetDetailScale()];
 	}
 
 	switch (_bgFunction)
@@ -1034,6 +1127,18 @@ void MeteModel::regenerateTexture() {
 		break;
 	case MeteModel::bg_IsoContourDensity:
 		buildTextureICD();
+		break;
+	case MeteModel::bg_LineKernel:
+		buildTextureICD_LineKernel();
+		break;
+	case MeteModel::bg_LineKernelX:
+		buildTextureICDX();
+		break;
+	case MeteModel::bg_LineKernelY:
+		buildTextureICDY();
+		break;
+	case MeteModel::bg_LineKernelZ:
+		buildTextureICDZ();
 		break;
 	default:
 		break;

@@ -34,6 +34,7 @@ private:	// action
 	QAction *viewShowContourLineAction;
 	QAction *viewShowContourLineSortedAction;
 	QAction *viewShowContourLineSortedSDFAction;
+	QAction *viewShowContourLineResampledAction;
 	QAction *viewShowContourLineSDFAction;
 	QAction *viewShowContourLineMinAction;
 	QAction *viewShowContourLineMaxAction;

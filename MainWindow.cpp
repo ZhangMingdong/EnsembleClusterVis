@@ -33,6 +33,7 @@ const QString ShowContourLineTruth("ShowContourLineTruth");
 const QString ShowContourLine("ShowContourLine");
 const QString ShowContourLineSorted("ShowContourLineSorted");
 const QString ShowContourLineSortedSDF("ShowContourLineSortedSDF");
+const QString ShowContourLineResampled("ShowContourLineResampled");
 const QString ShowContourLineSDF("ShowContourLineSDF");
 const QString ShowContourLineMin("ShowContourLineMin");
 const QString ShowContourLineMax("ShowContourLineMax");
@@ -77,6 +78,7 @@ MainWindow::MainWindow()
 	viewShowContourLineAction->setChecked(settings.value(ShowContourLine, true).toBool());
 	viewShowContourLineSortedAction->setChecked(settings.value(ShowContourLineSorted, true).toBool());
 	viewShowContourLineSortedSDFAction->setChecked(settings.value(ShowContourLineSortedSDF, true).toBool());
+	viewShowContourLineResampledAction->setChecked(settings.value(ShowContourLineResampled, true).toBool());
 	viewShowContourLineSDFAction->setChecked(settings.value(ShowContourLineSDF, true).toBool());
 	viewShowContourLineMinAction->setChecked(settings.value(ShowContourLineMin, true).toBool());
 	viewShowContourLineMaxAction->setChecked(settings.value(ShowContourLineMax, true).toBool());
@@ -212,6 +214,7 @@ void MainWindow::populateMenusAndToolBars()
 		<< viewShowContourLineSortedAction
 		<< viewShowContourLineSDFAction
 		<< viewShowContourLineSortedSDFAction
+		<< viewShowContourLineResampledAction
 		<< viewShowContourLineMinAction
 		<< viewShowContourLineMaxAction
 		<< viewShowContourLineMeanAction
@@ -305,6 +308,10 @@ void MainWindow::createActions()
 	viewShowContourLineSortedSDFAction->setIcon(QIcon(":/images/e.png"));
 	viewShowContourLineSortedSDFAction->setCheckable(true);
 
+	viewShowContourLineResampledAction = new QAction(tr("Show Resampled Contours"), this);
+	viewShowContourLineResampledAction->setIcon(QIcon(":/images/e.png"));
+	viewShowContourLineResampledAction->setCheckable(true);
+
 	viewShowContourLineMinAction = new QAction(tr("Show Contour of Min"), this);
 	viewShowContourLineMinAction->setIcon(QIcon(":/images/min.png"));
 	viewShowContourLineMinAction->setCheckable(true);
@@ -349,6 +356,7 @@ void MainWindow::createConnections(){
 	connect(viewShowContourLineAction, SIGNAL(toggled(bool)), _view3D, SLOT(viewShowContourLine(bool)));
 	connect(viewShowContourLineSortedAction, SIGNAL(toggled(bool)), _view3D, SLOT(viewShowContourLineSorted(bool)));
 	connect(viewShowContourLineSortedSDFAction, SIGNAL(toggled(bool)), _view3D, SLOT(viewShowContourLineSortedSDF(bool)));
+	connect(viewShowContourLineResampledAction, SIGNAL(toggled(bool)), _view3D, SLOT(viewShowContourLineResampled(bool)));
 	connect(viewShowContourLineSDFAction, SIGNAL(toggled(bool)), _view3D, SLOT(viewShowContourLineSDF(bool)));
 	connect(viewShowContourLineMinAction, SIGNAL(toggled(bool)), _view3D, SLOT(viewShowContourLineMin(bool)));
 	connect(viewShowContourLineMaxAction, SIGNAL(toggled(bool)), _view3D, SLOT(viewShowContourLineMax(bool)));
@@ -392,6 +400,7 @@ void MainWindow::closeEvent(QCloseEvent *event)
 		settings.setValue(ShowContourLineMax, viewShowContourLineMaxAction->isChecked());
 		settings.setValue(ShowContourLineSorted, viewShowContourLineSortedAction->isChecked());
 		settings.setValue(ShowContourLineSortedSDF, viewShowContourLineSortedSDFAction->isChecked());
+		settings.setValue(ShowContourLineResampled, viewShowContourLineResampledAction->isChecked());
 		settings.setValue(ShowContourLineMean, viewShowContourLineMeanAction->isChecked());
 		settings.setValue(ShowContourLineMedian, viewShowContourLineMedianAction->isChecked());
 		settings.setValue(ShowContourLineOutlier, viewShowContourLineOutlierAction->isChecked());

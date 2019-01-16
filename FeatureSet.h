@@ -36,6 +36,10 @@ private:
 	int _nMedianIndex = -1;			// index of median of the contour
 	double* _pSDF;					// data of signed distance function
 	double* _pICD;					// data of iso-contour density
+	double* _pICD_LineKernel;		// data of iso-contour density using line kernel
+	double* _pICDX;					// data of iso-contour density using line kernel X
+	double* _pICDY;					// data of iso-contour density using line kernel Y
+	double* _pICDZ;					// data of iso-contour density using line kernel Z
 	double* _pSortedSDF;			// data of signed distance function
 	bool * _pSet;					// set state of the grid point given iso-value
 	bool* _pGridDiverse;			// diversed grid points
@@ -43,6 +47,14 @@ private:
 	int *_pMemberType;				// type of each member.0:outlier,1-100%,2-50%.
 	int _nOutlierThreshold = 1;		// threshold for outliars
 	int _nDiverseCount = 0;			// count of diverse grids
+	double* _pResampledSDF;			// resampled SDF using kernel density function
+	int _nResampleLen = 63;			// length of resample 2^7
+
+	int _nPCLen=40;					// length of PC
+	double* _arrPC;					// array of PCs
+
+	int _nClusters = 5;				// number of clusters
+	int* _arrLabels;				// labels of each member
 
 	QList<UnCertaintyArea*> _listAreaValid;			// list of the uncertainty area of union of valid members
 	QList<UnCertaintyArea*> _listAreaHalf;			// list of the uncertainty area of union of half valid members
@@ -51,8 +63,13 @@ private:
 	QList<QList<ContourLine>> _listContourSorted;		// list of contours of sorted ensemble members
 	QList<QList<ContourLine>> _listContourSDF;			// list of contours generated form SDF
 	QList<QList<ContourLine>> _listContourSortedSDF;	// list of contours generated form sorted SDF
+	QList<QList<ContourLine>> _listContourResampled;	// list of resampled contours
+	QList<QList<ContourLine>> _listContourSmooth;		// list of smoothed contours
+
+	int _nDetailScale = 100;								// scale of detail texture
 public:
 	QList<QList<ContourLine>>& GetContours() { return _listContour; }
+	QList<QList<ContourLine>>& GetContoursSmooth() { return _listContourSmooth; }
 	QList<ContourLine>& GetContourMin() { return _listContourMinE; }
 	QList<ContourLine>& GetContourMax() { return _listContourMaxE; }
 	QList<ContourLine>& GetContourMean(){ return _listContourMeanE; }
@@ -60,6 +77,7 @@ public:
 	QList<QList<ContourLine>>& GetContourSDF() { return _listContourSDF; }
 	QList<QList<ContourLine>>& GetContourSorted() { return _listContourSorted; }
 	QList<QList<ContourLine>>& GetContourSortedSDF() { return _listContourSortedSDF; }
+	QList<QList<ContourLine>>& GetContourResampled() { return _listContourResampled; }
 
 	const double* GetValidMax() { return _gridValidMax; };
 	const double* GetValidMin() { return _gridValidMin; };
@@ -67,6 +85,10 @@ public:
 	const double* GetHalfMin() { return _gridHalfMin; };
 	const double* GetMedian();
 	const double* GetSDF() { return _pSDF; }
+	const double* GetICD_LineKernel() { return _pICD_LineKernel; }
+	const double* GetICDX() { return _pICDX; }
+	const double* GetICDY() { return _pICDY; }
+	const double* GetICDZ() { return _pICDZ; }
 	const double* GetSDF(int l) const { return _pSDF + l * _nGrids; }
 	const double* GetSortedSDF(int l) { return _pSortedSDF + l * _nGrids; }
 	bool* GetSet(int l) { return _pSet + l * _nGrids; }
@@ -75,6 +97,8 @@ public:
 	virtual QList<UnCertaintyArea*> GetUncertaintyAreaHalf() { return _listAreaHalf; }
 	virtual QList<UnCertaintyArea*> GetUncertaintyArea() { return _listUnionAreaE; }
 	double* GetICD() { return _pICD; }
+	int GetDetailScale() { return _nDetailScale; }
+	int nGetLabel(int l) { return _arrLabels[l]; }
 
 
 private:
@@ -90,7 +114,11 @@ private:
 	void calculateMemberType();
 	void doStatistics();			// calculate meadian, valid, and 50%
 	void generateContours();
+	void smoothContours();
 	void buildSortedSDF();
+	void buildICD_LineKernel();		// build iso-contour density using line kernel
+	void buildICD_Vector();			// build iso-contour density using vector kernel
+	void resampleContours();
 	void calculateICD();
 public:
 	void CalculateSDF(double dbIsovalue);	// used in constructor and Artificial Model
@@ -99,6 +127,9 @@ public:
 private:
 	void calculateDiverse();			// calculate diverse grids and diverse count
 	void calculatePCA();				// calculate pca
+	void calculatePCA_MDS();			// calculate pca using MDS
+	void calculatePCA_MDS_Dis();		// calculate pca using MDS by distance
+	void calculatePCA_MDS_Whole();		// calculate pca using MDS of the whole grids
 	void doClustering();				// clustering
 	void doPCAClustering();				// clustering based on pca result
 	double* createDiverseArray();		// create diverse grids array, the result should be manually freed.

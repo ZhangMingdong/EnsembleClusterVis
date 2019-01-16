@@ -34,7 +34,11 @@ void DisplayCtrlWidget::createWidgets() {
 	_pCombBgFunction->addItem("Obs", 8);
 	_pCombBgFunction->addItem("Error", 9);
 	_pCombBgFunction->addItem("SDF", 10);
-	_pCombBgFunction->addItem("ContourDensity", 11);
+	_pCombBgFunction->addItem("Line Kernel Density", 11);
+	_pCombBgFunction->addItem("Line Kernel Density X", 12);
+	_pCombBgFunction->addItem("Line Kernel Density Y", 13);
+	_pCombBgFunction->addItem("Line Kernel Density Z", 14);
+	_pCombBgFunction->addItem("ContourDensity", 15);
 
 	_pSpinBoxSmooth = new QSpinBox;
 	_pSpinBoxSmooth->setRange(1, 10);

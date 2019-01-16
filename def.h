@@ -123,7 +123,7 @@ extern char g_strObsFileName[50];
 extern int g_nBiasY;
 extern int g_nBiasD;
 
-const int g_nEnsClusterLen = 6;
+const int g_nEnsClusterLen = 20;
 
 
 // used temply for the clustering region

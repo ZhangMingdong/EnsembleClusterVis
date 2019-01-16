@@ -413,6 +413,11 @@ void MyMapWidget::viewShowContourLineSorted(bool on) {
 void MyMapWidget::viewShowContourLineSortedSDF(bool on) {
 	_displayStates._bShowContourLineSortedSDF = on; updateGL();
 };
+
+void MyMapWidget::viewShowContourLineResampled(bool on) {
+	_displayStates._bShowContourLineResampled = on; updateGL();
+};
+
 void MyMapWidget::viewShowContourLineSDF(bool on) {
 	_displayStates._bShowContourLineSDF = on; updateGL();
 };
