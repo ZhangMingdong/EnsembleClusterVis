@@ -21,6 +21,12 @@ class MeteModel:public GridFrame
 public:
 	MeteModel();
 	virtual ~MeteModel();
+protected:
+	enum ModelType {
+		MT_T2				// T2 data using t2 color map
+		, MT_AF				// artificial model, using colormap centered at 0
+	};
+	ModelType _type = MT_T2;
 
 public:
 	// initialize the model
@@ -90,10 +96,13 @@ public:
 		bg_Obs,					// obs
 		bg_err,					// error
 		bg_SDF,					// SDF
-		bg_LineKernel,					// SDF
-		bg_LineKernelX,					// SDF
-		bg_LineKernelY,					// SDF
-		bg_LineKernelZ,					// SDF
+		bg_LineKernel,			// SDF
+		bg_LineKernelX,			// SDF
+		bg_LineKernelY,			// SDF
+		bg_LineKernelZ,			// SDF
+		bg_ICDVX,				// SDF
+		bg_ICDVY,				// SDF
+		bg_ICDVW,				// SDF
 		bg_IsoContourDensity	// density of the iso-contour
 	};
 protected:
@@ -176,6 +185,9 @@ private:
 
 	// generate texture of signed distance function
 	void buildTextureSDF();
+	void buildTextureICDVX();
+	void buildTextureICDVY();
+	void buildTextureICDVW();
 
 	void buildTextureICD_LineKernel();
 	void buildTextureICDX();

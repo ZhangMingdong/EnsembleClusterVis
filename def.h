@@ -93,14 +93,12 @@ const int g_nEnsembles = 50;					// number of ensemble members
 const int g_nUncertaintyAreaMax = 6;			// max number of uncertainty area
 const int g_nClusterMax = 10;					// max number of clusters
 
-const int g_nIsoValuesLen = 6;					// length of array of isovalues
 // 2017/10/17
 //# define GLOBAL_PRE
 
 extern double g_fThreshold;
 extern bool g_bGlobalArea;
 extern enumMeteModel g_usedModel;
-extern double g_arrIsoValues[5];
 
 
 // 2017/10/23

@@ -51,8 +51,6 @@ MainWindow::~MainWindow(){
 
 MainWindow::MainWindow()
 {
-
-
 	// finished read config file
 	setWindowState(Qt::WindowMaximized);
 

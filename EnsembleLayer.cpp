@@ -320,7 +320,8 @@ void EnsembleLayer::drawContourLine(){
 			SetColor(isoIndex, listIsoValue[isoIndex]);
 			for (int i = 0; i < contours.size(); i++)
 			{
-				SetColor(_pModel->GetLabel(i), listIsoValue[isoIndex]);
+				if(nIsoValues==1)
+					SetColor(_pModel->GetLabel(i), listIsoValue[isoIndex]);
 				drawContourLine(contours[i]);
 			}
 		}

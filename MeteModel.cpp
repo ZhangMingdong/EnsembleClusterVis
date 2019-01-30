@@ -110,41 +110,9 @@ void MeteModel::InitModel(int nEnsembleLen, int nWidth, int nHeight
 
 	// 1.build data
 	_pData = new DataField(_nWidth, _nHeight, _nEnsembleLen);
-	// maybe should migrate into DataField
-	if (_bBinaryFile)
-	{
-		readData();
-	}
-	else {
-		if (g_bGlobalArea)
-		{
-			readDataFromTextG();
-		}
-		else {
-			readDataFromText();
-		}
-	}
-	// read dip value (temp)
-	if (false) {
-#ifdef GLOBAL_PRE
-		//	readDipValueG("../../data/data10/pre-mod-ecmwf-20160802-00-96_dipValue.txt");
-		readDipValueG("../../data/data10/pre-mod-jma-20160802-00-96_dipValue.txt");
-#else
-		//	readDipValue("../../data/t2-2007-2017-jan-144 and 240h-50(1Degree, single timestep,skip 3)_dipValue.txt");
-		readDipValue("../../data/t2-2007-2017-jan-144 and 240h-50(1Degree, single timestep)_dipValue_P.txt");
-#endif
-	}
 
-	// statistic
-	_pData->DoStatistic();
 
-	// 2.generate feature;
-	for each (double isoValue in _listIsoValues)
-	{
-		_listFeature.append(new FeatureSet(_pData, isoValue, _nWidth, _nHeight, _nEnsembleLen));
-	}
-
-	// specializaed initialization
+	// 5.specializaed initialization
 	initializeModel();
 }
 
@@ -315,7 +283,75 @@ void MeteModel::buildTextureSDF() {
 	}
 }
 
+void MeteModel::buildTextureICDVX() {
+	const double* pData = _listFeature[0]->GetICDVX(_nMember ? _nMember - 1 : _nMember);
+	ColorMap* colormap = ColorMap::GetInstance(ColorMap::CP_EOF);
+
+
+	double dbMax = -1000;
+	double dbMin = 1000;	
+	for (int i = 0; i < _nHeight; i++) {
+		for (int j = 0; j < _nWidth; j++) {
+
+			int nIndex = i * _nWidth + j;
+			MYGLColor color = colormap->GetColor(pData[nIndex]);
+			// using transparency and the blue tunnel
+			_dataTexture[4 * nIndex + 0] = color._rgb[0];
+			_dataTexture[4 * nIndex + 1] = color._rgb[1];
+			_dataTexture[4 * nIndex + 2] = color._rgb[2];
+			_dataTexture[4 * nIndex + 3] = (GLubyte)255;
+			if (pData[nIndex] > dbMax) dbMax = pData[nIndex];
+			if (pData[nIndex] < dbMin) dbMin = pData[nIndex];
+		}
+	}
+}
+
+void MeteModel::buildTextureICDVY() {
+	const double* pData = _listFeature[0]->GetICDVY(_nMember ? _nMember - 1 : _nMember);
+	ColorMap* colormap = ColorMap::GetInstance(ColorMap::CP_EOF);
+
+
+	double dbMax = -1000;
+	double dbMin = 1000;	for (int i = 0; i < _nHeight; i++) {
+		for (int j = 0; j < _nWidth; j++) {
+
+			int nIndex = i * _nWidth + j;
+			MYGLColor color = colormap->GetColor(pData[nIndex]);
+			// using transparency and the blue tunnel
+			_dataTexture[4 * nIndex + 0] = color._rgb[0];
+			_dataTexture[4 * nIndex + 1] = color._rgb[1];
+			_dataTexture[4 * nIndex + 2] = color._rgb[2];
+			_dataTexture[4 * nIndex + 3] = (GLubyte)255;
+			if (pData[nIndex] > dbMax) dbMax = pData[nIndex];
+			if (pData[nIndex] < dbMin) dbMin = pData[nIndex];
+		}
+	}
+}
+
+void MeteModel::buildTextureICDVW() {
+	const double* pData = _listFeature[0]->GetICDVW(_nMember ? _nMember - 1 : _nMember);
+	ColorMap* colormap = ColorMap::GetInstance(ColorMap::CP_EOF);
+
+
+	double dbMax = -1000;
+	double dbMin = 1000;	for (int i = 0; i < _nHeight; i++) {
+		for (int j = 0; j < _nWidth; j++) {
+
+			int nIndex = i * _nWidth + j;
+			MYGLColor color = colormap->GetColor(pData[nIndex]);
+			// using transparency and the blue tunnel
+			_dataTexture[4 * nIndex + 0] = color._rgb[0];
+			_dataTexture[4 * nIndex + 1] = color._rgb[1];
+			_dataTexture[4 * nIndex + 2] = color._rgb[2];
+			_dataTexture[4 * nIndex + 3] = (GLubyte)255;
+			if (pData[nIndex] > dbMax) dbMax = pData[nIndex];
+			if (pData[nIndex] < dbMin) dbMin = pData[nIndex];
+		}
+	}
+}
+
 void MeteModel::buildTextureICD() {
+	qDebug() << "buildTextureICD";
 	int nDetaiScale = _listFeature[0]->GetDetailScale();
 	_nTexW = (_nWidth - 1) * nDetaiScale + 1;
 	_nTexH = (_nHeight - 1) * nDetaiScale + 1;
@@ -353,7 +389,6 @@ void MeteModel::buildTextureICD_LineKernel(){
 		}
 	}
 }
-
 
 void MeteModel::buildTextureICDX() {
 	qDebug() << "line kernel X" << endl;
@@ -560,9 +595,9 @@ void MeteModel::buildTextureColorMap() {
 	{
 	case MeteModel::bg_mean:
 	case MeteModel::bg_Obs:
-		if (g_usedModel == T2_ECMWF)
+		if (_type==MT_T2)
 			colormap = ColorMap::GetInstance(ColorMap::CP_T2);
-		else
+		else if (_type == MT_AF)
 			colormap = ColorMap::GetInstance();
 		if (_bgFunction== MeteModel::bg_Obs)
 		{
@@ -593,8 +628,24 @@ void MeteModel::buildTextureColorMap() {
 		colormap = ColorMap::GetInstance();
 		break;
 	case MeteModel::bg_EOF:
-		pData = _pData->GetEOF(_nEOF-1);
-		colormap = ColorMap::GetInstance(ColorMap::CP_EOF);
+		{
+
+			pData = _pData->GetEOF(_nEOF - 1);
+			colormap = ColorMap::GetInstance(ColorMap::CP_EOF);
+			double dbMin = 1000;
+			double dbMax = -1000;
+			for (size_t i = 0; i < _nGrids; i++)
+			{
+				if (pData[i] > dbMax) dbMax = pData[i];
+				if (pData[i] < dbMin) dbMin = pData[i];
+			}
+			qDebug() << "min:" << dbMin;
+			qDebug() << "max:" << dbMax;
+			colormap->SetRange(dbMin, dbMax);
+		}
+
+		//colormap = ColorMap::GetInstance(ColorMap::CP_T2);
+		
 		break;
 	case MeteModel::bg_err:
 		{
@@ -710,11 +761,45 @@ void MeteModel::readData() {
 }
 
 void MeteModel::initializeModel() {
+	// 2.Set isovalues
+	QList<double> listIsoValue;
+	listIsoValue.append(273.16 - 20);
+	listIsoValue.append(273.16 - 15);
+	listIsoValue.append(273.16 - 10);
+	listIsoValue.append(273.16 - 5);
+	listIsoValue.append(273.16);
+	listIsoValue.append(273.16+5);
+	listIsoValue.append(273.16+10);
+	listIsoValue.append(273.16 + 15);
+	listIsoValue.append(273.16 + 20);
+	SetIsoValues(listIsoValue);
+
+	// 2.Read data
+	// maybe should migrate into DataField
+	if (_bBinaryFile)
+	{
+		readData();
+	}
+	else {
+		if (g_bGlobalArea)
+		{
+			readDataFromTextG();
+		}
+		else {
+			readDataFromText();
+		}
+	}
+
+	// 3.statistic
+	_pData->DoStatistic();
+
+	// 4.generate feature;
+	for each (double isoValue in _listIsoValues)
+	{
+		_listFeature.append(new FeatureSet(_pData, isoValue, _nWidth, _nHeight, _nEnsembleLen));
+	}
 	// EOF
 	_pData->DoEOF();
-
-
-
 }
 
 void MeteModel::Brush(int nLeft, int nRight, int nTop, int nBottom) {
@@ -849,7 +934,6 @@ QList<QList<ContourLine>> MeteModel::GetContourOutlier(int isoIndex)
 	return result;
 }
 
-
 // add item from source to target
 void addContour(const QList<QList<ContourLine>>& source, QList<QList<ContourLine>>& target, int nIndex0, int nIndex1, int nLevel) {
 	if (nIndex1 > nIndex0) {
@@ -870,7 +954,6 @@ QList<QList<ContourLine>> MeteModel::GetContourSorted(int isoIndex)
 	return listResult;
 }
 
-
 QList<QList<ContourLine>> MeteModel::GetContourSortedSDF(int isoIndex)
 {
 	QList<QList<ContourLine>> listResult;
@@ -886,7 +969,6 @@ QList<QList<ContourLine>> MeteModel::GetContourResampled(int isoIndex)
 	addContour(contours, listResult, 0, contours.size(), _nContourLevel);
 	return listResult;
 }
-
 
 QList<QList<ContourLine>> MeteModel::GetContourSDF(int isoIndex)
 {
@@ -906,14 +988,7 @@ MeteModel* MeteModel::CreateModel(bool bA) {
 	//MeteModel* pModel = new MeteModel();
 	MeteModel* pModel = bA ? new ArtificialModel() : new MeteModel();
 
-	// 2.Set isovalues
-	QList<double> listIsoValue;
-	listIsoValue.append(273.16);
-	//listIsoValue.append(273.16+5);
-	//listIsoValue.append(273.16+10);
-	//listIsoValue.append(273.16 + 15);
-	//listIsoValue.append(273.16 + 20);
-	pModel->SetIsoValues(listIsoValue);
+
 
 	// 3.Initialize model
 	int nWidth = g_nWidth;
@@ -1125,6 +1200,15 @@ void MeteModel::regenerateTexture() {
 	case MeteModel::bg_SDF:
 		buildTextureSDF();
 		break;
+	case MeteModel::bg_ICDVX:
+		buildTextureICDVX();
+		break;
+	case MeteModel::bg_ICDVY:
+		buildTextureICDVY();
+		break;
+	case MeteModel::bg_ICDVW:
+		buildTextureICDVW();
+		break;
 	case MeteModel::bg_IsoContourDensity:
 		buildTextureICD();
 		break;
@@ -1214,7 +1298,6 @@ void MeteModel::calculateSimilarity() {
 		}
 	}
 }
-
 
 void MeteModel::doEnsCluster() {
 	CLUSTER::Clustering* pClusterer = new CLUSTER::KMeansClustering();

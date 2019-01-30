@@ -135,8 +135,23 @@ void DataField::buildSortedBuf() {
 }
 
 void DataField::DoStatistic() {
+	qDebug() << "DoStatistic:";
+	double dbMin = 1000;
+	double dbMax = -1000;
+	for (size_t i = 0; i < _nEnsembleLen*_nGrids; i++)
+	{
+		if (_pBuf[i] > dbMax) dbMax = _pBuf[i];
+		if (_pBuf[i] < dbMin) dbMin = _pBuf[i];
+	}
+	qDebug() << "Min:" << dbMin;
+	qDebug() << "Max:" << dbMax;
+
 	// 1.build sorted buffer
 	buildSortedBuf();
+	double dbMaxMean = 0;
+	double dbMaxVari = 0;
+	double dbMinMean = 100000;
+	double dbMinVari = 100000;
 
 	// for each grid point
 	for (int i = 0; i < _nGrids; i++)
@@ -152,6 +167,7 @@ void DataField::DoStatistic() {
 		}
 		fMean /= _nEnsembleLen;
 		_gridMean[i] = fMean;
+		
 		// 2.calculate variance
 		double fVariance = 0;
 		for (int j = 0; j < _nEnsembleLen; j++)
@@ -160,6 +176,13 @@ void DataField::DoStatistic() {
 			fVariance += fBias*fBias;
 		}
 		_gridVari[i] = sqrt(fVariance / _nEnsembleLen);
+
+
+		if (_gridMean[i] > dbMaxMean) dbMaxMean = _gridMean[i];
+		if (_gridMean[i] < dbMinMean) dbMinMean = _gridMean[i];
+		if (_gridVari[i] > dbMaxVari) dbMaxVari = _gridVari[i];
+		if (_gridVari[i] < dbMinVari) dbMinVari = _gridVari[i];
+
 		// 3.caluclate variance of variance
 
 		// sort the data
@@ -247,6 +270,9 @@ void DataField::DoStatistic() {
 		}
 	}
 
+	qDebug() << "Mean:(" << dbMinMean << "," << dbMaxMean << ")";
+	qDebug() << "Variance:(" << dbMinVari << "," << dbMaxVari << ")";
+
 }
 
 void DataField::GenerateClusteredData(const QList<int> listClusterLens, const int* arrLabels, QList<DataField*>& arrData) {
@@ -313,7 +339,8 @@ void DataField::smoothVar(int nSmooth) {
 
 }
 
-void DataField::DoEOF() {
+void DataField::DoEOF_old() {
+	qDebug() << "DoEOF";
 	// 1.set parameter
 	int mI = _nEnsembleLen;
 	int mO = g_nEOFLen;
@@ -328,15 +355,17 @@ void DataField::DoEOF() {
 			arrInput[i*mI + j] = GetData(j, i);
 		}
 	}
+
 	// 3.pca
 	MyPCA pca;
 	pca.DoPCA(arrInput, arrOutput, n, mI, mO, true);
 	// 4.generate points from the output
-	for (size_t i = 0; i < n; i++)
+	for (int i = 0; i < n; i++)
 	{
-		for (size_t j = 0; j < mO; j++)
+		for (int j = 0; j < mO; j++)
 		{
-			_gridEOF[j][i] = arrOutput[i * mO + j];
+			// reverse the order
+			_gridEOF[mO-1-j][i] = arrOutput[i * mO + j];
 		}
 	}
 	// 5.release the buffer
@@ -344,3 +373,39 @@ void DataField::DoEOF() {
 	delete[] arrOutput;
 }
 
+
+void DataField::DoEOF() {
+	qDebug() << "DoEOF";
+	// 1.set parameter
+	int mI = _nEnsembleLen;
+	int mO = g_nEOFLen;
+	int n = _nGrids;
+	// 2.allocate input and output buffer
+	double* arrInput = new double[mI*n];
+	double* arrOutput = new double[mO*n];
+	double* arrFactors = new double[mO*n];
+	for (size_t i = 0; i < n; i++)
+	{
+		for (size_t j = 0; j < mI; j++)
+		{
+			arrInput[i*mI + j] = GetData(j, i);
+		}
+	}
+
+	// 3.pca
+	MyPCA pca;
+	pca.DoEOF(arrInput, arrOutput,arrFactors, n, mI, mO);
+	// 4.generate points from the output
+	for (int i = 0; i < n; i++)
+	{
+		for (int j = 0; j < mO; j++)
+		{
+			// reverse the order
+			_gridEOF[j][i] = arrOutput[i * mO + j];
+		}
+	}
+	// 5.release the buffer
+	delete[] arrInput;
+	delete[] arrOutput;
+	delete[] arrFactors;
+}

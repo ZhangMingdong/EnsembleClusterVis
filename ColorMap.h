@@ -24,10 +24,11 @@ public:
 		, CP_12			// 12 colors
 		, CP_EOF		// EOF, -30~30
 		, CP_T2			// T2, 200~300
+		, CP_0_1		// 0+-5;
 		, CP_Length		// length of color pallet
 	};
 public:
-	static ColorMap* GetInstance(Enum_Color_Pallet cp = CP_Perception);
+	static ColorMap* GetInstance(Enum_Color_Pallet cp = CP_0_1);
 private:
 	static ColorMap* _pInstance[CP_Length];
 	// weather initialized
@@ -41,6 +42,7 @@ public:
 	int GetLength() { return _nLen; }
 	int GetStep() { return _nStep; }
 	int GetMin() { return _nMin; }
+	void SetRange(double dbMin, double dbMax);	// set the range of the value
 private:
 	MYGLColor* _pColors;		// list of color
 	double* _pValues;			// list of value
