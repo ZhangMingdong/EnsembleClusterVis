@@ -1,5 +1,6 @@
 #pragma once
-class GridFrame
+#include <QObject>
+class GridFrame:public QObject
 {
 public:
 	GridFrame();

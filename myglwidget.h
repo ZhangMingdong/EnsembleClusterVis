@@ -48,7 +48,7 @@ protected:
 	GLdouble m_dbZNear;
 	GLdouble m_dbZFar;
 	GLuint m_uidlCity;
-	double m_dbScale;
+	double m_dbScale = 500;
 
 protected:
 	double GetSWScale()

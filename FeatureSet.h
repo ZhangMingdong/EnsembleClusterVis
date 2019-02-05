@@ -45,7 +45,7 @@ private:
 	double* _pResampledSDF;			// resampled SDF using kernel density function
 	int _nResampleLen = 63;			// length of resample 2^7
 
-	int _nPCLen=40;					// length of PC
+	int _nPCLen=10;					// length of PC
 	double* _arrPC;					// array of PCs
 
 	int _nClusters = 5;			// number of clusters
@@ -92,7 +92,8 @@ public:
 	virtual QList<UnCertaintyArea*> GetUncertaintyAreaHalf() { return _listAreaHalf; }
 	virtual QList<UnCertaintyArea*> GetUncertaintyArea() { return _listUnionAreaE; }
 	int GetDetailScale() { return _nDetailScale; }
-	int nGetLabel(int l) { return _arrLabels[l]; }
+	int GetLabel(int l) { return _arrLabels[l]; }
+	double GetPC(int l,int nIndex) { return _arrPC[l * _nPCLen+nIndex]; }
 
 
 private:

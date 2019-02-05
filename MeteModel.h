@@ -8,8 +8,12 @@
 
 #include "GridFrame.h"
 
+#include "TimeStep.h"
+
 class DataField;
 class FeatureSet;
+
+class TimeStep;
 
 /*
 	model of the meteorology data
@@ -18,6 +22,7 @@ class FeatureSet;
 */
 class MeteModel:public GridFrame
 {
+	Q_OBJECT
 public:
 	MeteModel();
 	virtual ~MeteModel();
@@ -37,7 +42,7 @@ public:
 	virtual GLubyte* GenerateTexture();
 
 
-	virtual DataField* GetData() { return _pData; }
+	virtual DataField* GetData() { return _pTimeStep->_pData; }
 
 	virtual QList<ContourLine> GetContourMin(int isoIndex = 0);
 	virtual QList<ContourLine> GetContourMax(int isoIndex = 0);
@@ -57,6 +62,7 @@ public:
 	virtual QList<UnCertaintyArea*> GetUncertaintyAreaHalf(int isoIndex = 0) ;
 	virtual int GetUncertaintyAreas() { return _nUncertaintyRegions; }
 	virtual int GetLabel(int l);
+	virtual double GetPC(int l, int nIndex);
 
 	virtual const QList<QList<UnCertaintyArea*> > GetUncertaintyAreaG() {
 		return _listUnionAreaEG;
@@ -66,10 +72,11 @@ public:
 	virtual void SetUncertaintyAreas(int nAreas);
 protected:
 	// specialized model initialization
-	virtual void initializeModel();				
+	virtual void initializeModel();		
+	void updateTimeStep();				// update according to current time step
 protected:
 	// read ensemble data from text file
-	virtual void readDataFromText();
+	virtual void readDataFromText(QString filename);
 	
 	// read the dip value
 	virtual void readDipValue(char* strFileName);
@@ -114,10 +121,10 @@ protected:
 	QString _strFile;				// file name of the data	
 	bool _bBinaryFile;				// whether read binary file	
 
-	// 1.raw data
-	DataField* _pData=0;					// the data	
+	TimeStep* _pTimeStep;			// current time step
 
-	QList<FeatureSet*> _listFeature;
+	TimeStep* _arrTimeSteps[61];	// time step list
+
 	double* _bufObs = 0;					// observation data
 
 
@@ -278,5 +285,14 @@ public:
 private:
 	// detail level of the contours, 0-1;1-3;2-7...
 	int _nContourLevel = 0;
+
+public slots:
+
+
+	void updateTimeStep(int nTS);
+protected:
+	int _nTime = 0;		// time step
+signals:
+	void UpdateView();
 };
 

@@ -23,14 +23,14 @@ void ArtificialModel::generateDataFromContour() {
 
 	// 2.calculate signed distance function
 	double* arrSDF = new double[_nGrids*_nEnsembleLen];
-	FeatureSet::CalculateSDF(0, _nEnsembleLen, _nWidth, _nHeight, _pData, arrSDF, listContour);
+	FeatureSet::CalculateSDF(0, _nEnsembleLen, _nWidth, _nHeight, _pTimeStep->_pData, arrSDF, listContour);
 
 	// 3.replace the scalar field using the SDF
 	for (int i = 0; i < _nEnsembleLen; i++)
 	{
 		for (int j = 0; j < _nGrids; j++)
 		{
-			_pData->SetData(i, j, arrSDF[i*_nGrids + j]);
+			_pTimeStep->_pData->SetData(i, j, arrSDF[i*_nGrids + j]);
 		}
 	}
 	delete[] arrSDF;
@@ -111,7 +111,7 @@ void ArtificialModel::generateDataFromField() {
 						dbResult += dbV;
 					}
 				}
-				_pData->SetData(l, i*_nWidth+j, dbResult);
+				_pTimeStep->_pData->SetData(l, i*_nWidth+j, dbResult);
 			}
 
 		}
@@ -196,7 +196,7 @@ void ArtificialModel::generateDataFromField_3() {
 						dbResult += dbV;
 					}
 				}
-				_pData->SetData(l, i*_nWidth + j, dbResult);
+				_pTimeStep->_pData->SetData(l, i*_nWidth + j, dbResult);
 			}
 
 		}
@@ -272,13 +272,18 @@ void ArtificialModel::generateDataFromField_4() {
 				}
 
 
-				_pData->SetData(l, i*_nWidth + j, dbResult);
+				_pTimeStep->_pData->SetData(l, i*_nWidth + j, dbResult);
 			}
 
 		}
 	}
 }
+
 void ArtificialModel::initializeModel() {
+
+	_pTimeStep = _arrTimeSteps[0] = new TimeStep();
+	_pTimeStep->Init(_nWidth, _nHeight, _nEnsembleLen);
+
 	// 2.Set isovalues
 	QList<double> listIsoValue;
 	listIsoValue.append(0);
@@ -294,14 +299,14 @@ void ArtificialModel::initializeModel() {
 
 
 	// 3.statistic
-	_pData->DoStatistic();
+	_pTimeStep->_pData->DoStatistic();
 	// EOF
-	_pData->DoEOF();
+	_pTimeStep->_pData->DoEOF();
 
 	// 4.generate feature;
 	for each (double isoValue in _listIsoValues)
 	{
-		_listFeature.append(new FeatureSet(_pData, isoValue, _nWidth, _nHeight, _nEnsembleLen));
+		_pTimeStep->_listFeature.append(new FeatureSet(_pTimeStep->_pData, isoValue, _nWidth, _nHeight, _nEnsembleLen));
 	}
 
 
@@ -370,7 +375,7 @@ QList<QList<ContourLine>> ArtificialModel::regenerateData(){
 	{
 		for (int j = 0; j < _nGrids; j++)
 		{
-			_pData->SetData(i, j, 1);
+			_pTimeStep->_pData->SetData(i, j, 1);
 		}
 	}
 
@@ -401,7 +406,7 @@ QList<QList<ContourLine>> ArtificialModel::regenerateData(){
 			line._listPt.append(QPointF(j, y));
 			for (int k = 0; k < y; k++)
 			{
-				_pData->SetData(i, k*_nWidth + j, -1);
+				_pTimeStep->_pData->SetData(i, k*_nWidth + j, -1);
 			}
 		}
 
@@ -436,7 +441,7 @@ void ArtificialModel::generateDataFromField_2() {
 				double dbR = sqrt(dbX*dbX + dbY * dbY);
 				double dbV = dbControlValue * KernelFun(dbR / dbB) / dbB;
 				dbResult += dbV;
-				_pData->SetData(l, i*_nWidth + j, dbResult);
+				_pTimeStep->_pData->SetData(l, i*_nWidth + j, dbResult);
 				//qDebug() << dbResult << endl;
 				if (dbResult > dbMax) {
 					qDebug() << dbResult;

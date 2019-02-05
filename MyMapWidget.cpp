@@ -542,3 +542,8 @@ void MyMapWidget::updateContourLevel(int nLevel) {
 		_pModelE->SetContourLevel(nLevel);
 	onTextureReloaded();
 }
+
+void MyMapWidget::onUpdateView() {
+	qDebug() << "MyMapWidget::onUpdateView()";
+	updateGL();
+}

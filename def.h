@@ -116,8 +116,10 @@ extern int g_nWest;
 extern int g_nEast;
 extern int g_nNorth;
 extern int g_nSouth;
-extern char g_strFileName[50];
+extern char g_strFileName[100];
+extern char g_strPath[100];
 extern char g_strObsFileName[50];
+extern int g_nTime;
 extern int g_nBiasY;
 extern int g_nBiasD;
 

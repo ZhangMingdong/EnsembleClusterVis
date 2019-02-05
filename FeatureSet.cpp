@@ -129,15 +129,18 @@ FeatureSet::FeatureSet(DataField* pData, double dbIsoValue, int nWidth, int nHei
 		//calculatePCA();
 		//calculatePCA_MDS();
 		//calculatePCA_MDS_Dis();
-		//calculatePCA_MDS_Whole();
+		calculatePCA_MDS_Whole();
 		//calculatePCA_MDS_Whole_Density();
-		calculatePCA_MutualInformation();
+		//calculatePCA_MutualInformation();
 
 	}
 
-	//doClustering();
 
-	if(g_bClustering) doPCAClustering();
+	if (g_bClustering)
+	{
+		doPCAClustering();
+		//doClustering();
+	}
 
 	//calculatePCABox();
 

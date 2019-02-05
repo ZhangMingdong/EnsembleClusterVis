@@ -20,7 +20,9 @@ int g_nWest = 0;
 int g_nEast = 0;
 int g_nNorth = 0;
 int g_nSouth = 0;
-char g_strFileName[50];
+char g_strFileName[100];
+char g_strPath[100];
+int g_nTime=0;
 
 char g_strObsFileName[50];
 int g_nBiasY=0;
@@ -36,8 +38,31 @@ int main(int argc, char *argv[])
 //	const char* strConfigFileName = "../../data/config/t2-mod-ecmwf-20160105-00-144.ini";
 //	const char* strConfigFileName = "../../data/config/t2-mod-ecmwf-20160105-00-168.ini";
 //	const char* strConfigFileName = "../../data/config/t2-mod-ecmwf-20160105-00-192.ini";
-	const char* strConfigFileName = "../../data/config/t2-mod-ecmwf-20160105-00-216.ini";
+//	const char* strConfigFileName = "../../data/config/t2-mod-ecmwf-20160105-00-216.ini";
 //	const char* strConfigFileName = "../../data/config/pre_20171016_0-360-by-6.ini";
+//	const char* strConfigFileName = "../../data/config/h500-d20121001-mb360-50.ini";				// h500
+//	const char* strConfigFileName = "../../data/config/h500-d20121001-mb0-50.ini";				// h500
+//	const char* strConfigFileName = "../../data/config/h500-d20061001-mb0-50-full.ini";				// h500
+//	const char* strConfigFileName = "../../data/config/h500-d20190101-mb0-50.ini";				// h500
+//	const char* strConfigFileName = "../../data/config/h500-d20190101-mb90-50.ini";				// h500
+//	const char* strConfigFileName = "../../data/config/h500-d20190101-mb114-50.ini";				// h500
+//	const char* strConfigFileName = "../../data/config/h500-d20190101-mb120-50.ini";				// h500
+//	const char* strConfigFileName = "../../data/config/h500-d20190101-mb126-50.ini";				// h500
+//	const char* strConfigFileName = "../../data/config/h500-d20190101-mb240-50.ini";				// h500
+//	const char* strConfigFileName = "../../data/config/h500-d20190101-mb360-50.ini";				// h500
+
+
+//	const char* strConfigFileName = "../../data/config/h500-d20180601-mb0-50.ini";				// h500
+//	const char* strConfigFileName = "../../data/config/h500-d20180601-mb48-50.ini";				// h500
+//	const char* strConfigFileName = "../../data/config/h500-d20180601-mb72-50.ini";				// h500
+//	const char* strConfigFileName = "../../data/config/h500-d20180601-mb120-50.ini";				// h500
+//	const char* strConfigFileName = "../../data/config/h500-d20180601-mb120-50.ini";				// h500
+//	const char* strConfigFileName = "../../data/config/h500-d20180601-mb240-50.ini";				// h500
+//	const char* strConfigFileName = "../../data/config/h500-d20180601-mb360-50.ini";				// h500
+
+
+//	const char* strConfigFileName = "../../data/config/h500-d20180601.ini";				// h500
+	const char* strConfigFileName = "../../data/config/h500-d20190101.ini";				// h500
 	// read config file
 	INIReader reader(strConfigFileName);
 
@@ -62,6 +87,8 @@ int main(int argc, char *argv[])
 	g_nNorth = reader.GetInteger("region", "north", 0);
 	g_nSouth = reader.GetInteger("region", "south", 0);
 	strcpy(g_strFileName, reader.Get("file", "name", "").c_str());
+	strcpy(g_strPath, reader.Get("file", "path", "").c_str());
+	g_nTime = reader.GetInteger("file", "time", 0);
 
 
 	strcpy(g_strObsFileName, reader.Get("obs", "file", "").c_str());

@@ -18,7 +18,6 @@ MyGLWidget::MyGLWidget(QWidget *parent):QGLWidget(parent)
 , m_dbFovy(45)
 , m_dbZNear(0.0001)
 , m_dbZFar(1500.0)
-, m_dbScale(100.0)
 {
 }
 

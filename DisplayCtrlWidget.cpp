@@ -93,6 +93,13 @@ void DisplayCtrlWidget::createWidgets() {
 	_pSpinBoxContourLevel->setValue(0);
 	_pSpinBoxContourLevel->setSingleStep(1);
 
+
+	_pSpinBoxTimeStep = new QSpinBox;
+	_pSpinBoxTimeStep->setRange(0, 360);
+	_pSpinBoxTimeStep->setAlignment(Qt::AlignVCenter | Qt::AlignRight);
+	_pSpinBoxTimeStep->setValue(0);
+	_pSpinBoxTimeStep->setSingleStep(6);
+
 }
 
 void DisplayCtrlWidget::createLayout() {
@@ -107,6 +114,7 @@ void DisplayCtrlWidget::createLayout() {
 	layout->addRow(tr("Member:"), _pSpinBoxMember);
 	layout->addRow(tr("Ens Cluster:"), _pSpinBoxEnsCluster);
 	layout->addRow(tr("Contour Level:"), _pSpinBoxContourLevel);
+	layout->addRow(tr("Time Step:"), _pSpinBoxTimeStep);
 	setLayout(layout);
 }
 
@@ -119,6 +127,7 @@ void DisplayCtrlWidget::createConnections() {
 	connect(_pSpinBoxMember, SIGNAL(valueChanged(int)), this, SLOT(updateMember(int)));
 	connect(_pSpinBoxEnsCluster, SIGNAL(valueChanged(int)), this, SLOT(updateEnsCluster(int)));
 	connect(_pSpinBoxContourLevel, SIGNAL(valueChanged(int)), this, SLOT(updateContourLevel(int)));
+	connect(_pSpinBoxTimeStep, SIGNAL(valueChanged(int)), this, SLOT(updateTimeStep(int)));
 }
 
 void DisplayCtrlWidget::updateBgFunction(int nBgFunction)
@@ -157,4 +166,8 @@ void DisplayCtrlWidget::updateEnsCluster(int nEnsCluster) {
 void DisplayCtrlWidget::updateContourLevel(int nLevel) {
 
 	emit ContourLevelChanged(nLevel);
+}
+void DisplayCtrlWidget::updateTimeStep(int nTS) {
+
+	emit TimeStepChanged(nTS);
 }

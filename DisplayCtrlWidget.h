@@ -33,6 +33,12 @@ private:
 	*/
 	QSpinBox *_pSpinBoxContourLevel;
 
+	/*
+		time step
+		0-360 by 6
+	*/
+	QSpinBox *_pSpinBoxTimeStep;
+
 private:
 	void createWidgets();
 	void createLayout();
@@ -47,6 +53,7 @@ private slots:
 	void updateMember(int nMember);
 	void updateEnsCluster(int nEnsCluster);
 	void updateContourLevel(int nLevel);
+	void updateTimeStep(int nTS);
 signals:
 	void bgFunctionChanged(int nFunction);
 	void smoothChanged(int nSmooth);
@@ -56,4 +63,5 @@ signals:
 	void MemberChanged(int nMember);
 	void EnsClusterChanged(int nMember);
 	void ContourLevelChanged(int nLevel);
+	void TimeStepChanged(int nTS);
 };

@@ -124,6 +124,7 @@ public slots:
 	void updateMember(int nMember);
 	void updateEnsCluster(int nEnsCluster);
 	void updateContourLevel(int nLevel);
+	void onUpdateView();
 private:
 	// vector of layers to render
 	std::vector<MeteLayer*> _vecLayers;
