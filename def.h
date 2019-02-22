@@ -51,7 +51,6 @@ const bool g_bSubArea = false;
 // whether calculate matrix for new data or use stored one
 const bool g_bNewData = false;
 
-const int g_nClusters = 6;
 
 
 
@@ -130,3 +129,7 @@ const int g_nEnsClusterLen = 20;
 const int g_nClusterRegionX = 40;
 const int g_nClusterRegionY = 40;
 const int g_nClusterRegionR = 11;
+
+
+extern int g_nTimeStart;			// start of time steps
+extern int g_nTimeEnd;				// end of time steps

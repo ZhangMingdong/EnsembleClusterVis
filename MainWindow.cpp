@@ -51,13 +51,15 @@ MainWindow::~MainWindow(){
 	if (_pModel) delete _pModel;
 }
 
+bool _bChart = true;	// if show the chart
+
 MainWindow::MainWindow()
 {
 	// finished read config file
 	setWindowState(Qt::WindowMaximized);
 
-	//_pModel = MeteModel::CreateModel();
-	_pModel = MeteModel::CreateModel(true);
+	_pModel = MeteModel::CreateModel();
+	//_pModel = MeteModel::CreateModel(true);
 
 	createSceneAndView();
 	createActions();
@@ -98,7 +100,6 @@ void MainWindow::createSceneAndView(){
 	_view3D = new MyMapWidget;
 	_view3D->SetModelE(_pModel);
 
-	bool _bChart = true;	// if show the chart
 	if (_bChart) {
 		QSplitter* splitter = new QSplitter();
 		splitter->setOrientation(Qt::Vertical);
@@ -373,6 +374,7 @@ void MainWindow::createConnections(){
 	connect(_pDisplayCtrlWidget, SIGNAL(EOFChanged(int)), _view3D, SLOT(updateEOF(int)));
 	connect(_pDisplayCtrlWidget, SIGNAL(MemberChanged(int)), _view3D, SLOT(updateMember(int)));
 	connect(_pDisplayCtrlWidget, SIGNAL(EnsClusterChanged(int)), _view3D, SLOT(updateEnsCluster(int)));
+	connect(_pDisplayCtrlWidget, SIGNAL(EnsClusterLenChanged(int)), _view3D, SLOT(updateEnsClusterLen(int)));
 	connect(_pDisplayCtrlWidget, SIGNAL(ContourLevelChanged(int)), _view3D, SLOT(updateContourLevel(int)));
 	connect(_pDisplayCtrlWidget, SIGNAL(TimeStepChanged(int)), _pModel, SLOT(updateTimeStep(int)));
 	connect(_pModel, SIGNAL(UpdateView()), _view3D, SLOT(onUpdateView()));

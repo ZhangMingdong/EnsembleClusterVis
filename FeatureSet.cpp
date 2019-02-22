@@ -23,16 +23,16 @@ bool g_bStatistic = true;
 bool g_bGenerateContours = true;
 bool g_bSmoothContours = false;
 bool g_bCalculateSDF = true;
-bool g_bBuildSortedSDF = false;
-bool g_bResampleContours = false;
+bool g_bBuildSortedSDF = true;
+bool g_bResampleContours = true;
 bool g_bCalculateICD = false;
 bool g_bCalculateICD_L = false;
 bool g_bCalculateICD_V = false;
 bool g_bCalculateICDV = false;
 bool g_bCalculateDiverse = false;
-bool g_bCalculatePCA = false;
-bool g_bClustering = false;
-bool g_bGenerateArea = false; // my algorithm cannot handle the case there's closed areas only
+bool g_bCalculatePCA = true;
+bool g_bClustering = true;
+bool g_bGenerateArea = true; // my algorithm cannot handle the case there's closed areas only
 
 double PointToSegDist(double x, double y, double x1, double y1, double x2, double y2)
 {
@@ -50,6 +50,11 @@ double PointToSegDist(double x, double y, double x1, double y1, double x2, doubl
 	return sqrt((x - px) * (x - px) + (y - py) * (y - py));
 }
 
+int FeatureSet::GetLabel(int l) { 
+	if(g_bClustering)
+		return _arrLabels[l];
+	else return 0;
+}
 FeatureSet::FeatureSet(DataField* pData, double dbIsoValue, int nWidth, int nHeight, int nEnsembleLen):
 	_pData(pData)
 	,_dbIsoValue(dbIsoValue)
@@ -79,6 +84,8 @@ FeatureSet::FeatureSet(DataField* pData, double dbIsoValue, int nWidth, int nHei
 	_pMemberType = new int[_nEnsembleLen];
 
 	_arrLabels = new int[_nEnsembleLen];
+	_arrMergeTarget = new int[_nEnsembleLen];
+	_arrMergeSource = new int[_nEnsembleLen];
 	for (size_t i = 0; i < _nEnsembleLen; i++)
 	{
 		_arrLabels[i] = 0;
@@ -247,6 +254,9 @@ FeatureSet::~FeatureSet()
 	delete[] _pMemberType;
 	delete[] _pResampledSDF;
 	delete[] _arrLabels;
+	delete[] _arrMergeTarget;
+	delete[] _arrMergeSource;
+
 	delete[] _arrPC;
 
 	for each (UnCertaintyArea* pArea in _listAreaValid)
@@ -1019,17 +1029,12 @@ void FeatureSet::doPCAClustering() {
 	CLUSTER::Clustering* pClusterer = new CLUSTER::AHCClustering();
 	int nN = _nEnsembleLen;			// number of data items
 	int nM = _nPCLen;		// dimension
-	int nK = _nClusters;						// clusters
+	int nK = 1;						// clusters
 	double* arrBuf = _arrPC;
 
-	pClusterer->DoCluster(nN, nM, nK, arrBuf, _arrLabels);
-	qDebug() << "Labels";
-	for (size_t i = 0; i < nN; i++)
-	{
-		qDebug() << _arrLabels[i];
-	}
-
-	// 4.record label
+	pClusterer->DoCluster(nN, nM, nK, arrBuf, _arrLabels,_arrMergeSource,_arrMergeTarget);
+	
+	resetLabels();
 
 	// 5.release the resouse
 	delete pClusterer;
@@ -1469,5 +1474,37 @@ void FeatureSet::buildICDV() {
 	{
 		_pICDVW[i] = sqrt(_pICDVX[i] * _pICDVX[i] + _pICDVY[i] * _pICDVY[i]);
 	}
+
+}
+
+
+void FeatureSet::SetClustersLen(int nClustersLen) {
+	_nClusters = nClustersLen;
+	resetLabels();
+}
+
+void FeatureSet::resetLabels() {
+	// initialize labels
+	for (size_t i = 0; i < _nEnsembleLen; i++) {
+		_arrLabels[i] = i;
+	}
+
+	// merge
+	for (int i = 0; i < _nEnsembleLen-_nClusters; i++)
+	{
+		int nSource = _arrMergeSource[i];
+		int nTarget = _arrMergeTarget[i];
+
+		// update source and target
+		for (int j = 0; j < _nEnsembleLen; j++)
+		{
+			if (_arrLabels[j] == nSource) {
+				_arrLabels[j] = nTarget;
+			}
+		}
+	}
+
+	// align
+	CLUSTER::Clustering::AlignLabels(_arrLabels, _nEnsembleLen);
 
 }

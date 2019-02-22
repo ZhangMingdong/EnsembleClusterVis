@@ -28,6 +28,10 @@ char g_strObsFileName[50];
 int g_nBiasY=0;
 int g_nBiasD=0;
 
+
+int g_nTimeStart = 126;			// start of time steps
+int g_nTimeEnd = 126;				// end of time steps
+
 int main(int argc, char *argv[])
 {
     QApplication app(argc, argv);

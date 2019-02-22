@@ -537,6 +537,13 @@ void MyMapWidget::updateEnsCluster(int nEnsCluster) {
 }
 
 
+void MyMapWidget::updateEnsClusterLen(int nEnsClusterLen) {
+	if (_pModelE)
+		_pModelE->SetEnsClusterLen(nEnsClusterLen);
+	onTextureReloaded();
+}
+
+
 void MyMapWidget::updateContourLevel(int nLevel) {
 	if (_pModelE)
 		_pModelE->SetContourLevel(nLevel);

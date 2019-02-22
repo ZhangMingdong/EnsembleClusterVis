@@ -123,6 +123,7 @@ public slots:
 	void updateEOF(int nEOF);
 	void updateMember(int nMember);
 	void updateEnsCluster(int nEnsCluster);
+	void updateEnsClusterLen(int nEnsClusterLen);
 	void updateContourLevel(int nLevel);
 	void onUpdateView();
 private:

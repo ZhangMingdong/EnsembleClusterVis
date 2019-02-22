@@ -71,5 +71,8 @@ protected:
 	virtual void wheelEvent(QWheelEvent * event);
 protected:
 	void updateTrackBallPos(QPoint pt, double* result);
+protected:
+	void drawCircle(double dbX, double dbY, double dbCZ, double dbR);
+	void drawHull(std::vector<DPoint2> pts);
 };
 

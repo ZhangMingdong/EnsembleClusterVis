@@ -291,11 +291,11 @@ void ArtificialModel::initializeModel() {
 	SetIsoValues(listIsoValue);
 
 
-	//generateDataFromContour();
+	generateDataFromContour();
 	//generateDataFromField();
 	//generateDataFromField_2();
 	//generateDataFromField_3();
-	generateDataFromField_4();
+	//generateDataFromField_4();
 
 
 	// 3.statistic

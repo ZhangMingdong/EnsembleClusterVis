@@ -788,8 +788,9 @@ void MeteModel::readData() {
 }
 
 void MeteModel::initializeModel() {
-	while (_nTime < 121) {
-		initializeModel();
+	_nTime = g_nTimeStart;
+	while (_nTime <= g_nTimeEnd) {
+		updateTimeStep();
 		_nTime += 6;
 	}
 }
@@ -828,10 +829,10 @@ void MeteModel::updateTimeStep() {
 			//listIsoValue.append(5900);
 
 
-			listIsoValue.append(5300);
-			listIsoValue.append(5500);
-			listIsoValue.append(5700);
-			listIsoValue.append(5900);
+			//listIsoValue.append(5300);
+			//listIsoValue.append(5500);
+			//listIsoValue.append(5700);
+			//listIsoValue.append(5900);
 
 
 			/*
@@ -844,7 +845,12 @@ void MeteModel::updateTimeStep() {
 
 			//listIsoValue.append(5580);
 			//listIsoValue.append(5600);
-			//listIsoValue.append(5620);
+			listIsoValue.append(5620);
+
+
+			//listIsoValue.append(5500);
+			//listIsoValue.append(5600);
+			//listIsoValue.append(5700);
 
 			//listIsoValue.append(5880);
 
@@ -982,11 +988,19 @@ QList<QList<ContourLine>> MeteModel::GetContour(int isoIndex)
 	}
 }
 
+void MeteModel::GetMerge(int l, int& nSource, int& nTarget) {
+	nSource = _pTimeStep->_listFeature[0]->GetMergeSource(l);
+	nTarget = _pTimeStep->_listFeature[0]->GetMergeTarget(l);
+}
 int MeteModel::GetLabel(int l) {
 	return _pTimeStep->_listFeature[0]->GetLabel(l);
 }
 double MeteModel::GetPC(int l,int nIndex) {
 	return _pTimeStep->_listFeature[0]->GetPC(l,nIndex);
+}
+
+int MeteModel::GetClusters() { 
+	return _pTimeStep->_listFeature[0]->GetClusters();
 }
 
 QList<QList<ContourLine>> MeteModel::GetContourSmooth(int isoIndex)
@@ -1150,65 +1164,6 @@ void MeteModel::generatePCAPoint(UncertaintyRegion& cluster, std::vector<DPoint3
 	delete[] arrOutput;
 }
 
-void MeteModel::clusterSpatialArea(UncertaintyRegion& cluster, std::vector<DPoint3>& points, ClusterResult& cr) {
-	// 1.pca
-	generatePCAPoint(cluster, points);
-
-	// 2.cluster
-	CLUSTER::Clustering* pClusterer = new CLUSTER::KMeansClustering();
-	int nN = _nEnsembleLen;			// number of data items
-	int nK = _nClusters;						// clusters
-	int* arrLabel = new int[nN];
-	bool bClusterUsingPCA = false;	// whether using pca points to cluster
-	if (bClusterUsingPCA)
-	{
-		int nM = 2;					// dimension
-		double* arrBuf = new double[nN * nM];
-		for (size_t i = 0; i < nN; i++)
-		{
-			arrBuf[i*nM] = points[i].x;
-			arrBuf[i*nM + 1] = points[i].y;
-		}
-		pClusterer->DoCluster(nN, nM, nK, arrBuf, arrLabel);
-		delete arrBuf;
-	}
-	else {
-		int nM = cluster._nArea;		// dimension
-		double* arrBuf = new double[nN * nM];
-		for (size_t i = 0; i < nN; i++)
-		{
-			for (size_t j = 0; j < nM; j++)
-			{
-				int x = cluster._vecPoints[j].x;
-				int y = cluster._vecPoints[j].y;
-				arrBuf[i * nM + j] = _pTimeStep->_pData->GetData(i, x, y);
-			}
-		}
-		pClusterer->DoCluster(nN, nM, nK, arrBuf, arrLabel);
-		delete arrBuf;
-	}
-
-
-	// 4.record label
-	cr.Reset(_nEnsembleLen, nK);
-	for (size_t i = 0; i < _nEnsembleLen; i++)
-	{
-		cr.PushLabel(i, arrLabel[i]);
-	}
-
-	// 5.release the resouse
-	delete arrLabel;
-	delete pClusterer;
-}
-
-void MeteModel::setLabelsForPCAPoints(std::vector<DPoint3>& points, ClusterResult&cr) {
-	// 3.set label for pca points
-	for (size_t i = 0; i < _nEnsembleLen; i++)
-	{
-		points[i].z = cr._arrLabels[i] + .5;
-	}
-}
-
 void MeteModel::SetVarThreshold(double dbThreshold)
 { 
 	if (abs(dbThreshold - _dbVarThreshold) < 0.0001) return;
@@ -1243,8 +1198,12 @@ void MeteModel::SetMember(int nMember) {
 	regenerateTexture();
 }
 
-void MeteModel::SetEnsCluster(int nEnsClusterr) {
-	_nEnsCluster = nEnsClusterr;
+void MeteModel::SetEnsCluster(int nEnsCluster) {
+	_nEnsCluster = nEnsCluster;
+	regenerateTexture();
+}
+void MeteModel::SetEnsClusterLen(int nEnsClusterLen) {
+	_pTimeStep->_listFeature[0]->SetClustersLen(nEnsClusterLen);
 	regenerateTexture();
 }
 
@@ -1334,56 +1293,6 @@ GLubyte* MeteModel::GenerateTexture() {
 		regenerateTexture();
 	}
 	return _dataTexture;
-}
-
-// cluster in each region
-void MeteModel::regionCluster() {
-	for (size_t i = 0, length = std::min((int)_vecRegions.size(), _nUncertaintyRegions); i < length; i++)
-	{
-		clusterSpatialArea(_vecRegions[i], _vecPCAPoints[i], _mxClusterResult[0][i]);
-	}
-}
-
-void MeteModel::calculateSimilarity() {
-	// 1.initialize the similarities to 0
-	for (size_t i = 0; i < _nUncertaintyRegions; i++)
-	{
-		for (size_t j = 0; j < _nUncertaintyRegions; j++)
-		{
-			for (size_t k = 0; k <= _nClusters; k++)
-			{
-				_mxSimilarity[i][j][k] = 0;
-			}
-		}
-	}
-	// 2.counting each cluster
-	for (size_t l = 0; l < _nEnsembleLen; l++)
-	{
-		for (size_t i = 0; i < _nUncertaintyRegions; i++)
-		{
-			for (size_t j = 0; j < i; j++) {
-				if (_mxClusterResult[0][i]._arrLabels[l] == _mxClusterResult[0][j]._arrLabels[l])
-				{
-					_mxSimilarity[i][j][_mxClusterResult[0][i]._arrLabels[l]]++;
-				}
-			}
-		}
-	}
-
-	// 3.counting the similarities for all the clusters
-	for (size_t i = 0; i < _nUncertaintyRegions; i++)
-	{
-		for (size_t j = 0; j < _nUncertaintyRegions; j++)
-		{
-			for (size_t k = 0; k <= _nEnsembleLen; k++)
-			{
-				if (_mxClusterResult[0][i]._arrLabels[k] == _mxClusterResult[0][j]._arrLabels[k])
-				{
-					_mxSimilarity[i][j][_nClusters]++;
-				}
-			}
-		}
-	}
 }
 
 void MeteModel::doEnsCluster() {

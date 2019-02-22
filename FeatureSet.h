@@ -50,6 +50,8 @@ private:
 
 	int _nClusters = 5;			// number of clusters
 	int* _arrLabels;				// labels of each member
+	int* _arrMergeTarget;
+	int* _arrMergeSource;
 
 	QList<UnCertaintyArea*> _listAreaValid;			// list of the uncertainty area of union of valid members
 	QList<UnCertaintyArea*> _listAreaHalf;			// list of the uncertainty area of union of half valid members
@@ -92,9 +94,12 @@ public:
 	virtual QList<UnCertaintyArea*> GetUncertaintyAreaHalf() { return _listAreaHalf; }
 	virtual QList<UnCertaintyArea*> GetUncertaintyArea() { return _listUnionAreaE; }
 	int GetDetailScale() { return _nDetailScale; }
-	int GetLabel(int l) { return _arrLabels[l]; }
+	int GetLabel(int l);
+	int GetMergeTarget(int l) { return _arrMergeTarget[l]; }
+	int GetMergeSource(int l) { return _arrMergeSource[l]; }
 	double GetPC(int l,int nIndex) { return _arrPC[l * _nPCLen+nIndex]; }
-
+	int GetClusters() { return _nClusters; }
+	void SetClustersLen(int nClustersLen);
 
 private:
 	void sortBuf(const double* pS, double* pD);	// space segmentation
@@ -158,6 +163,8 @@ private:
 	void buildICD_LineKernel();		// build iso-contour density using line kernel
 	void buildICD_Vector();			// build iso-contour density using vector kernel
 	void buildICDV();
+		
+	void resetLabels();				// reset labels after reset number of clusters
 public:
 	const double* GetICD() { return _pICD; }
 

@@ -21,6 +21,7 @@ private:
 	QSpinBox *_pSpinBoxEOF;
 	QSpinBox *_pSpinBoxMember;
 	QSpinBox *_pSpinBoxEnsCluster;
+	QSpinBox *_pSpinBoxEnsClusterLen;
 
 	/*
 		displayed level of contour
@@ -52,6 +53,7 @@ private slots:
 	void updateEOF(int nEOF);
 	void updateMember(int nMember);
 	void updateEnsCluster(int nEnsCluster);
+	void updateEnsClusterLen(int nEnsCluster);
 	void updateContourLevel(int nLevel);
 	void updateTimeStep(int nTS);
 signals:
@@ -61,7 +63,8 @@ signals:
 	void focusedClusterChanged(int nFocusedCluster);
 	void EOFChanged(int nEOF);
 	void MemberChanged(int nMember);
-	void EnsClusterChanged(int nMember);
+	void EnsClusterChanged(int nCluster);
+	void EnsClusterLenChanged(int nClusterLen);
 	void ContourLevelChanged(int nLevel);
 	void TimeStepChanged(int nTS);
 };

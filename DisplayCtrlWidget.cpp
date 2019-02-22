@@ -86,6 +86,12 @@ void DisplayCtrlWidget::createWidgets() {
 	_pSpinBoxEnsCluster->setValue(0);
 	_pSpinBoxEnsCluster->setSingleStep(1);
 
+	_pSpinBoxEnsClusterLen = new QSpinBox;
+	_pSpinBoxEnsClusterLen->setRange(1, g_nEnsembles);
+	_pSpinBoxEnsClusterLen->setAlignment(Qt::AlignVCenter | Qt::AlignRight);
+	_pSpinBoxEnsClusterLen->setValue(1);
+	_pSpinBoxEnsClusterLen->setSingleStep(1);
+
 
 	_pSpinBoxContourLevel = new QSpinBox;
 	_pSpinBoxContourLevel->setRange(0, 5);
@@ -95,9 +101,9 @@ void DisplayCtrlWidget::createWidgets() {
 
 
 	_pSpinBoxTimeStep = new QSpinBox;
-	_pSpinBoxTimeStep->setRange(0, 360);
+	_pSpinBoxTimeStep->setRange(g_nTimeStart, g_nTimeEnd);
 	_pSpinBoxTimeStep->setAlignment(Qt::AlignVCenter | Qt::AlignRight);
-	_pSpinBoxTimeStep->setValue(0);
+	_pSpinBoxTimeStep->setValue(g_nTimeStart);
 	_pSpinBoxTimeStep->setSingleStep(6);
 
 }
@@ -113,6 +119,7 @@ void DisplayCtrlWidget::createLayout() {
 	layout->addRow(tr("EOF:"), _pSpinBoxEOF);
 	layout->addRow(tr("Member:"), _pSpinBoxMember);
 	layout->addRow(tr("Ens Cluster:"), _pSpinBoxEnsCluster);
+	layout->addRow(tr("Number of Ens Clusters:"), _pSpinBoxEnsClusterLen);
 	layout->addRow(tr("Contour Level:"), _pSpinBoxContourLevel);
 	layout->addRow(tr("Time Step:"), _pSpinBoxTimeStep);
 	setLayout(layout);
@@ -126,6 +133,7 @@ void DisplayCtrlWidget::createConnections() {
 	connect(_pSpinBoxEOF, SIGNAL(valueChanged(int)), this, SLOT(updateEOF(int)));
 	connect(_pSpinBoxMember, SIGNAL(valueChanged(int)), this, SLOT(updateMember(int)));
 	connect(_pSpinBoxEnsCluster, SIGNAL(valueChanged(int)), this, SLOT(updateEnsCluster(int)));
+	connect(_pSpinBoxEnsClusterLen, SIGNAL(valueChanged(int)), this, SLOT(updateEnsClusterLen(int)));
 	connect(_pSpinBoxContourLevel, SIGNAL(valueChanged(int)), this, SLOT(updateContourLevel(int)));
 	connect(_pSpinBoxTimeStep, SIGNAL(valueChanged(int)), this, SLOT(updateTimeStep(int)));
 }
@@ -162,6 +170,10 @@ void DisplayCtrlWidget::updateMember(int nMember) {
 void DisplayCtrlWidget::updateEnsCluster(int nEnsCluster) {
 
 	emit EnsClusterChanged(nEnsCluster);
+}
+void DisplayCtrlWidget::updateEnsClusterLen(int nEnsClusterLen) {
+
+	emit EnsClusterLenChanged(nEnsClusterLen);
 }
 void DisplayCtrlWidget::updateContourLevel(int nLevel) {
 

@@ -3,6 +3,9 @@
 #include <gl/GLU.h>
 
 #include <QMouseEvent>
+#include <QDebug>
+#include <math.h>
+using namespace std;
 
 MyGLWidget::MyGLWidget(QWidget *parent):QGLWidget(parent)
 , m_dbRadius(1000)
@@ -108,6 +111,11 @@ void MyGLWidget::mousePressEvent(QMouseEvent * event)
 		m_nMouseState = 1;
 		_ptLast = event->pos();
 	}
+	else if (event->button() == Qt::RightButton)
+	{
+		m_nMouseState = 2;
+		_ptLast = event->pos();
+	}
 	updateGL();
 }
 
@@ -162,3 +170,23 @@ void MyGLWidget::updateTrackBallPos(QPoint pt, double* result)
 	result[2] = sqrt(m_dbRadius*m_dbRadius - x2y2);
 
 }
+
+
+
+void MyGLWidget::drawCircle(double dbCX, double dbCY,double dbCZ, double dbR) {
+	int nLen = 10;
+	glBegin(GL_LINE_LOOP);
+	for (size_t i = 0; i < nLen; i++)
+	{
+		double dbX = dbCX + dbR * cos(PI2d*i / nLen);
+		double dbY = dbCY + dbR * sin(PI2d*i / nLen);
+		glVertex3d(dbX, dbY, dbCZ);
+	}
+	glEnd();
+}
+
+void MyGLWidget::drawHull(std::vector<DPoint2> pts) {
+
+	
+}
+
