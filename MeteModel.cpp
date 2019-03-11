@@ -27,6 +27,8 @@
 #include "ArtificialModel.h"
 #include "SpatialCluster.h"
 
+#include "Switch.h"
+
 
 using namespace std;
 
@@ -886,7 +888,8 @@ void MeteModel::updateTimeStep() {
 			_pTimeStep->_listFeature.append(new FeatureSet(_pTimeStep->_pData, isoValue, _nWidth, _nHeight, _nEnsembleLen));
 		}
 		// EOF
-		//_pData->DoEOF();
+		if(g_bEOF)
+			_pTimeStep->_pData->DoEOF();
 	}
 }
 void MeteModel::Brush(int nLeft, int nRight, int nTop, int nBottom) {

@@ -14,25 +14,11 @@
 #include <mathtoolbox/classical-mds.hpp>
 #include <iostream>
 
+#include "Switch.h"
+
 using namespace Eigen;
 
-bool g_bCalculateSet = true;
-bool g_bCalculateBandDepth = true;
-bool g_bCalculateMemberType = true;
-bool g_bStatistic = true;
-bool g_bGenerateContours = true;
-bool g_bSmoothContours = false;
-bool g_bCalculateSDF = true;
-bool g_bBuildSortedSDF = true;
-bool g_bResampleContours = true;
-bool g_bCalculateICD = false;
-bool g_bCalculateICD_L = false;
-bool g_bCalculateICD_V = false;
-bool g_bCalculateICDV = false;
-bool g_bCalculateDiverse = false;
-bool g_bCalculatePCA = true;
-bool g_bClustering = true;
-bool g_bGenerateArea = true; // my algorithm cannot handle the case there's closed areas only
+
 
 double PointToSegDist(double x, double y, double x1, double y1, double x2, double y2)
 {
@@ -122,6 +108,10 @@ FeatureSet::FeatureSet(DataField* pData, double dbIsoValue, int nWidth, int nHei
 	if(g_bBuildSortedSDF) buildSortedSDF();
 
 	if(g_bResampleContours) resampleContours();
+
+	if(g_bResampleContours && g_bCalculateSDF)
+		for (size_t i = 0; i < 10; i++)
+			measureInfoLose();
 
 	// 8.calculate ICD
 	if(g_bCalculateICD) calculateICD();
@@ -1508,3 +1498,66 @@ void FeatureSet::resetLabels() {
 	CLUSTER::Clustering::AlignLabels(_arrLabels, _nEnsembleLen);
 
 }
+
+
+void FeatureSet::measureInfoLose() {
+	int nMK = 5000000;
+	double dbLose = 0;
+	for (size_t i = 0; i < nMK; i++)
+	{
+		double x = 1.0 * rand() / RAND_MAX * _nWidth;
+		double y = 1.0 * rand() / RAND_MAX * _nHeight ;
+		dbLose += measureDis(x, y);
+	}
+	qDebug() << "measureInfoLose: " << dbLose;
+}
+
+double FeatureSet::measureDis(double x, double y) {
+	int nCountO = 0;	// count upper in original
+	int nCountS = 0;	// count upper in sampled
+	int nX = x;
+	int nY = y;
+	double dbX = x - nX;
+	double dbY = y - nY;
+
+	for (size_t l = 0; l < _nEnsembleLen; l++)
+	{
+		if (getFieldValue(nX, nY, dbX, dbY, _pSDF + l * _nGrids) > 0) nCountO++;
+	}
+	double dbPO = nCountO / (double)_nEnsembleLen;
+
+	for (size_t l = 0; l < _nEnsembleLen/2; l++)
+	{
+		if (getFieldValue(nX, nY, dbX, dbY, _pSDF + l * _nGrids) > 0) nCountS++;
+	}
+	double dbPS = nCountS / (double)_nEnsembleLen*2;
+	
+	return abs(dbPO - dbPS);
+}
+
+double FeatureSet::getFieldValue(int nX, int nY, double dbX, double dbY, double* pField) {
+	double dbV00 = pField[nY*_nWidth + nX];
+	double dbV01 = pField[(nY+1)*_nWidth + nX];
+	double dbV10 = pField[nY*_nWidth + nX+1];
+	double dbV11 = pField[(nY+1)*_nWidth + nX+1];
+
+	return dbX * dbY*dbV00
+		+ dbX * (1 - dbY)*dbV01
+		+ (1 - dbX) * dbY*dbV10
+		+ (1 - dbX) * (1 - dbY)*dbV11;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

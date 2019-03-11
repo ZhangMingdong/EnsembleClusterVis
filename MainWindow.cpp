@@ -22,6 +22,8 @@
 
 #include "ClusteringWidget.h"
 
+#include "Switch.h"
+
 
 
 const QString ShowGridLines("ShowGridLines");
@@ -51,15 +53,13 @@ MainWindow::~MainWindow(){
 	if (_pModel) delete _pModel;
 }
 
-bool _bChart = true;	// if show the chart
 
 MainWindow::MainWindow()
 {
 	// finished read config file
 	setWindowState(Qt::WindowMaximized);
 
-	_pModel = MeteModel::CreateModel();
-	//_pModel = MeteModel::CreateModel(true);
+	_pModel = MeteModel::CreateModel(g_bArtificialModel);
 
 	createSceneAndView();
 	createActions();
@@ -100,7 +100,7 @@ void MainWindow::createSceneAndView(){
 	_view3D = new MyMapWidget;
 	_view3D->SetModelE(_pModel);
 
-	if (_bChart) {
+	if (g_bChart) {
 		QSplitter* splitter = new QSplitter();
 		splitter->setOrientation(Qt::Vertical);
 		splitter->addWidget(_view3D);

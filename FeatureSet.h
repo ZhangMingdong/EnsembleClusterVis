@@ -176,5 +176,13 @@ public:
 	const double* GetICDVX(int l) const { return _pICDVX + l * _nGrids; }
 	const double* GetICDVY(int l) const { return _pICDVY + l * _nGrids; }
 	const double* GetICDVW(int l) const { return _pICDVW + l * _nGrids; }
+
+private:	// information loss measure
+	// measure whole information lose
+	void measureInfoLose();			
+	// measure distance of one point between original and sampled sdf
+	double measureDis(double x, double y);
+	// get the value of the point in the field
+	double getFieldValue(int nX, int nY, double dbX, double dbY, double* pField);	
 };
 
