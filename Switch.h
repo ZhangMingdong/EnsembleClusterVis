@@ -23,7 +23,7 @@ const bool g_bClustering = false;
 const bool g_bGenerateArea = false; // my algorithm cannot handle the case there's closed areas only
 
 // ==================Model=========================
-const bool g_bEOF = true;
+const bool g_bEOF = false;
 
 const bool g_bArtificialModel = true;
 

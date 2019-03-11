@@ -109,9 +109,15 @@ FeatureSet::FeatureSet(DataField* pData, double dbIsoValue, int nWidth, int nHei
 
 	if(g_bResampleContours) resampleContours();
 
-	if(g_bResampleContours && g_bCalculateSDF)
-		for (size_t i = 0; i < 10; i++)
+	if (g_bResampleContours && g_bCalculateSDF) {
+		for (_nTestSamples=1;_nTestSamples<=_nEnsembleLen;_nTestSamples++)
+		//for (size_t i = 0; i < 10; i++)
+		{
+			_nResampleLen = _nTestSamples;
+			resampleSDF();
 			measureInfoLose();
+		}
+	}
 
 	// 8.calculate ICD
 	if(g_bCalculateICD) calculateICD();
@@ -417,7 +423,7 @@ void resampleBasedOnKDE(double* dbInput, double* dbOutput,int nInputLen,int nOut
 	delete[] pDensity;
 }
 
-void FeatureSet::resampleContours() {
+void FeatureSet::resampleSDF() {
 	double* dbSample = new double[_nEnsembleLen];
 	double* dbResample = new double[_nResampleLen];
 
@@ -428,12 +434,20 @@ void FeatureSet::resampleContours() {
 		{
 			dbSample[l] = _pSortedSDF[l*_nGrids + i];
 		}
-		resampleBasedOnKDE(dbSample, dbResample,_nEnsembleLen,_nResampleLen);
+		resampleBasedOnKDE(dbSample, dbResample, _nEnsembleLen, _nResampleLen);
 		for (size_t l = 0; l < _nResampleLen; l++)
 		{
 			_pResampledSDF[l*_nGrids + i] = dbResample[l];
 		}
 	}
+
+	delete[] dbSample;
+	delete[] dbResample;
+}
+
+void FeatureSet::resampleContours() {
+	resampleSDF();
+	
 
 	// 2.generate contours for each grid point
 	for (size_t l = 0; l < _nResampleLen; l++)
@@ -442,23 +456,17 @@ void FeatureSet::resampleContours() {
 		ContourGenerator::GetInstance()->Generate(_pResampledSDF + l * _nGrids, contour, 0, _nWidth, _nHeight);
 		_listContourResampled.push_back(contour);
 	}
-
-	delete[] dbSample;
-	delete[] dbResample;
 }
 
 void FeatureSet::sortBuf(const double* pS, double* pD) {
 	for (int i = 0; i < _nGrids; i++) {
+		std::vector<double> vecValues;
 		for (int j = 0; j < _nEnsembleLen; j++) {
-			double dbValue = pS[j*_nGrids + i];
-			int k = 0;
-			while (k < j && pD[k*_nGrids + i] < dbValue) k++;
-			int l = j;
-			while (l > k) {
-				pD[l*_nGrids + i] = pD[(l - 1)*_nGrids + i];
-				l--;
-			}
-			pD[k*_nGrids + i] = dbValue;
+			vecValues.push_back(pS[j*_nGrids + i]);
+		}
+		std::sort(vecValues.begin(), vecValues.end());
+		for (int j = 0; j < _nEnsembleLen; j++) {
+			pD[j*_nGrids + i] = vecValues[j];
 		}
 	}
 }
@@ -1499,8 +1507,38 @@ void FeatureSet::resetLabels() {
 
 }
 
+void FeatureSet::generateRandomIndices() {
+	// generate a random indices list
+	int arrIndices[50];
+	for (int i = 0; i < 50; i++) arrIndices[i] = i;
+	for (int l = 50; l > 0; l--)
+	{
+		// random choose an index
+		int nIndex = rand() / (double)RAND_MAX*l;
+		_arrRandomIndices[l - 1] = arrIndices[nIndex];
+		arrIndices[nIndex] = arrIndices[l - 1];
+	}
+}
+
+void FeatureSet::generateUniformIndices() {
+	
+}
+
+void FeatureSet::generateCentralIndices() {
+	int nBias = (_nEnsembleLen - _nTestSamples) / 2;
+	for (size_t i = 0; i < _nTestSamples; i++)
+	{
+		_arrRandomIndices[i] = i + nBias;
+	}
+}
 
 void FeatureSet::measureInfoLose() {
+	srand(time(NULL));
+	// generate indices list
+	//generateRandomIndices();
+	generateCentralIndices();
+	//generateUniformIndices();
+
 	int nMK = 5000000;
 	double dbLose = 0;
 	for (size_t i = 0; i < nMK; i++)
@@ -1509,7 +1547,8 @@ void FeatureSet::measureInfoLose() {
 		double y = 1.0 * rand() / RAND_MAX * _nHeight ;
 		dbLose += measureDis(x, y);
 	}
-	qDebug() << "measureInfoLose: " << dbLose;
+
+	qDebug()<<"Samples: " << _nTestSamples << "measureInfoLose: " << dbLose;
 }
 
 double FeatureSet::measureDis(double x, double y) {
@@ -1520,18 +1559,23 @@ double FeatureSet::measureDis(double x, double y) {
 	double dbX = x - nX;
 	double dbY = y - nY;
 
+	//qDebug() << nX << nY << dbX << dbY;
+
 	for (size_t l = 0; l < _nEnsembleLen; l++)
 	{
 		if (getFieldValue(nX, nY, dbX, dbY, _pSDF + l * _nGrids) > 0) nCountO++;
 	}
 	double dbPO = nCountO / (double)_nEnsembleLen;
-
-	for (size_t l = 0; l < _nEnsembleLen/2; l++)
-	{
-		if (getFieldValue(nX, nY, dbX, dbY, _pSDF + l * _nGrids) > 0) nCountS++;
-	}
-	double dbPS = nCountS / (double)_nEnsembleLen*2;
 	
+	// random choose according sample numbers
+	for (size_t l = 0; l < _nTestSamples; l += 1)
+	{
+		//if (getFieldValue(nX, nY, dbX, dbY, _pSortedSDF + _arrRandomIndices[l] * _nGrids) > 0) nCountS++;
+		if (getFieldValue(nX, nY, dbX, dbY, _pResampledSDF + l * _nGrids) > 0) nCountS++;
+	}
+	double dbPS = nCountS / (double)_nTestSamples;
+
+	//qDebug() << dbPO << dbPS << abs(dbPO - dbPS);
 	return abs(dbPO - dbPS);
 }
 
@@ -1541,12 +1585,13 @@ double FeatureSet::getFieldValue(int nX, int nY, double dbX, double dbY, double*
 	double dbV10 = pField[nY*_nWidth + nX+1];
 	double dbV11 = pField[(nY+1)*_nWidth + nX+1];
 
+	//qDebug() << dbV00 << dbV01 << dbV10 << dbV11;
+
 	return dbX * dbY*dbV00
 		+ dbX * (1 - dbY)*dbV01
 		+ (1 - dbX) * dbY*dbV10
 		+ (1 - dbX) * (1 - dbY)*dbV11;
 }
-
 
 
 

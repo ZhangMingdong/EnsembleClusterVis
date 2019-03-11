@@ -116,6 +116,7 @@ private:
 	void generateContours();
 	void smoothContours();
 	void buildSortedSDF();
+	void resampleSDF();
 	void resampleContours();
 	void calculateSimilarityMatrix();		// calculate similarity matrix of the ensemble members
 	/*
@@ -184,5 +185,10 @@ private:	// information loss measure
 	double measureDis(double x, double y);
 	// get the value of the point in the field
 	double getFieldValue(int nX, int nY, double dbX, double dbY, double* pField);	
+	int _nTestSamples=50;
+	int _arrRandomIndices[50];
+	void generateRandomIndices();
+	void generateUniformIndices();
+	void generateCentralIndices();
 };
 

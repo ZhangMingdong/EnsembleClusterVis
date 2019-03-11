@@ -5,6 +5,8 @@
 
 #include <QDebug>
 
+#include "Switch.h"
+
 
 ArtificialModel::ArtificialModel()
 {
@@ -301,7 +303,8 @@ void ArtificialModel::initializeModel() {
 	// 3.statistic
 	_pTimeStep->_pData->DoStatistic();
 	// EOF
-	_pTimeStep->_pData->DoEOF();
+	if (g_bEOF)
+		_pTimeStep->_pData->DoEOF();
 
 	// 4.generate feature;
 	for each (double isoValue in _listIsoValues)
