@@ -35,6 +35,7 @@ private:	// action
 	QAction *viewShowContourLineSortedAction;
 	QAction *viewShowContourLineSortedSDFAction;
 	QAction *viewShowContourLineResampledAction;
+	QAction *viewShowContourLineDomainResampledAction;
 	QAction *viewShowContourLineSDFAction;
 	QAction *viewShowContourLineMinAction;
 	QAction *viewShowContourLineMaxAction;
@@ -44,10 +45,9 @@ private:	// action
 	QAction *viewShowClusterBSAction;		// show cluster of Bayesian variance statistics
 	QAction *viewShowClusterBVAction;		// show cluster of Bayesian variance
 private:		// widget
-	MyMapWidget *_view3D;
-	MyChartWidget *_viewChart;
-	// control widget
-	DisplayCtrlWidget * _pDisplayCtrlWidget;
+	MyMapWidget *_view3D;						// map view
+	MyChartWidget *_viewChart;					// chart view
+	DisplayCtrlWidget * _pDisplayCtrlWidget;	// control widget
 
 
 private:		// model

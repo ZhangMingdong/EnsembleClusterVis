@@ -10,6 +10,8 @@
 #include "DataField.h"
 #include "ColorMap.h"
 
+#include "Switch.h"
+
 #include <QDebug>
 #include <QWheelEvent>
 
@@ -20,7 +22,7 @@
 MyChartWidget::MyChartWidget(QWidget *parent)
 	: MyGLWidget(parent)
 {
-	m_dbScale = 20;
+	m_dbScale = .8;
 
 
 }
@@ -84,9 +86,9 @@ void MyChartWidget::paint() {
 	drawPoints();
 
 	//drawLines();
-	drawHierarchy();
+	if (g_bDrawHierarchy) drawHierarchy();
 
-	drawClusters();
+	if (g_bDrawCluster) drawClusters();
 
 
 	glPopMatrix();
@@ -321,15 +323,17 @@ void MyChartWidget::drawClusters() {
 		}
 		glEnd();
 
-
+		
 		// draw border
-		glLineWidth(3);
-		glColor4d(0,0,0,.5);
-		glBegin(GL_LINE_LOOP);
-		for each (DPoint2 pt in vecHull)
-		{
-			glVertex2d(pt.x, pt.y);
+		if (false) {
+			glLineWidth(3);
+			glColor4d(0, 0, 0, .5);
+			glBegin(GL_LINE_LOOP);
+			for each (DPoint2 pt in vecHull)
+			{
+				glVertex2d(pt.x, pt.y);
+			}
+			glEnd();
 		}
-		glEnd();
 	}
 }

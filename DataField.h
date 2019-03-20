@@ -16,7 +16,6 @@ public:
 	~DataField();
 private:	
 	double* _pBuf;					// store the data	
-	double* _pDipBuf;				// store the dip data	
 	double* _gridVari;				// variance of each grid among different ensemble results	
 	double* _gridVV;				// variance of variance of each grid among different ensemble results	
 	double* _gridVarSmooth[10];		// smoothed variance
@@ -24,10 +23,16 @@ private:
 	double* _gridUMax;				// maximum of union of each grid among different ensemble results
 	double* _gridUMin;				// minimum of union of each grid among different ensemble results
 	double* _pSortedBuf;			// data sorted at each grid point
-
 	int _nSmooth = 0;				// level of smooth
 	int _nEOF = 0;					// level of EOF
 	double* _gridEOF[g_nEOFLen];	// eof fields
+
+
+	double* _pResampledBuf;			// resampled buffer
+	int _nResampleLen = 63;			// length of resample 2^7
+
+	//===============aborted=======================
+	double* _pDipBuf;				// store the dip data	
 
 
 	// isovalue related
@@ -55,6 +60,8 @@ public:
 	// get the data value at a given position
 	double GetData(int l, int bias);
 	double GetData(int l, int r, int c);
+	double GetSortedData(int l, int bias);
+	const double* GetResampledData(int l) { return _pResampledBuf + l * _nGrids; };
 	const double* GetData() { return _pBuf; }
 	const double* GetData(int l) { return _pBuf+l* _nGrids; }
 	void DoStatistic();
@@ -67,22 +74,22 @@ public:
 		written before, used 2017/11/07
 	*/
 	void GenerateClusteredData(const QList<int> listClusterLens, const int* arrLabels, QList<DataField*>& arrData);
-
+private:
 	// perform eof analysis
 	void DoEOF_old();
 	/*
 		new implementation
 		try to use the eigen vector
 	*/
-	void DoEOF();
+	void doEOF();
 
 private:
 	// smooth the variance to level nSmooth
 	void smoothVar(int nSmooth);
 
-private:
-	void sortBuf(const double* pS, double* pD);	// sort source to target
-	void buildSortedBuf();			// build the sorted buf from buf
 
+public:
+	// read ensemble data from text file
+	void ReadDataFromText(QString filename);
 };
 

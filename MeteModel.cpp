@@ -32,8 +32,6 @@
 
 using namespace std;
 
-
-
 // 判断点在线段左侧还是右侧，网上找的公式，来不及仔细想了
 bool checkLeft(double x, double y, double x1, double y1, double x2, double y2) {
 	double dx1 = x2 - x1;
@@ -120,31 +118,6 @@ void MeteModel::InitModel(int nEnsembleLen, int nWidth, int nHeight
 
 	// 5.specializaed initialization
 	initializeModel();
-}
-
-void MeteModel::readDataFromText(QString filename) {
-	QFile file(filename);
-
-	if (!file.open(QIODevice::ReadOnly)) {
-		QMessageBox::information(0, "error", file.errorString());
-	}
-
-	QTextStream in(&file);
-
-	// every ensemble member
-	for (int i = 0; i < _nEnsembleLen; i++)
-	{
-		// skip first line
-		QString line = in.readLine();
-		// every grid
-		for (int j = 0; j < _nGrids; j++)
-		{
-			QString line = in.readLine();
-			_pTimeStep->_pData->SetData(i, j, line.toFloat());
-		}
-	}
-
-	file.close();
 }
 
 void MeteModel::readDipValue(char* strFileName) {
@@ -794,8 +767,10 @@ void MeteModel::initializeModel() {
 	while (_nTime <= g_nTimeEnd) {
 		updateTimeStep();
 		_nTime += 6;
+		//break;
 	}
 }
+
 void MeteModel::updateTimeStep() {
 	int nTimeIndex = _nTime / 6;
 	qDebug() << "nTimeIndex" << nTimeIndex;
@@ -806,6 +781,13 @@ void MeteModel::updateTimeStep() {
 		_pTimeStep = _arrTimeSteps[nTimeIndex] = new TimeStep();
 		_pTimeStep->Init(_nWidth, _nHeight, _nEnsembleLen);
 
+		// 1.Read data
+		_strFile = g_strPath + QString("-mb") + QString::number(_nTime) + QString(".txt");
+		_pTimeStep->_pData->ReadDataFromText(_strFile);
+
+		// 2.statistic
+		_pTimeStep->_pData->DoStatistic();
+
 		// 2.Set isovalues
 		{
 			QList<double> listIsoValue;
@@ -815,12 +797,18 @@ void MeteModel::updateTimeStep() {
 			//listIsoValue.append(273.16 - 10);
 			//listIsoValue.append(273.16 - 5);
 			//listIsoValue.append(273.16);
-			//listIsoValue.append(273.16+5);
-			//listIsoValue.append(273.16+10);
+			//listIsoValue.append(273.16 + 5);
+			//listIsoValue.append(273.16 + 10);
 			//listIsoValue.append(273.16 + 15);
 			//listIsoValue.append(273.16 + 20);
 
-
+			//listIsoValue.append(5300);
+			//listIsoValue.append(5350);
+			//listIsoValue.append(5400);
+			//listIsoValue.append(5450);
+			//listIsoValue.append(5500);
+			//listIsoValue.append(5550);
+			//listIsoValue.append(5600);
 
 			//listIsoValue.append(5300);
 			//listIsoValue.append(5400);
@@ -837,6 +825,11 @@ void MeteModel::updateTimeStep() {
 			//listIsoValue.append(5900);
 
 
+			//listIsoValue.append(5500);
+			//listIsoValue.append(5600);
+			//listIsoValue.append(5700);
+
+
 			/*
 			for (int i=-5;i<3;i++)
 			{
@@ -847,7 +840,7 @@ void MeteModel::updateTimeStep() {
 
 			//listIsoValue.append(5580);
 			//listIsoValue.append(5600);
-			listIsoValue.append(5620);
+			//listIsoValue.append(5620);
 
 
 			//listIsoValue.append(5500);
@@ -856,42 +849,24 @@ void MeteModel::updateTimeStep() {
 
 			//listIsoValue.append(5880);
 
+
+			listIsoValue.append(5480);
+			listIsoValue.append(5560);
+			listIsoValue.append(5640);
+			listIsoValue.append(5720);
+
 			SetIsoValues(listIsoValue);
 		}
-
-
-		// 2.Read data
-		_strFile = g_strPath + QString("-mb") + QString::number(_nTime) + QString(".txt");
-		readDataFromText(_strFile);
-		// maybe should migrate into DataField
-		/*
-		if (_bBinaryFile)
-		{
-			readData();
-		}
-		else {
-			if (g_bGlobalArea)
-			{
-				readDataFromTextG();
-			}
-			else {
-
-			}
-		}*/
-
-		// 3.statistic
-		_pTimeStep->_pData->DoStatistic();
 
 		// 4.generate feature;
 		for each (double isoValue in _listIsoValues)
 		{
 			_pTimeStep->_listFeature.append(new FeatureSet(_pTimeStep->_pData, isoValue, _nWidth, _nHeight, _nEnsembleLen));
 		}
-		// EOF
-		if(g_bEOF)
-			_pTimeStep->_pData->DoEOF();
+
 	}
 }
+
 void MeteModel::Brush(int nLeft, int nRight, int nTop, int nBottom) {
 	/*
 	_listContourBrushed.clear();
@@ -956,6 +931,8 @@ QList<QList<ContourLine>> MeteModel::GetContourNotBrushed()
 
 QList<QList<ContourLine>> MeteModel::GetContour(int isoIndex)
 {
+	QList<QList<ContourLine>> result;
+
 	QList<QList<ContourLine>>& listContour = _pTimeStep->_listFeature[isoIndex]->GetContours();
 	if (_bgFunction==bg_EOF)
 	{
@@ -963,16 +940,11 @@ QList<QList<ContourLine>> MeteModel::GetContour(int isoIndex)
 	}
 	else 
 	{
-		//if (_nEnsCluster)
-		//{
-		//	return _listEnsClusterContour[_nEnsCluster - 1];
-		//}		
 		if (_nEnsCluster)
 		{
-			QList<QList<ContourLine>> result;
-			QList<ContourLine> emptyContour;
 			for (size_t i = 0; i < _nEnsembleLen; i++)
 			{
+				QList<ContourLine> emptyContour;
 				if (GetLabel(i) == _nEnsCluster - 1)
 					result.push_back(listContour[i]);
 				else
@@ -983,7 +955,6 @@ QList<QList<ContourLine>> MeteModel::GetContour(int isoIndex)
 		else if (_nMember)
 		{
 			//return _listMemberContour[_nMember - 1];
-			QList<QList<ContourLine>> result;
 			result.push_back(listContour[_nMember - 1]);
 			return result;
 		}
@@ -995,9 +966,11 @@ void MeteModel::GetMerge(int l, int& nSource, int& nTarget) {
 	nSource = _pTimeStep->_listFeature[0]->GetMergeSource(l);
 	nTarget = _pTimeStep->_listFeature[0]->GetMergeTarget(l);
 }
+
 int MeteModel::GetLabel(int l) {
 	return _pTimeStep->_listFeature[0]->GetLabel(l);
 }
+
 double MeteModel::GetPC(int l,int nIndex) {
 	return _pTimeStep->_listFeature[0]->GetPC(l,nIndex);
 }
@@ -1051,7 +1024,7 @@ QList<QList<ContourLine>> MeteModel::GetContourSorted(int isoIndex)
 {
 	QList<QList<ContourLine>> listResult;
 	QList<QList<ContourLine>> contours= _pTimeStep->_listFeature[isoIndex]->GetContourSorted();
-	addContour(contours, listResult, 0, contours.size(), _nContourLevel);
+	addContour(contours, listResult, 0, contours.size(), _arrContourLevel[isoIndex]);
 	return listResult;
 }
 
@@ -1059,7 +1032,7 @@ QList<QList<ContourLine>> MeteModel::GetContourSortedSDF(int isoIndex)
 {
 	QList<QList<ContourLine>> listResult;
 	QList<QList<ContourLine>> contours = _pTimeStep->_listFeature[isoIndex]->GetContourSortedSDF();
-	addContour(contours, listResult, 0, contours.size(), _nContourLevel);
+	addContour(contours, listResult, 0, contours.size(), _arrContourLevel[isoIndex]);
 	return listResult;
 }
 
@@ -1067,7 +1040,45 @@ QList<QList<ContourLine>> MeteModel::GetContourResampled(int isoIndex)
 {
 	QList<QList<ContourLine>> listResult;
 	QList<QList<ContourLine>> contours = _pTimeStep->_listFeature[isoIndex]->GetContourResampled();
-	addContour(contours, listResult, 0, contours.size(), _nContourLevel);
+	addContour(contours, listResult, 0, contours.size(), _arrContourLevel[isoIndex]);
+	return listResult;
+}
+
+QList<QList<ContourLine>> MeteModel::GetContourResampled_C()
+{
+	QList<QList<ContourLine>> listResult;
+	QList<QList<ContourLine>> contours = _pTimeStep->_listFeature[0]->GetContourResampled_C();
+
+
+	int nClusters = _pTimeStep->_listFeature[0]->GetClusters();
+	if (_arrContourLevel[0] ==0)
+	{
+		for (int i = 0; i < nClusters; i++) {
+			listResult.push_back(contours[i * 11 + 6]);
+		}
+	}
+	else if (_arrContourLevel[0] == 1)
+	{
+		for (int i = 0; i < nClusters; i++) {
+			listResult.push_back(contours[i * 11 + 4]);
+			listResult.push_back(contours[i * 11 + 8]);
+		}
+	}
+	else if (_arrContourLevel[0] == 2)
+	{
+		for (int i = 0; i < nClusters; i++) {
+			listResult.push_back(contours[i * 11 + 3]);
+			listResult.push_back(contours[i * 11 + 6]);
+			listResult.push_back(contours[i * 11 + 9]);
+		}
+	}
+	return listResult;
+}
+QList<QList<ContourLine>> MeteModel::GetContourDomainResampled(int isoIndex)
+{
+	QList<QList<ContourLine>> listResult;
+	QList<QList<ContourLine>> contours = _pTimeStep->_listFeature[isoIndex]->GetContourDomainResampled();
+	addContour(contours, listResult, 0, contours.size(), _arrContourLevel[isoIndex]);
 	return listResult;
 }
 
@@ -1205,13 +1216,10 @@ void MeteModel::SetEnsCluster(int nEnsCluster) {
 	_nEnsCluster = nEnsCluster;
 	regenerateTexture();
 }
+
 void MeteModel::SetEnsClusterLen(int nEnsClusterLen) {
 	_pTimeStep->_listFeature[0]->SetClustersLen(nEnsClusterLen);
 	regenerateTexture();
-}
-
-void MeteModel::SetContourLevel(int nLevel) {
-	_nContourLevel = nLevel;
 }
 
 void MeteModel::regenerateTexture() {
@@ -1424,11 +1432,22 @@ void MeteModel::SetIsoValues(QList<double> listIsoValues) {
 	_listIsoValues = listIsoValues;
 }
 
-
-
 void MeteModel::updateTimeStep(int nTS) {
 	qDebug() << "MeteModel::updateTimeStep" << nTS;
 	_nTime = nTS;
 	updateTimeStep();
 	UpdateView();
 }
+
+void MeteModel::updateContourLevel0(int nLevel) { _arrContourLevel[0] = nLevel; UpdateView();
+qDebug() << "updateContourLevel0";
+}
+void MeteModel::updateContourLevel1(int nLevel) { _arrContourLevel[1] = nLevel; UpdateView();}
+void MeteModel::updateContourLevel2(int nLevel) { _arrContourLevel[2] = nLevel; UpdateView();}
+void MeteModel::updateContourLevel3(int nLevel) { _arrContourLevel[3] = nLevel; UpdateView();}
+void MeteModel::updateContourLevel4(int nLevel) { _arrContourLevel[4] = nLevel; UpdateView();}
+void MeteModel::updateContourLevel5(int nLevel) { _arrContourLevel[5] = nLevel; UpdateView();}
+void MeteModel::updateContourLevel6(int nLevel) { _arrContourLevel[6] = nLevel; UpdateView();}
+void MeteModel::updateContourLevel7(int nLevel) { _arrContourLevel[7] = nLevel; UpdateView();}
+void MeteModel::updateContourLevel8(int nLevel) { _arrContourLevel[8] = nLevel; UpdateView();}
+void MeteModel::updateContourLevel9(int nLevel) { _arrContourLevel[9] = nLevel; UpdateView();}

@@ -17,11 +17,55 @@ public:
 	~FeatureSet();
 private:
 	DataField* _pData;									// reference to the data set
+
+
+	double _dbIsoValue = 0;								// isovalue of this feature set;
+	double* _gridHalfMax;			// maximum of half valid ensemble results
+	double* _gridHalfMin;			// minimum of half valid ensemble results
+	double* _gridValidMax;			// maximum of valid ensemble results
+	double* _gridValidMin;			// minimum of valid ensemble results
+	int _nMedianIndex = -1;			// index of median of the contour
+	bool * _pSet;					// set state of the grid point given iso-value
+	bool* _pGridDiverse;			// diversed grid points
+	int *_pSetBandDepth;			// sBandDepth
+	int *_pMemberType;				// type of each member.0:outlier,1-100%,2-50%.
+	int _nOutlierThreshold = 1;		// threshold for outliars
+	int _nDiverseCount = 0;			// count of diverse grids
+
+	int _nPCLen=10;					// length of PC
+	double* _arrPC;					// array of PCs
+
+	int _nClusters = 5;				// number of clusters
+
+	int* _arrLabels;				// labels of each member
+	int* _arrMergeTarget;
+	int* _arrMergeSource;
+
+
+	double* _pSDF;					// data of signed distance function
+	double* _pSortedSDF;			// data of signed distance function
+	double* _pResampledSDF;			// resampled SDF using kernel density function
+	int _nResampleLen = 63;			// length of resample 2^7
+	int _nResampleLen_C = 12;
+
+	double* _pResampledSDF_C;		// resampled sdf for each cluster
+
+
+
+
 	QList<QList<ContourLine>> _listContour;				// list of contours of ensemble members
+	QList<QList<ContourLine>> _listContourSorted;		// list of contours of sorted ensemble members
+	QList<QList<ContourLine>> _listContourSDF;			// list of contours generated form SDF
+	QList<QList<ContourLine>> _listContourSortedSDF;	// list of contours generated form sorted SDF
+	QList<QList<ContourLine>> _listContourResampled;	// list of resampled contours
+	QList<QList<ContourLine>> _listContourDomainResampled;	// list of resampled contours from domain space
+	QList<QList<ContourLine>> _listContourResampled_C;	// list of resampled contours for each cluster,12 for each
+
+	QList<QList<ContourLine>> _listContourSmooth;		// list of smoothed contours
+
 	QList<ContourLine> _listContourMinE;				// list of contours of minimum of E
 	QList<ContourLine> _listContourMaxE;				// list of contours of maximum of E
 	QList<ContourLine> _listContourMeanE;				// list of contours of mean of E
-	double _dbIsoValue = 0;								// isovalue of this feature set;
 
 	QList<ContourLine> _listContourMedianE;				// list of contours of median of E
 	QList<ContourLine> _listContourMinValid;			// list of contours of minimum of valid members
@@ -29,39 +73,11 @@ private:
 	QList<ContourLine> _listContourMinHalf;				// list of contours of minimum of half valid members
 	QList<ContourLine> _listContourMaxHalf;				// list of contours of maximum of half valid members
 
-	double* _gridHalfMax;			// maximum of half valid ensemble results
-	double* _gridHalfMin;			// minimum of half valid ensemble results
-	double* _gridValidMax;			// maximum of valid ensemble results
-	double* _gridValidMin;			// minimum of valid ensemble results
-	int _nMedianIndex = -1;			// index of median of the contour
-	double* _pSDF;					// data of signed distance function
-	double* _pSortedSDF;			// data of signed distance function
-	bool * _pSet;					// set state of the grid point given iso-value
-	bool* _pGridDiverse;			// diversed grid points
-	int *_pSetBandDepth;			// sBandDepth
-	int *_pMemberType;				// type of each member.0:outlier,1-100%,2-50%.
-	int _nOutlierThreshold = 1;		// threshold for outliars
-	int _nDiverseCount = 0;			// count of diverse grids
-	double* _pResampledSDF;			// resampled SDF using kernel density function
-	int _nResampleLen = 63;			// length of resample 2^7
 
-	int _nPCLen=10;					// length of PC
-	double* _arrPC;					// array of PCs
-
-	int _nClusters = 5;			// number of clusters
-	int* _arrLabels;				// labels of each member
-	int* _arrMergeTarget;
-	int* _arrMergeSource;
 
 	QList<UnCertaintyArea*> _listAreaValid;			// list of the uncertainty area of union of valid members
 	QList<UnCertaintyArea*> _listAreaHalf;			// list of the uncertainty area of union of half valid members
-
 	QList<UnCertaintyArea*> _listUnionAreaE;			// list of the uncertainty area of union of E
-	QList<QList<ContourLine>> _listContourSorted;		// list of contours of sorted ensemble members
-	QList<QList<ContourLine>> _listContourSDF;			// list of contours generated form SDF
-	QList<QList<ContourLine>> _listContourSortedSDF;	// list of contours generated form sorted SDF
-	QList<QList<ContourLine>> _listContourResampled;	// list of resampled contours
-	QList<QList<ContourLine>> _listContourSmooth;		// list of smoothed contours
 
 	int _nDetailScale = 100;								// scale of detail texture
 
@@ -78,6 +94,8 @@ public:
 	QList<QList<ContourLine>>& GetContourSorted() { return _listContourSorted; }
 	QList<QList<ContourLine>>& GetContourSortedSDF() { return _listContourSortedSDF; }
 	QList<QList<ContourLine>>& GetContourResampled() { return _listContourResampled; }
+	QList<QList<ContourLine>>& GetContourResampled_C() { return _listContourResampled_C; }
+	QList<QList<ContourLine>>& GetContourDomainResampled() { return _listContourDomainResampled; }
 
 	const double* GetValidMax() { return _gridValidMax; };
 	const double* GetValidMin() { return _gridValidMin; };
@@ -102,7 +120,6 @@ public:
 	void SetClustersLen(int nClustersLen);
 
 private:
-	void sortBuf(const double* pS, double* pD);	// space segmentation
 	void generateContourImp(const QList<ContourLine>& contourMin, const QList<ContourLine>& contourMax, QList<UnCertaintyArea*>& areas);
 
 	double* getSDF(int l) { return _pSDF + l * _nGrids; }
@@ -116,8 +133,8 @@ private:
 	void generateContours();
 	void smoothContours();
 	void buildSortedSDF();
-	void resampleSDF();
 	void resampleContours();
+	void resampleContours_C();				// resample contours for each cluster
 	void calculateSimilarityMatrix();		// calculate similarity matrix of the ensemble members
 	/*
 		calculate similarity between two members;
@@ -184,11 +201,18 @@ private:	// information loss measure
 	// measure distance of one point between original and sampled sdf
 	double measureDis(double x, double y);
 	// get the value of the point in the field
-	double getFieldValue(int nX, int nY, double dbX, double dbY, double* pField);	
+	double getFieldValue(int nX, int nY, double dbX, double dbY, const double* pField);	
 	int _nTestSamples=50;
 	int _arrRandomIndices[50];
-	void generateRandomIndices();
-	void generateUniformIndices();
+	void generateRandomIndices();	
 	void generateCentralIndices();
+	void generateSequentialIndices();
+
+
+	// measure whole information lose using mutual information
+	void measureInfoLoseMI();
+	// get upper property of(x,y) in the nLen signed distance fields
+	double getUpperProperty(double x,double y,const double* pSDF,int nLen,bool bUseIndices=false);
+
 };
 

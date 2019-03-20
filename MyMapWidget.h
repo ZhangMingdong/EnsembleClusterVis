@@ -12,6 +12,7 @@
 
 class MeteLayer;
 class MeteModel;
+class EnsembleLayer;
 class LayerLayout;
 
 
@@ -103,6 +104,7 @@ public slots:
 	void viewShowContourLineSorted(bool on);
 	void viewShowContourLineSortedSDF(bool on);
 	void viewShowContourLineResampled(bool on);
+	void viewShowContourLineDomainResampled(bool on);
 	void viewShowContourLineSDF(bool on);
 	void viewShowContourLineMin(bool on);
 	void viewShowContourLineMax(bool on);
@@ -124,12 +126,25 @@ public slots:
 	void updateMember(int nMember);
 	void updateEnsCluster(int nEnsCluster);
 	void updateEnsClusterLen(int nEnsClusterLen);
-	void updateContourLevel(int nLevel);
 	void onUpdateView();
+
+
+	void onIsoValue0(bool bState);
+	void onIsoValue1(bool bState);
+	void onIsoValue2(bool bState);
+	void onIsoValue3(bool bState);
+	void onIsoValue4(bool bState);
+	void onIsoValue5(bool bState);
+	void onIsoValue6(bool bState);
+	void onIsoValue7(bool bState);
+	void onIsoValue8(bool bState);
+	void onIsoValue9(bool bState);
+
 private:
-	// vector of layers to render
-	std::vector<MeteLayer*> _vecLayers;
-	MeteModel* _pModelE;
+	
+	std::vector<MeteLayer*> _vecLayers;	// vector of layers to render
+	EnsembleLayer* _pEnsLayer;			// ensemble layer
+	MeteModel* _pModelE;				// model
 
 
 

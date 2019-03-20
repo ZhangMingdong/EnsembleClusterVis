@@ -6,6 +6,7 @@
 #pragma once
 
 #include <QGLWidget>
+#include <QObject>
 
 class MeteModel;
 class LayerLayout;
@@ -36,6 +37,7 @@ public:
 		bool _bShowContourLineSDF = false;
 		bool _bShowContourLineSortedSDF = false;
 		bool _bShowContourLineResampled = false;
+		bool _bShowContourLineDomainResampled = false;
 		bool _bShowBeliefEllipse = false;
 	};
 public:

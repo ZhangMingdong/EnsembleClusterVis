@@ -19,8 +19,6 @@
 
 using namespace std;
 
-
-
 MyMapWidget::MyMapWidget(QWidget *parent)
 : MyGLWidget(parent)
 , _bShowGridLines(false)
@@ -60,10 +58,10 @@ MyMapWidget::~MyMapWidget()
 
 void MyMapWidget::init()
 {
-	MeteLayer* pLayer = new EnsembleLayer();
-	pLayer->SetModel(_pModelE);
-	pLayer->InitLayer(_pLayout, _fScaleW, _fScaleH);
-	_vecLayers.push_back(pLayer);
+	_pEnsLayer = new EnsembleLayer();
+	_pEnsLayer->SetModel(_pModelE);
+	_pEnsLayer->InitLayer(_pLayout, _fScaleW, _fScaleH);
+	_vecLayers.push_back(_pEnsLayer);
 
 	/*
 	pLayer = new ClusterLayer();
@@ -72,7 +70,7 @@ void MyMapWidget::init()
 	_vecLayers.push_back(pLayer);
 	*/
 	// create cost line layer
-	pLayer = new CostLineLayer();
+	MeteLayer* pLayer = new CostLineLayer();
 	pLayer->InitLayer(_pLayout, _fScaleW, _fScaleH);
 	_vecLayers.push_back(pLayer);
 
@@ -80,7 +78,6 @@ void MyMapWidget::init()
 	_font.InitFont(wglGetCurrentDC(), L"Arial", 22);
 	MeteLayer::_pCB = this;
 }
-
 
 void MyMapWidget::timerEvent(QTimerEvent* event)
 {
@@ -418,9 +415,14 @@ void MyMapWidget::viewShowContourLineResampled(bool on) {
 	_displayStates._bShowContourLineResampled = on; updateGL();
 };
 
+void MyMapWidget::viewShowContourLineDomainResampled(bool on) {
+	_displayStates._bShowContourLineDomainResampled = on; updateGL();
+};
+
 void MyMapWidget::viewShowContourLineSDF(bool on) {
 	_displayStates._bShowContourLineSDF = on; updateGL();
 };
+
 void MyMapWidget::viewShowContourLineMin(bool on){
 	_displayStates._bShowContourLineMin = on; updateGL();
 };
@@ -432,9 +434,11 @@ void MyMapWidget::viewShowContourLineMax(bool on){
 void MyMapWidget::viewShowContourLineMean(bool on){ 
 	_displayStates._bShowContourLineMean = on; updateGL();
 };
+
 void MyMapWidget::viewShowContourLineMedian(bool on) {
 	_displayStates._bShowContourLineMedian = on; updateGL();
 };
+
 void MyMapWidget::viewShowContourLineOutlier(bool on) {
 	_displayStates._bShowContourLineOutlier = on; updateGL();
 };
@@ -536,7 +540,6 @@ void MyMapWidget::updateEnsCluster(int nEnsCluster) {
 	onTextureReloaded();
 }
 
-
 void MyMapWidget::updateEnsClusterLen(int nEnsClusterLen) {
 	if (_pModelE)
 		_pModelE->SetEnsClusterLen(nEnsClusterLen);
@@ -544,13 +547,20 @@ void MyMapWidget::updateEnsClusterLen(int nEnsClusterLen) {
 }
 
 
-void MyMapWidget::updateContourLevel(int nLevel) {
-	if (_pModelE)
-		_pModelE->SetContourLevel(nLevel);
-	onTextureReloaded();
-}
 
 void MyMapWidget::onUpdateView() {
 	qDebug() << "MyMapWidget::onUpdateView()";
 	updateGL();
 }
+
+void MyMapWidget::onIsoValue0(bool bState) { _pEnsLayer->_arrIsoValueState[0] = bState; updateGL(); };
+void MyMapWidget::onIsoValue1(bool bState) { _pEnsLayer->_arrIsoValueState[1] = bState; updateGL(); };
+void MyMapWidget::onIsoValue2(bool bState) { _pEnsLayer->_arrIsoValueState[2] = bState; updateGL(); };
+void MyMapWidget::onIsoValue3(bool bState) { _pEnsLayer->_arrIsoValueState[3] = bState; updateGL(); };
+void MyMapWidget::onIsoValue4(bool bState) { _pEnsLayer->_arrIsoValueState[4] = bState; updateGL(); };
+void MyMapWidget::onIsoValue5(bool bState) { _pEnsLayer->_arrIsoValueState[5] = bState; updateGL(); };
+void MyMapWidget::onIsoValue6(bool bState) { _pEnsLayer->_arrIsoValueState[6] = bState; updateGL(); };
+void MyMapWidget::onIsoValue7(bool bState) { _pEnsLayer->_arrIsoValueState[7] = bState; updateGL(); };
+void MyMapWidget::onIsoValue8(bool bState) { _pEnsLayer->_arrIsoValueState[8] = bState; updateGL(); };
+void MyMapWidget::onIsoValue9(bool bState) { _pEnsLayer->_arrIsoValueState[9] = bState; updateGL(); };
+

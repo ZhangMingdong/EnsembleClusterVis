@@ -4,6 +4,7 @@
 #include <QDoubleSpinBox>
 #include <QSpinBox>
 #include <QComboBox>
+#include <QCheckBox>
 
 #include <QDebug>
 #include "def.h"
@@ -93,11 +94,22 @@ void DisplayCtrlWidget::createWidgets() {
 	_pSpinBoxEnsClusterLen->setSingleStep(1);
 
 
-	_pSpinBoxContourLevel = new QSpinBox;
-	_pSpinBoxContourLevel->setRange(0, 5);
-	_pSpinBoxContourLevel->setAlignment(Qt::AlignVCenter | Qt::AlignRight);
-	_pSpinBoxContourLevel->setValue(0);
-	_pSpinBoxContourLevel->setSingleStep(1);
+	_pSpinBoxContourLevel0 = new QSpinBox;
+	_pSpinBoxContourLevel0->setRange(0, 5);
+	_pSpinBoxContourLevel0->setAlignment(Qt::AlignVCenter | Qt::AlignRight);
+	_pSpinBoxContourLevel0->setValue(0);
+	_pSpinBoxContourLevel0->setSingleStep(1);
+
+
+	_pSpinBoxContourLevel1 = new QSpinBox;
+	_pSpinBoxContourLevel2 = new QSpinBox;
+	_pSpinBoxContourLevel3 = new QSpinBox;
+	_pSpinBoxContourLevel4 = new QSpinBox;
+	_pSpinBoxContourLevel5 = new QSpinBox;
+	_pSpinBoxContourLevel6 = new QSpinBox;
+	_pSpinBoxContourLevel7 = new QSpinBox;
+	_pSpinBoxContourLevel8 = new QSpinBox;
+	_pSpinBoxContourLevel9 = new QSpinBox;
 
 
 	_pSpinBoxTimeStep = new QSpinBox;
@@ -105,6 +117,18 @@ void DisplayCtrlWidget::createWidgets() {
 	_pSpinBoxTimeStep->setAlignment(Qt::AlignVCenter | Qt::AlignRight);
 	_pSpinBoxTimeStep->setValue(g_nTimeStart);
 	_pSpinBoxTimeStep->setSingleStep(6);
+
+	_pCheckBoxIsoValue0 = new QCheckBox; _pCheckBoxIsoValue0->setChecked(true);
+	_pCheckBoxIsoValue1 = new QCheckBox; _pCheckBoxIsoValue1->setChecked(true);
+	_pCheckBoxIsoValue2 = new QCheckBox; _pCheckBoxIsoValue2->setChecked(true);
+	_pCheckBoxIsoValue3 = new QCheckBox; _pCheckBoxIsoValue3->setChecked(true);
+	_pCheckBoxIsoValue4 = new QCheckBox; _pCheckBoxIsoValue4->setChecked(true);
+	_pCheckBoxIsoValue5 = new QCheckBox; _pCheckBoxIsoValue5->setChecked(true);
+	_pCheckBoxIsoValue6 = new QCheckBox; _pCheckBoxIsoValue6->setChecked(true);
+	_pCheckBoxIsoValue7 = new QCheckBox; _pCheckBoxIsoValue7->setChecked(true);
+	_pCheckBoxIsoValue8 = new QCheckBox; _pCheckBoxIsoValue8->setChecked(true);
+	_pCheckBoxIsoValue9 = new QCheckBox; _pCheckBoxIsoValue9->setChecked(true);
+	
 
 }
 
@@ -120,8 +144,28 @@ void DisplayCtrlWidget::createLayout() {
 	layout->addRow(tr("Member:"), _pSpinBoxMember);
 	layout->addRow(tr("Ens Cluster:"), _pSpinBoxEnsCluster);
 	layout->addRow(tr("Number of Ens Clusters:"), _pSpinBoxEnsClusterLen);
-	layout->addRow(tr("Contour Level:"), _pSpinBoxContourLevel);
+	//layout->addRow(tr("Contour Level:"), _pSpinBoxContourLevel);
 	layout->addRow(tr("Time Step:"), _pSpinBoxTimeStep);
+	layout->addRow(tr("Iso-value 0:"), _pCheckBoxIsoValue0);
+	layout->addRow(tr("Iso-value 1:"), _pCheckBoxIsoValue1);
+	layout->addRow(tr("Iso-value 2:"), _pCheckBoxIsoValue2);
+	layout->addRow(tr("Iso-value 3:"), _pCheckBoxIsoValue3);
+	layout->addRow(tr("Iso-value 4:"), _pCheckBoxIsoValue4);
+	layout->addRow(tr("Iso-value 5:"), _pCheckBoxIsoValue5);
+	layout->addRow(tr("Iso-value 6:"), _pCheckBoxIsoValue6);
+	layout->addRow(tr("Iso-value 7:"), _pCheckBoxIsoValue7);
+	layout->addRow(tr("Iso-value 8:"), _pCheckBoxIsoValue8);
+	layout->addRow(tr("Iso-value 9:"), _pCheckBoxIsoValue9);
+	layout->addRow(tr("Iso-value 0:"), _pSpinBoxContourLevel0);
+	layout->addRow(tr("Iso-value 1:"), _pSpinBoxContourLevel1);
+	layout->addRow(tr("Iso-value 2:"), _pSpinBoxContourLevel2);
+	layout->addRow(tr("Iso-value 3:"), _pSpinBoxContourLevel3);
+	layout->addRow(tr("Iso-value 4:"), _pSpinBoxContourLevel4);
+	layout->addRow(tr("Iso-value 5:"), _pSpinBoxContourLevel5);
+	layout->addRow(tr("Iso-value 6:"), _pSpinBoxContourLevel6);
+	layout->addRow(tr("Iso-value 7:"), _pSpinBoxContourLevel7);
+	layout->addRow(tr("Iso-value 8:"), _pSpinBoxContourLevel8);
+	layout->addRow(tr("Iso-value 9:"), _pSpinBoxContourLevel9);
 	setLayout(layout);
 }
 
@@ -134,8 +178,28 @@ void DisplayCtrlWidget::createConnections() {
 	connect(_pSpinBoxMember, SIGNAL(valueChanged(int)), this, SLOT(updateMember(int)));
 	connect(_pSpinBoxEnsCluster, SIGNAL(valueChanged(int)), this, SLOT(updateEnsCluster(int)));
 	connect(_pSpinBoxEnsClusterLen, SIGNAL(valueChanged(int)), this, SLOT(updateEnsClusterLen(int)));
-	connect(_pSpinBoxContourLevel, SIGNAL(valueChanged(int)), this, SLOT(updateContourLevel(int)));
 	connect(_pSpinBoxTimeStep, SIGNAL(valueChanged(int)), this, SLOT(updateTimeStep(int)));
+	connect(_pSpinBoxContourLevel0, SIGNAL(valueChanged(int)), this, SLOT(updateContourLevel0(int)));
+	connect(_pSpinBoxContourLevel1, SIGNAL(valueChanged(int)), this, SLOT(updateContourLevel1(int)));
+	connect(_pSpinBoxContourLevel2, SIGNAL(valueChanged(int)), this, SLOT(updateContourLevel2(int)));
+	connect(_pSpinBoxContourLevel3, SIGNAL(valueChanged(int)), this, SLOT(updateContourLevel3(int)));
+	connect(_pSpinBoxContourLevel4, SIGNAL(valueChanged(int)), this, SLOT(updateContourLevel4(int)));
+	connect(_pSpinBoxContourLevel5, SIGNAL(valueChanged(int)), this, SLOT(updateContourLevel5(int)));
+	connect(_pSpinBoxContourLevel6, SIGNAL(valueChanged(int)), this, SLOT(updateContourLevel6(int)));
+	connect(_pSpinBoxContourLevel7, SIGNAL(valueChanged(int)), this, SLOT(updateContourLevel7(int)));
+	connect(_pSpinBoxContourLevel8, SIGNAL(valueChanged(int)), this, SLOT(updateContourLevel8(int)));
+	connect(_pSpinBoxContourLevel9, SIGNAL(valueChanged(int)), this, SLOT(updateContourLevel9(int)));
+
+	connect(_pCheckBoxIsoValue0, SIGNAL(clicked(bool)), this, SLOT(onIsoValue0(bool)));
+	connect(_pCheckBoxIsoValue1, SIGNAL(clicked(bool)), this, SLOT(onIsoValue1(bool)));
+	connect(_pCheckBoxIsoValue2, SIGNAL(clicked(bool)), this, SLOT(onIsoValue2(bool)));
+	connect(_pCheckBoxIsoValue3, SIGNAL(clicked(bool)), this, SLOT(onIsoValue3(bool)));
+	connect(_pCheckBoxIsoValue4, SIGNAL(clicked(bool)), this, SLOT(onIsoValue4(bool)));
+	connect(_pCheckBoxIsoValue5, SIGNAL(clicked(bool)), this, SLOT(onIsoValue5(bool)));
+	connect(_pCheckBoxIsoValue6, SIGNAL(clicked(bool)), this, SLOT(onIsoValue6(bool)));
+	connect(_pCheckBoxIsoValue7, SIGNAL(clicked(bool)), this, SLOT(onIsoValue7(bool)));
+	connect(_pCheckBoxIsoValue8, SIGNAL(clicked(bool)), this, SLOT(onIsoValue8(bool)));
+	connect(_pCheckBoxIsoValue9, SIGNAL(clicked(bool)), this, SLOT(onIsoValue9(bool)));
 }
 
 void DisplayCtrlWidget::updateBgFunction(int nBgFunction)
@@ -175,11 +239,30 @@ void DisplayCtrlWidget::updateEnsClusterLen(int nEnsClusterLen) {
 
 	emit EnsClusterLenChanged(nEnsClusterLen);
 }
-void DisplayCtrlWidget::updateContourLevel(int nLevel) {
 
-	emit ContourLevelChanged(nLevel);
-}
 void DisplayCtrlWidget::updateTimeStep(int nTS) {
-
+	qDebug() << "DisplayCtrlWidget::updateTimeStep(int nTS) {";
 	emit TimeStepChanged(nTS);
 }
+void DisplayCtrlWidget::onIsoValue0(bool bState) { emit SelectIsoValue0(bState); };
+void DisplayCtrlWidget::onIsoValue1(bool bState) { emit SelectIsoValue1(bState); };
+void DisplayCtrlWidget::onIsoValue2(bool bState) { emit SelectIsoValue2(bState); };
+void DisplayCtrlWidget::onIsoValue3(bool bState) { emit SelectIsoValue3(bState); };
+void DisplayCtrlWidget::onIsoValue4(bool bState) { emit SelectIsoValue4(bState); };
+void DisplayCtrlWidget::onIsoValue5(bool bState) { emit SelectIsoValue5(bState); };
+void DisplayCtrlWidget::onIsoValue6(bool bState) { emit SelectIsoValue6(bState); };
+void DisplayCtrlWidget::onIsoValue7(bool bState) { emit SelectIsoValue7(bState); };
+void DisplayCtrlWidget::onIsoValue8(bool bState) { emit SelectIsoValue8(bState); };
+void DisplayCtrlWidget::onIsoValue9(bool bState) { emit SelectIsoValue9(bState); };
+
+
+void DisplayCtrlWidget::updateContourLevel0(int nLevel) { emit ContourLevel0Changed(nLevel); }
+void DisplayCtrlWidget::updateContourLevel1(int nLevel) { emit ContourLevel1Changed(nLevel); }
+void DisplayCtrlWidget::updateContourLevel2(int nLevel) { emit ContourLevel2Changed(nLevel); }
+void DisplayCtrlWidget::updateContourLevel3(int nLevel) { emit ContourLevel3Changed(nLevel); }
+void DisplayCtrlWidget::updateContourLevel4(int nLevel) { emit ContourLevel4Changed(nLevel); }
+void DisplayCtrlWidget::updateContourLevel5(int nLevel) { emit ContourLevel5Changed(nLevel); }
+void DisplayCtrlWidget::updateContourLevel6(int nLevel) { emit ContourLevel6Changed(nLevel); }
+void DisplayCtrlWidget::updateContourLevel7(int nLevel) { emit ContourLevel7Changed(nLevel); }
+void DisplayCtrlWidget::updateContourLevel8(int nLevel) { emit ContourLevel8Changed(nLevel); }
+void DisplayCtrlWidget::updateContourLevel9(int nLevel) { emit ContourLevel9Changed(nLevel); }

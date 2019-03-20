@@ -2,12 +2,16 @@
 
 #include <QList>
 #include <QDebug>
+#include <QFile>
+#include <QMessageBox>
 
 #include <math.h>
 #include <vector>
 #include <algorithm>
+#include <Windows.h>
 
 #include "MyPCA.h"
+#include "Switch.h"
 
 DataField::DataField(int w, int h, int l)
 {
@@ -24,6 +28,7 @@ DataField::DataField(int w, int h, int l)
 	_gridUMax = new double[w*h];
 	_gridUMin = new double[w*h];
 	_pSortedBuf = new double[w*h*l];
+	_pResampledBuf = new double[_nGrids*_nResampleLen];
 
 
 
@@ -43,6 +48,8 @@ DataField::~DataField()
 	delete[] _gridUMin;
 	delete[] _pBuf;
 	delete[] _pSortedBuf;
+
+	delete[] _pResampledBuf;
 
 
 	for (size_t i = 0; i < _nSmooth; i++)
@@ -114,40 +121,48 @@ double DataField::GetData(int l, int r, int c) {
 	return _pBuf[l*_nGrids + r* _nWidth + c];
 }
 
-void DataField::sortBuf(const double* pS, double* pD) {
-	for (int i = 0; i < _nGrids; i++) {
-		for (int j = 0; j < _nEnsembleLen; j++) {
-			double dbValue = pS[j*_nGrids + i];
-			int k = 0;
-			while (k < j && pD[k*_nGrids + i] < dbValue) k++;
-			int l = j;
-			while (l > k) {
-				pD[l*_nGrids + i] = pD[(l - 1)*_nGrids + i];
-				l--;
-			}
-			pD[k*_nGrids + i] = dbValue;
-		}
-	}
-}
-
-void DataField::buildSortedBuf() {
-	sortBuf(_pBuf, _pSortedBuf);
+double DataField::GetSortedData(int l, int bias) {
+	return _pSortedBuf[l*_nGrids + bias];
 }
 
 void DataField::DoStatistic() {
-	qDebug() << "DoStatistic:";
-	double dbMin = 1000;
-	double dbMax = -1000;
+	long t0,t1;
+
+	if (g_bDebugDataField) { qDebug() << "DoStatistic:"; }
+	// 0.calculate min and max
+	if (g_bDebugDataField) { qDebug() << "calculate min and max"; t0 = GetTickCount(); }
+	double dbMin = 100000;
+	double dbMax = -100000;
 	for (size_t i = 0; i < _nEnsembleLen*_nGrids; i++)
 	{
 		if (_pBuf[i] > dbMax) dbMax = _pBuf[i];
 		if (_pBuf[i] < dbMin) dbMin = _pBuf[i];
 	}
-	qDebug() << "Min:" << dbMin;
-	qDebug() << "Max:" << dbMax;
+	if (g_bDebugDataField) { 
+		qDebug() << "Min:" << dbMin; 
+		qDebug() << "Max:" << dbMax; 
+		t1 = GetTickCount();
+		qDebug() << "============================TimeSpan:" << t1 - t0;
+		t0 = t1;
+	}
 
-	// 1.build sorted buffer
-	buildSortedBuf();
+	// 1.sort buffer
+	if (g_bDebugDataField) qDebug() << "sort buffer";
+	sortBuf(_pBuf, _pSortedBuf);
+	if (g_bDebugDataField) {
+		t1 = GetTickCount();
+		qDebug() << "============================TimeSpan:" << t1 - t0;
+		t0 = t1;
+	}
+	// 2.resample buffer
+	if (g_bDebugDataField) qDebug() << "resample buffer";
+	if(g_bDomainResampleContours) resampleBuf(_pSortedBuf, _pResampledBuf, _nResampleLen);
+	if (g_bDebugDataField) {
+		t1 = GetTickCount();
+		qDebug() << "============================TimeSpan:" << t1 - t0;
+		t0 = t1;
+	}
+
 	double dbMaxMean = 0;
 	double dbMaxVari = 0;
 	double dbMinMean = 100000;
@@ -156,13 +171,10 @@ void DataField::DoStatistic() {
 	// for each grid point
 	for (int i = 0; i < _nGrids; i++)
 	{
-		std::vector<double> vecData;	// store the data for vv calculation
-
 		// 1.calculate mean
 		double fMean = 0;
 		for (int j = 0; j < _nEnsembleLen; j++)
 		{
-			vecData.push_back(this->GetData(j, i));
 			fMean += this->GetData(j, i);
 		}
 		fMean /= _nEnsembleLen;
@@ -183,71 +195,7 @@ void DataField::DoStatistic() {
 		if (_gridVari[i] > dbMaxVari) dbMaxVari = _gridVari[i];
 		if (_gridVari[i] < dbMinVari) dbMinVari = _gridVari[i];
 
-		// 3.caluclate variance of variance
 
-		// sort the data
-		std::sort(vecData.begin(), vecData.end());
-		// find the largest space
-		const int nQueueLen = 10;
-		double arrMax[nQueueLen];
-		double arrMin[nQueueLen];
-		for (size_t i = 0; i < nQueueLen; i++)
-		{
-			arrMax[i] = 0;
-		}
-		for (size_t i = 0; i < nQueueLen; i++)
-		{
-			arrMin[i] = 100000;
-		}
-		double dbRange = vecData[vecData.size() - 1] - vecData[0];
-		for (size_t i = 1; i < vecData.size(); i++)
-		{
-			double dbSpace = vecData[i] - vecData[i - 1];
-			// max array
-			for (size_t j = 0; j < nQueueLen; j++)
-			{
-				if (dbSpace > arrMax[j]) {
-					for (size_t k = nQueueLen-1; k > j; k--)
-					{
-						arrMax[k] = arrMax[k - 1];
-					}
-					arrMax[j] = dbSpace;
-					break;
-				}
-			}
-			// min array
-			for (size_t j = 0; j < nQueueLen; j++)
-			{
-				if (dbSpace < arrMin[j]) {
-					for (size_t k = nQueueLen - 1; k > j; k--)
-					{
-						arrMin[k] = arrMin[k - 1];
-					}
-					arrMin[j] = dbSpace;
-					break;
-				}
-			}
-		}
-		double dbMax = 0;
-		double dbMin = 0;
-		for (size_t i = 0; i < nQueueLen; i++)
-		{
-			dbMax += arrMax[i];
-			dbMin += arrMin[i];
-		}
-		double vv = dbMax / dbMin/10.0;
-		_gridVV[i] = vv;
-		/*
-		// the codes for calculating variance of variance. old version
-		double dbVV = 0;
-		for (int j = 0; j < _nL; j++)
-		{
-			double fBias = this->GetData(j, i) - fMean;
-			double fBB = fBias*fBias - _gridVari[i] * _gridVari[i];
-			dbVV += fBB*fBB;
-		}
-		_gridVV[i] = sqrt(sqrt(dbVV / _nL));
-		*/
 
 		// 4.calculate max and min
 		if (true)
@@ -273,6 +221,20 @@ void DataField::DoStatistic() {
 	qDebug() << "Mean:(" << dbMinMean << "," << dbMaxMean << ")";
 	qDebug() << "Variance:(" << dbMinVari << "," << dbMaxVari << ")";
 
+	if (g_bDebugDataField) {
+		t1 = GetTickCount();
+		qDebug() << "============================TimeSpan:" << t1 - t0;
+		t0 = t1;
+	}
+	// 5.EOF
+	if (g_bEOF)
+		doEOF();
+
+	if (g_bDebugDataField) {
+		t1 = GetTickCount();
+		qDebug() << "============================TimeSpan:" << t1 - t0;
+		t0 = t1;
+	}
 }
 
 void DataField::GenerateClusteredData(const QList<int> listClusterLens, const int* arrLabels, QList<DataField*>& arrData) {
@@ -374,8 +336,8 @@ void DataField::DoEOF_old() {
 }
 
 
-void DataField::DoEOF() {
-	qDebug() << "DoEOF";
+void DataField::doEOF() {
+	qDebug() << "doEOF";
 	// 1.set parameter
 	int mI = _nEnsembleLen;
 	int mO = g_nEOFLen;
@@ -408,4 +370,30 @@ void DataField::DoEOF() {
 	delete[] arrInput;
 	delete[] arrOutput;
 	delete[] arrFactors;
+}
+
+
+void DataField::ReadDataFromText(QString filename) {
+	QFile file(filename);
+
+	if (!file.open(QIODevice::ReadOnly)) {
+		QMessageBox::information(0, "error", file.errorString());
+	}
+
+	QTextStream in(&file);
+
+	// every ensemble member
+	for (int i = 0; i < _nEnsembleLen; i++)
+	{
+		// skip first line
+		QString line = in.readLine();
+		// every grid
+		for (int j = 0; j < _nGrids; j++)
+		{
+			QString line = in.readLine();
+			SetData(i, j, line.toFloat());
+		}
+	}
+
+	file.close();
 }

@@ -18,6 +18,13 @@ protected:
 
 	int _nEnsembleLen;						// number of ensemble members
 
+protected:
+	void sortBuf(const double* pS, double* pD);	// sort source to target
+
+
+	void resampleBuf(const double* pSortedBuf, double* pResampledBuf, int nResampleLen);	// resample buffer
+	void resampleBuf_C(const double* pUnSortedBuf, const int* pLabels, double* pResampledBuf, int nClusters);	// resample buffer for each clusters
+
 
 public:
 	int GetW() { return _nWidth; }

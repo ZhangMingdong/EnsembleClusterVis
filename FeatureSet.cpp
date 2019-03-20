@@ -41,6 +41,7 @@ int FeatureSet::GetLabel(int l) {
 		return _arrLabels[l];
 	else return 0;
 }
+
 FeatureSet::FeatureSet(DataField* pData, double dbIsoValue, int nWidth, int nHeight, int nEnsembleLen):
 	_pData(pData)
 	,_dbIsoValue(dbIsoValue)
@@ -50,11 +51,18 @@ FeatureSet::FeatureSet(DataField* pData, double dbIsoValue, int nWidth, int nHei
 	_nGrids = nWidth * nHeight;
 	_nEnsembleLen = nEnsembleLen;
 
+
+	// 0.allocate resource
 	_gridHalfMax = new double[_nGrids];
 	_gridHalfMin = new double[_nGrids];
 	_gridValidMax = new double[_nGrids];
 	_gridValidMin = new double[_nGrids];
+
 	_pSDF = new double[_nGrids*_nEnsembleLen];
+	_pSortedSDF = new double[_nGrids*_nEnsembleLen];
+	_pResampledSDF = new double[_nGrids*_nResampleLen];
+	_pResampledSDF_C = new double[_nGrids*_nClusters*_nResampleLen_C];
+
 	_pICDVX = new double[_nGrids*_nEnsembleLen];
 	_pICDVY = new double[_nGrids*_nEnsembleLen];
 	_pICDVW = new double[_nGrids*_nEnsembleLen];
@@ -63,7 +71,6 @@ FeatureSet::FeatureSet(DataField* pData, double dbIsoValue, int nWidth, int nHei
 	_pICDY = new double[_nGrids];
 	_pICDZ = new double[_nGrids];
 	_pICD = new double[((_nWidth - 1)*_nDetailScale + 1)*((_nHeight - 1)*_nDetailScale + 1)];
-	_pSortedSDF = new double[_nGrids*_nEnsembleLen];
 	_pSet = new bool[_nGrids*_nEnsembleLen];
 	_pGridDiverse = new bool[_nGrids];
 	_pSetBandDepth = new int[_nEnsembleLen];
@@ -78,7 +85,6 @@ FeatureSet::FeatureSet(DataField* pData, double dbIsoValue, int nWidth, int nHei
 	}
 	_arrPC = new double[_nEnsembleLen*_nPCLen];
 
-	_pResampledSDF = new double[_nGrids*_nResampleLen];
 
 
 
@@ -96,6 +102,7 @@ FeatureSet::FeatureSet(DataField* pData, double dbIsoValue, int nWidth, int nHei
 
 	// 5.generate all the contours and the bands
 	if(g_bGenerateContours) generateContours();
+
 	if(g_bSmoothContours) smoothContours();
 
 	// 6.calculate signed distance function, according to a given isovalue
@@ -109,13 +116,24 @@ FeatureSet::FeatureSet(DataField* pData, double dbIsoValue, int nWidth, int nHei
 
 	if(g_bResampleContours) resampleContours();
 
-	if (g_bResampleContours && g_bCalculateSDF) {
+	if (g_bDomainResampleContours)
+	{
+		// domain space
+		for (size_t l = 0; l < _nResampleLen; l++)
+		{
+			QList<ContourLine> contour;
+			ContourGenerator::GetInstance()->Generate(_pData->GetResampledData(l), contour, _dbIsoValue, _nWidth, _nHeight);
+			_listContourDomainResampled.push_back(contour);
+		}
+	}
+
+	if (g_bTestInfoLoseMeasure) {
 		for (_nTestSamples=1;_nTestSamples<=_nEnsembleLen;_nTestSamples++)
 		//for (size_t i = 0; i < 10; i++)
 		{
 			_nResampleLen = _nTestSamples;
-			resampleSDF();
-			measureInfoLose();
+			if(g_nTestTarget ==0) resampleBuf(_pSortedSDF, _pResampledSDF, _nResampleLen);
+			g_bMutualInfoLose ? measureInfoLoseMI(): measureInfoLose();
 		}
 	}
 
@@ -143,6 +161,11 @@ FeatureSet::FeatureSet(DataField* pData, double dbIsoValue, int nWidth, int nHei
 	{
 		doPCAClustering();
 		//doClustering();
+
+		if (g_bResampleForClusters)
+		{
+			resampleContours_C();
+		}
 	}
 
 	//calculatePCABox();
@@ -249,6 +272,7 @@ FeatureSet::~FeatureSet()
 	delete[] _pSetBandDepth;
 	delete[] _pMemberType;
 	delete[] _pResampledSDF;
+	delete[] _pResampledSDF_C;
 	delete[] _arrLabels;
 	delete[] _arrMergeTarget;
 	delete[] _arrMergeSource;
@@ -367,87 +391,9 @@ void FeatureSet::buildSortedSDF() {
 	}
 }
 
-const double c_dbK = 1.0 / sqrt(PI2d);
-
-inline double KernelFun(double para) {
-	return c_dbK * exp(-para * para / 2.0);
-}
-
-void resampleBasedOnKDE(double* dbInput, double* dbOutput,int nInputLen,int nOutputLen) {
-
-	static bool bShow = true;
-	double dbMin = dbInput[0] - 5;						// resample min border
-	double dbMax = dbInput[nInputLen - 1] + 5;			// resample max border
-	double dbStep = 0.01;								// resample step
-	int resampleGridLen = (dbMax - dbMin) / dbStep;		// resample grid len
-	double* pDensity = new double[resampleGridLen];		// density field
-
-	// 1.calculate density function
-	double dbAccum = 0.0;								// accumulated density
-	//if(bShow) qDebug() << "Density:";
-	for (size_t i = 0; i < resampleGridLen; i++)
-	{
-		double x = dbMin + dbStep * i;
-		double y = 0;
-		double dbH = .1;
-		for (size_t j = 0; j < nInputLen; j++)
-		{
-			y += KernelFun((x - dbInput[j])/dbH)/dbH;
-		}
-		pDensity[i] = y;
-		//if(bShow) qDebug() << y;
-		dbAccum += y;
-	}
-	double dbCurrentAccum = 0.0;							// current accumulated density
-	double dbDensityStep = dbAccum / (nOutputLen + 1);		// steps for the result density
-	for (size_t i = 0, j = 0; i < resampleGridLen; i++)
-	{
-		double x = dbMin + dbStep * i;
-		dbCurrentAccum += pDensity[i];
-
-
-		//if (bShow) qDebug() << dbCurrentAccum << ",j:" << j << ",accum:" << j * dbDensityStep;
-		if (dbCurrentAccum > (j + 1)*dbDensityStep) {
-			dbOutput[j] = x;
-			//if (bShow) qDebug() << x;
-			j++;
-		}
-		if (j == nOutputLen)
-		{
-			break;
-		}
-	}
-
-
-	bShow = false;
-	delete[] pDensity;
-}
-
-void FeatureSet::resampleSDF() {
-	double* dbSample = new double[_nEnsembleLen];
-	double* dbResample = new double[_nResampleLen];
-
-	// 1.calculate resampled SDF for each grid point
-	for (size_t i = 0; i < _nGrids; i++)
-	{
-		for (size_t l = 0; l < _nEnsembleLen; l++)
-		{
-			dbSample[l] = _pSortedSDF[l*_nGrids + i];
-		}
-		resampleBasedOnKDE(dbSample, dbResample, _nEnsembleLen, _nResampleLen);
-		for (size_t l = 0; l < _nResampleLen; l++)
-		{
-			_pResampledSDF[l*_nGrids + i] = dbResample[l];
-		}
-	}
-
-	delete[] dbSample;
-	delete[] dbResample;
-}
-
 void FeatureSet::resampleContours() {
-	resampleSDF();
-	
+	// 1.Resample buffer
+	resampleBuf(_pSortedSDF, _pResampledSDF, _nResampleLen);	
 
 	// 2.generate contours for each grid point
 	for (size_t l = 0; l < _nResampleLen; l++)
@@ -458,17 +404,18 @@ void FeatureSet::resampleContours() {
 	}
 }
 
-void FeatureSet::sortBuf(const double* pS, double* pD) {
-	for (int i = 0; i < _nGrids; i++) {
-		std::vector<double> vecValues;
-		for (int j = 0; j < _nEnsembleLen; j++) {
-			vecValues.push_back(pS[j*_nGrids + i]);
-		}
-		std::sort(vecValues.begin(), vecValues.end());
-		for (int j = 0; j < _nEnsembleLen; j++) {
-			pD[j*_nGrids + i] = vecValues[j];
-		}
+void FeatureSet::resampleContours_C() {
+	// 1.Resample buffer
+	resampleBuf_C(_pSDF, _arrLabels, _pResampledSDF_C, _nClusters);
+
+	// 2.generate contours for each grid point
+	for (size_t l = 0; l < 55; l++)
+	{
+		QList<ContourLine> contour;
+		ContourGenerator::GetInstance()->Generate(_pResampledSDF_C + l * _nGrids, contour, 0, _nWidth, _nHeight);
+		_listContourResampled_C.push_back(contour);
 	}
+	qDebug() << "resampleContours_C:" << _listContourResampled_C.length();
 }
 
 void FeatureSet::calculateMemberType() {
@@ -1519,9 +1466,8 @@ void FeatureSet::generateRandomIndices() {
 		arrIndices[nIndex] = arrIndices[l - 1];
 	}
 }
-
-void FeatureSet::generateUniformIndices() {
-	
+void FeatureSet::generateSequentialIndices() {
+	for (int i = 0; i < 50; i++) _arrRandomIndices[i] = i;
 }
 
 void FeatureSet::generateCentralIndices() {
@@ -1535,9 +1481,20 @@ void FeatureSet::generateCentralIndices() {
 void FeatureSet::measureInfoLose() {
 	srand(time(NULL));
 	// generate indices list
-	//generateRandomIndices();
-	generateCentralIndices();
-	//generateUniformIndices();
+	switch (g_nTestTarget)
+	{
+	case 1:
+		generateRandomIndices();
+		break;
+	case 2:
+		generateCentralIndices();
+		break;
+	case 3:
+		generateSequentialIndices();
+		break;
+	default:
+		break;
+	}
 
 	int nMK = 5000000;
 	double dbLose = 0;
@@ -1552,34 +1509,48 @@ void FeatureSet::measureInfoLose() {
 }
 
 double FeatureSet::measureDis(double x, double y) {
-	int nCountO = 0;	// count upper in original
-	int nCountS = 0;	// count upper in sampled
-	int nX = x;
-	int nY = y;
-	double dbX = x - nX;
-	double dbY = y - nY;
 
-	//qDebug() << nX << nY << dbX << dbY;
+	double dbPO = getUpperProperty(x, y, _pSDF, _nEnsembleLen);
+	double dbPS;
 
-	for (size_t l = 0; l < _nEnsembleLen; l++)
+	switch (g_nTestTarget)
 	{
-		if (getFieldValue(nX, nY, dbX, dbY, _pSDF + l * _nGrids) > 0) nCountO++;
+	case 0:
+		dbPS=getUpperProperty(x, y, _pResampledSDF, _nTestSamples);
+		break;
+	case 1:
+		dbPS = getUpperProperty(x, y, _pSDF, _nTestSamples, true);
+		break;
+	case 2:
+		dbPS = getUpperProperty(x, y, _pSortedSDF, _nTestSamples, true);
+		break;
+	case 3:
+		dbPS = getUpperProperty(x, y, _pSortedSDF, _nTestSamples, true);
+		break;
+	default:
+		break;
 	}
-	double dbPO = nCountO / (double)_nEnsembleLen;
-	
-	// random choose according sample numbers
-	for (size_t l = 0; l < _nTestSamples; l += 1)
-	{
-		//if (getFieldValue(nX, nY, dbX, dbY, _pSortedSDF + _arrRandomIndices[l] * _nGrids) > 0) nCountS++;
-		if (getFieldValue(nX, nY, dbX, dbY, _pResampledSDF + l * _nGrids) > 0) nCountS++;
-	}
-	double dbPS = nCountS / (double)_nTestSamples;
 
 	//qDebug() << dbPO << dbPS << abs(dbPO - dbPS);
 	return abs(dbPO - dbPS);
 }
 
-double FeatureSet::getFieldValue(int nX, int nY, double dbX, double dbY, double* pField) {
+double FeatureSet::getUpperProperty(double x, double y, const double* pSDF, int nLen, bool bUseIndices) {
+	int nX = x;
+	int nY = y;
+	double dbX = x - nX;
+	double dbY = y - nY;
+
+	int nCount = 0;
+
+	for (size_t l = 0; l < nLen; l++)
+	{
+		if (getFieldValue(nX, nY, dbX, dbY, pSDF + (bUseIndices? _arrRandomIndices[l] :l) * _nGrids) > 0) nCount++;
+	}
+	return nCount / (double)nLen;
+}
+
+double FeatureSet::getFieldValue(int nX, int nY, double dbX, double dbY, const double* pField) {
 	double dbV00 = pField[nY*_nWidth + nX];
 	double dbV01 = pField[(nY+1)*_nWidth + nX];
 	double dbV10 = pField[nY*_nWidth + nX+1];
@@ -1593,6 +1564,70 @@ double FeatureSet::getFieldValue(int nX, int nY, double dbX, double dbY, double*
 		+ (1 - dbX) * (1 - dbY)*dbV11;
 }
 
+
+void FeatureSet::measureInfoLoseMI() {
+	srand(time(NULL));
+	// generate indices list
+	generateRandomIndices();
+	//generateCentralIndices();
+	//generateUniformIndices();
+
+
+
+	const int nBin = 128;
+	int arrBin[nBin][nBin];
+	int arrBinX[nBin];
+	int arrBinY[nBin];
+
+	for (size_t i = 0; i < nBin; i++) {
+		arrBinX[i] = 0;
+		arrBinY[i] = 0;
+		for (size_t j = 0; j < nBin; j++) arrBin[i][j] = 0;
+	}
+
+	// calculate bin
+	int nMK = 5000000;
+	for (size_t i = 0; i < nMK; i++)
+	{
+		double x = 1.0 * rand() / RAND_MAX * _nWidth;
+		double y = 1.0 * rand() / RAND_MAX * _nHeight;
+		double dbPO = getUpperProperty(x, y, _pSDF, _nEnsembleLen);
+		double dbPS = getUpperProperty(x, y, _pSDF, _nTestSamples, g_nTestTarget ==0);
+		int nX = dbPO * 100;
+		int nY = dbPS * 100;
+		if (nX == 100) nX--;
+		if (nY == 100) nY--;
+		arrBin[nX][nY]++;
+		arrBinX[nX]++;
+		arrBinY[nY]++;
+	}
+
+	// calculate mutual information
+	double dbHx = 0;
+	double dbHy = 0;
+	double dbHxy = 0;
+	for (size_t i = 0; i < nBin; i++)
+	{
+		if (arrBinX[i]) {
+			double dbPx = arrBinX[i] / (double)nMK;
+			dbHx += dbPx * log(dbPx);
+		}
+		if (arrBinY[i]) {
+			double dbPy = arrBinY[i] / (double)nMK;
+			dbHy += dbPy * log(dbPy);
+		}
+		for (size_t j = 0; j < nBin; j++)
+		{
+			if (arrBin[i][j]) {
+				double dbPxy = arrBin[i][j] / (double)nMK;
+				dbHxy += dbPxy * log(dbPxy);
+			}
+		}
+	}
+	double dbLose = -(dbHx + dbHy - dbHxy);
+
+	qDebug() << "Samples: " << _nTestSamples << "measureInfoLose: " << dbLose;
+}
 
 
 

@@ -13,8 +13,7 @@
 
 class UnCertaintyArea;
 
-class EnsembleLayer :
-	public MeteLayer
+class EnsembleLayer : public MeteLayer
 {
 public:
 	EnsembleLayer();
@@ -61,8 +60,10 @@ private:
 	void drawContourLineSorted();
 	void drawContourLineSortedSDF();
 	void drawContourLineResampled();
+	void drawContourLineDomainResampled();
 	void drawContourLineSDF();
-
 	void drawBand();
+public:
+	bool _arrIsoValueState[10] = { true,true,true,true,true,true,true,true,true,true };		// states of each isovalue
 };
 

@@ -29,8 +29,21 @@ int g_nBiasY=0;
 int g_nBiasD=0;
 
 
-int g_nTimeStart = 126;			// start of time steps
-int g_nTimeEnd = 126;				// end of time steps
+//int g_nTimeStart = 126;			// start of time steps
+//int g_nTimeEnd = 126;				// end of time steps
+
+//int g_nTimeStart = 192;			// start of time steps
+//int g_nTimeEnd = 192;				// end of time steps
+
+//int g_nTimeStart = 108;			// start of time steps
+//int g_nTimeEnd = 156;				// end of time steps
+
+//int g_nTimeStart = 360;			// start of time steps
+//int g_nTimeEnd = 360;				// end of time steps
+
+
+int g_nTimeStart = 150;			// start of time steps
+int g_nTimeEnd = 150;				// end of time steps
 
 int main(int argc, char *argv[])
 {
@@ -67,6 +80,12 @@ int main(int argc, char *argv[])
 
 //	const char* strConfigFileName = "../../data/config/h500-d20180601.ini";				// h500
 	const char* strConfigFileName = "../../data/config/h500-d20190101.ini";				// h500
+//	const char* strConfigFileName = "../../data/config/h500-d20061001-mb0-50-full.ini";				// h500
+//	const char* strConfigFileName = "../../data/config/h500-d20190101-full.ini";				// h500
+
+
+//	const char* strConfigFileName = "../../data/config/t2-d20160105.ini";
+
 	// read config file
 	INIReader reader(strConfigFileName);
 

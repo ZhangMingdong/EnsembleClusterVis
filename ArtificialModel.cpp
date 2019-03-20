@@ -293,18 +293,15 @@ void ArtificialModel::initializeModel() {
 	SetIsoValues(listIsoValue);
 
 
-	generateDataFromContour();
+	//generateDataFromContour();
 	//generateDataFromField();
 	//generateDataFromField_2();
-	//generateDataFromField_3();
+	generateDataFromField_3();
 	//generateDataFromField_4();
 
 
 	// 3.statistic
 	_pTimeStep->_pData->DoStatistic();
-	// EOF
-	if (g_bEOF)
-		_pTimeStep->_pData->DoEOF();
 
 	// 4.generate feature;
 	for each (double isoValue in _listIsoValues)

@@ -38,6 +38,7 @@ const QString ShowContourLine("ShowContourLine");
 const QString ShowContourLineSorted("ShowContourLineSorted");
 const QString ShowContourLineSortedSDF("ShowContourLineSortedSDF");
 const QString ShowContourLineResampled("ShowContourLineResampled");
+const QString ShowContourLineDomainResampled("ShowContourLineDomainResampled");
 const QString ShowContourLineSDF("ShowContourLineSDF");
 const QString ShowContourLineMin("ShowContourLineMin");
 const QString ShowContourLineMax("ShowContourLineMax");
@@ -63,7 +64,6 @@ MainWindow::MainWindow()
 
 	createSceneAndView();
 	createActions();
-
 	createDockWidgets();
 	createConnections();
 	populateMenusAndToolBars();
@@ -81,6 +81,7 @@ MainWindow::MainWindow()
 	viewShowContourLineSortedAction->setChecked(settings.value(ShowContourLineSorted, true).toBool());
 	viewShowContourLineSortedSDFAction->setChecked(settings.value(ShowContourLineSortedSDF, true).toBool());
 	viewShowContourLineResampledAction->setChecked(settings.value(ShowContourLineResampled, true).toBool());
+	viewShowContourLineDomainResampledAction->setChecked(settings.value(ShowContourLineDomainResampled, true).toBool());
 	viewShowContourLineSDFAction->setChecked(settings.value(ShowContourLineSDF, true).toBool());
 	viewShowContourLineMinAction->setChecked(settings.value(ShowContourLineMin, true).toBool());
 	viewShowContourLineMaxAction->setChecked(settings.value(ShowContourLineMax, true).toBool());
@@ -100,6 +101,7 @@ void MainWindow::createSceneAndView(){
 	_view3D = new MyMapWidget;
 	_view3D->SetModelE(_pModel);
 
+	/*
 	if (g_bChart) {
 		QSplitter* splitter = new QSplitter();
 		splitter->setOrientation(Qt::Vertical);
@@ -112,10 +114,11 @@ void MainWindow::createSceneAndView(){
 		setCentralWidget(splitter);
 
 	}
-	else {
+	else 
+	*/
+	{
 		setCentralWidget(_view3D);
 	}
-
 
 	//
 }
@@ -128,13 +131,28 @@ void MainWindow::createDockWidgets() {
 
 	_pDisplayCtrlWidget = new DisplayCtrlWidget();
 
+	QSplitter* splitter = new QSplitter();
+	splitter->setOrientation(Qt::Vertical);
+	splitter->addWidget(_pDisplayCtrlWidget);
 
+	_viewChart = new MyChartWidget;
+	_viewChart->SetModelE(_pModel);
+	splitter->addWidget(_viewChart);
+
+
+	QDockWidget *controlDockWidget = new QDockWidget(
+		tr("Control"), this);
+	controlDockWidget->setFeatures(features);
+	controlDockWidget->setWidget(splitter);
+	addDockWidget(Qt::RightDockWidgetArea, controlDockWidget);
+
+	/*
 	QDockWidget *controlDockWidget = new QDockWidget(
 		tr("Control"), this);
 	controlDockWidget->setFeatures(features);
 	controlDockWidget->setWidget(_pDisplayCtrlWidget);
 	addDockWidget(Qt::RightDockWidgetArea, controlDockWidget);
-
+	*/
 
 	/*
 	ClusteringWidget* _pWidgetClustering = new ClusteringWidget();
@@ -216,6 +234,7 @@ void MainWindow::populateMenusAndToolBars()
 		<< viewShowContourLineSDFAction
 		<< viewShowContourLineSortedSDFAction
 		<< viewShowContourLineResampledAction
+		<< viewShowContourLineDomainResampledAction
 		<< viewShowContourLineMinAction
 		<< viewShowContourLineMaxAction
 		<< viewShowContourLineMeanAction
@@ -313,6 +332,10 @@ void MainWindow::createActions()
 	viewShowContourLineResampledAction->setIcon(QIcon(":/images/e.png"));
 	viewShowContourLineResampledAction->setCheckable(true);
 
+	viewShowContourLineDomainResampledAction = new QAction(tr("Show Domain Resampled Contours"), this);
+	viewShowContourLineDomainResampledAction->setIcon(QIcon(":/images/e.png"));
+	viewShowContourLineDomainResampledAction->setCheckable(true);
+
 	viewShowContourLineMinAction = new QAction(tr("Show Contour of Min"), this);
 	viewShowContourLineMinAction->setIcon(QIcon(":/images/min.png"));
 	viewShowContourLineMinAction->setCheckable(true);
@@ -358,6 +381,7 @@ void MainWindow::createConnections(){
 	connect(viewShowContourLineSortedAction, SIGNAL(toggled(bool)), _view3D, SLOT(viewShowContourLineSorted(bool)));
 	connect(viewShowContourLineSortedSDFAction, SIGNAL(toggled(bool)), _view3D, SLOT(viewShowContourLineSortedSDF(bool)));
 	connect(viewShowContourLineResampledAction, SIGNAL(toggled(bool)), _view3D, SLOT(viewShowContourLineResampled(bool)));
+	connect(viewShowContourLineDomainResampledAction, SIGNAL(toggled(bool)), _view3D, SLOT(viewShowContourLineDomainResampled(bool)));
 	connect(viewShowContourLineSDFAction, SIGNAL(toggled(bool)), _view3D, SLOT(viewShowContourLineSDF(bool)));
 	connect(viewShowContourLineMinAction, SIGNAL(toggled(bool)), _view3D, SLOT(viewShowContourLineMin(bool)));
 	connect(viewShowContourLineMaxAction, SIGNAL(toggled(bool)), _view3D, SLOT(viewShowContourLineMax(bool)));
@@ -378,6 +402,30 @@ void MainWindow::createConnections(){
 	connect(_pDisplayCtrlWidget, SIGNAL(ContourLevelChanged(int)), _view3D, SLOT(updateContourLevel(int)));
 	connect(_pDisplayCtrlWidget, SIGNAL(TimeStepChanged(int)), _pModel, SLOT(updateTimeStep(int)));
 	connect(_pModel, SIGNAL(UpdateView()), _view3D, SLOT(onUpdateView()));
+
+
+	connect(_pDisplayCtrlWidget, SIGNAL(SelectIsoValue0(bool)), _view3D, SLOT(onIsoValue0(bool)));
+	connect(_pDisplayCtrlWidget, SIGNAL(SelectIsoValue1(bool)), _view3D, SLOT(onIsoValue1(bool)));
+	connect(_pDisplayCtrlWidget, SIGNAL(SelectIsoValue2(bool)), _view3D, SLOT(onIsoValue2(bool)));
+	connect(_pDisplayCtrlWidget, SIGNAL(SelectIsoValue3(bool)), _view3D, SLOT(onIsoValue3(bool)));
+	connect(_pDisplayCtrlWidget, SIGNAL(SelectIsoValue4(bool)), _view3D, SLOT(onIsoValue4(bool)));
+	connect(_pDisplayCtrlWidget, SIGNAL(SelectIsoValue5(bool)), _view3D, SLOT(onIsoValue5(bool)));
+	connect(_pDisplayCtrlWidget, SIGNAL(SelectIsoValue6(bool)), _view3D, SLOT(onIsoValue6(bool)));
+	connect(_pDisplayCtrlWidget, SIGNAL(SelectIsoValue7(bool)), _view3D, SLOT(onIsoValue7(bool)));
+	connect(_pDisplayCtrlWidget, SIGNAL(SelectIsoValue8(bool)), _view3D, SLOT(onIsoValue8(bool)));
+	connect(_pDisplayCtrlWidget, SIGNAL(SelectIsoValue9(bool)), _view3D, SLOT(onIsoValue9(bool)));
+
+
+	connect(_pDisplayCtrlWidget, SIGNAL(ContourLevel0Changed(int)), _pModel, SLOT(updateContourLevel0(int)));
+	connect(_pDisplayCtrlWidget, SIGNAL(ContourLevel1Changed(int)), _pModel, SLOT(updateContourLevel1(int)));
+	connect(_pDisplayCtrlWidget, SIGNAL(ContourLevel2Changed(int)), _pModel, SLOT(updateContourLevel2(int)));
+	connect(_pDisplayCtrlWidget, SIGNAL(ContourLevel3Changed(int)), _pModel, SLOT(updateContourLevel3(int)));
+	connect(_pDisplayCtrlWidget, SIGNAL(ContourLevel4Changed(int)), _pModel, SLOT(updateContourLevel4(int)));
+	connect(_pDisplayCtrlWidget, SIGNAL(ContourLevel5Changed(int)), _pModel, SLOT(updateContourLevel5(int)));
+	connect(_pDisplayCtrlWidget, SIGNAL(ContourLevel6Changed(int)), _pModel, SLOT(updateContourLevel6(int)));
+	connect(_pDisplayCtrlWidget, SIGNAL(ContourLevel7Changed(int)), _pModel, SLOT(updateContourLevel7(int)));
+	connect(_pDisplayCtrlWidget, SIGNAL(ContourLevel8Changed(int)), _pModel, SLOT(updateContourLevel8(int)));
+	connect(_pDisplayCtrlWidget, SIGNAL(ContourLevel9Changed(int)), _pModel, SLOT(updateContourLevel9(int)));
 
 
 }
@@ -405,6 +453,7 @@ void MainWindow::closeEvent(QCloseEvent *event)
 		settings.setValue(ShowContourLineSorted, viewShowContourLineSortedAction->isChecked());
 		settings.setValue(ShowContourLineSortedSDF, viewShowContourLineSortedSDFAction->isChecked());
 		settings.setValue(ShowContourLineResampled, viewShowContourLineResampledAction->isChecked());
+		settings.setValue(ShowContourLineDomainResampled, viewShowContourLineDomainResampledAction->isChecked());
 		settings.setValue(ShowContourLineMean, viewShowContourLineMeanAction->isChecked());
 		settings.setValue(ShowContourLineMedian, viewShowContourLineMedianAction->isChecked());
 		settings.setValue(ShowContourLineOutlier, viewShowContourLineOutlierAction->isChecked());

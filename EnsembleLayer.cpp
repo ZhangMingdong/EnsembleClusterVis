@@ -10,6 +10,8 @@
 
 #include <QDebug>
 
+#include "Switch.h"
+
 
 // for tess
 
@@ -103,7 +105,7 @@ EnsembleLayer::~EnsembleLayer()
 	
 }
 
-void SetColor(int nIndex,double dbValue,double dbOpacity=.8) {
+void SetColor(int nIndex,double dbValue,double dbOpacity=1.0) {
 	bool bCategorical = true;
 	if (bCategorical) {
 		glColor4f(ColorMap::GetCategory10D(nIndex, 0)
@@ -210,6 +212,8 @@ void EnsembleLayer::draw(DisplayStates states){
 		drawContourLineSortedSDF();
 	if (states._bShowContourLineResampled)
 		drawContourLineResampled();
+	if (states._bShowContourLineDomainResampled)
+		drawContourLineDomainResampled();
 	if (states._bShowContourLineSDF)
 		drawContourLineSDF();
 
@@ -220,28 +224,30 @@ void EnsembleLayer::drawBand() {
 	int nIsoValues = listIsoValue.length();
 	for (size_t i = 0; i < nIsoValues; i++)
 	{
-		int nBias = i * 9;
-		bool bContourBoxplot = true;
-		if (bContourBoxplot) {
-			SetColor(i, listIsoValue[i], .3);
-			glCallList(_gllist + nBias + 4);
-			glCallList(_gllist + nBias + 7);
-		}
-		else {
-			double fTransparency = .2;
-			// render each area
-			if (g_bShowUncertaintyOnly) {
-
-				glColor4f(0, 1, 0, .5);
-				glCallList(_gllist + nBias + 1);
+		if (_arrIsoValueState[i])
+		{
+			int nBias = i * 9;
+			bool bContourBoxplot = true;
+			if (bContourBoxplot) {
+				SetColor(i, listIsoValue[i], .3);
+				glCallList(_gllist + nBias + 4);
+				glCallList(_gllist + nBias + 7);
 			}
-			else
-				for (size_t j = 0; j < 3; j++)
-				{
-					glColor4f(ColorMap::GetRGB(j, 0), ColorMap::GetRGB(j, 1), ColorMap::GetRGB(j, 2), fTransparency);
-					glCallList(_gllist + nBias + j);
-				}
+			else {
+				double fTransparency = .2;
+				// render each area
+				if (g_bShowUncertaintyOnly) {
 
+					glColor4f(0, 1, 0, .5);
+					glCallList(_gllist + nBias + 1);
+				}
+				else
+					for (size_t j = 0; j < 3; j++)
+					{
+						glColor4f(ColorMap::GetRGB(j, 0), ColorMap::GetRGB(j, 1), ColorMap::GetRGB(j, 2), fTransparency);
+						glCallList(_gllist + nBias + j);
+					}
+			}
 		}
 	}
 }
@@ -252,19 +258,23 @@ void EnsembleLayer::drawContourLineOutlier()
 	int nIsoValues = listIsoValue.length();
 	for (size_t isoIndex = 0; isoIndex < nIsoValues; isoIndex++)
 	{
-		SetColor(isoIndex, listIsoValue[isoIndex]);
-		//glColor4f(0.0, 0.0, 1.0, 1.0);
-		glPushAttrib(GL_ENABLE_BIT);
-
-		glLineStipple(1, 0xAAAA);
-		glEnable(GL_LINE_STIPPLE);
-
-		QList<QList<ContourLine>> outliers = _pModel->GetContourOutlier(isoIndex);
-		for each (QList<ContourLine> line in outliers)
+		if (_arrIsoValueState[isoIndex])
 		{
-			drawContourLine(line);
+
+			SetColor(isoIndex, listIsoValue[isoIndex]);
+			//glColor4f(0.0, 0.0, 1.0, 1.0);
+			glPushAttrib(GL_ENABLE_BIT);
+
+			glLineStipple(1, 0xAAAA);
+			glEnable(GL_LINE_STIPPLE);
+
+			QList<QList<ContourLine>> outliers = _pModel->GetContourOutlier(isoIndex);
+			for each (QList<ContourLine> line in outliers)
+			{
+				drawContourLine(line);
+			}
+			glPopAttrib();
 		}
-		glPopAttrib();
 	}
 }
 
@@ -273,8 +283,11 @@ void EnsembleLayer::drawContourLineMin(){
 	int nIsoValues = listIsoValue.length();
 	for (size_t isoIndex = 0; isoIndex < nIsoValues; isoIndex++)
 	{
-		glColor4f(1, 1, 0.0, 1.0);
-		drawContourLine(_pModel->GetContourMin(isoIndex));
+		if (_arrIsoValueState[isoIndex])
+		{
+			glColor4f(1, 1, 0.0, 1.0);
+			drawContourLine(_pModel->GetContourMin(isoIndex));
+		}
 	}
 }
 
@@ -283,8 +296,11 @@ void EnsembleLayer::drawContourLineMax(){
 	int nIsoValues = listIsoValue.length();
 	for (size_t isoIndex = 0; isoIndex < nIsoValues; isoIndex++)
 	{
-		glColor4f(0.0, 1.0, 1.0, 1.0);
-		drawContourLine(_pModel->GetContourMax(isoIndex));
+		if (_arrIsoValueState[isoIndex])
+		{
+			glColor4f(0.0, 1.0, 1.0, 1.0);
+			drawContourLine(_pModel->GetContourMax(isoIndex));
+		}
 	}
 }
 
@@ -293,8 +309,11 @@ void EnsembleLayer::drawContourLineMean(){
 	int nIsoValues = listIsoValue.length();
 	for (size_t isoIndex = 0; isoIndex < nIsoValues; isoIndex++)
 	{
-		glColor4f(0.0, 1.0, 1.0, 1.0);
-		drawContourLine(_pModel->GetContourMean(isoIndex));
+		if (_arrIsoValueState[isoIndex])
+		{
+			glColor4f(0.0, 1.0, 1.0, 1.0);
+			drawContourLine(_pModel->GetContourMean(isoIndex));
+		}
 	}
 }
 
@@ -303,8 +322,11 @@ void EnsembleLayer::drawContourLineMedian(){
 	int nIsoValues = listIsoValue.length();
 	for (size_t isoIndex = 0; isoIndex < nIsoValues; isoIndex++)
 	{
-		glColor4f(1.0, 1.0, 0.0, 1.0);
-		drawContourLine(_pModel->GetContourMedian(isoIndex));
+		if (_arrIsoValueState[isoIndex])
+		{
+			glColor4f(1.0, 1.0, 0.0, 1.0);
+			drawContourLine(_pModel->GetContourMedian(isoIndex));
+		}
 	}
 }
 
@@ -313,27 +335,28 @@ void EnsembleLayer::drawContourLine(){
 	int nIsoValues = listIsoValue.length();
 	for (size_t isoIndex = 0; isoIndex < nIsoValues; isoIndex++)
 	{
-		// original
-		if(true)
+		if (_arrIsoValueState[isoIndex])
 		{
-			QList<QList<ContourLine>> contours = _pModel->GetContour(isoIndex);
-			SetColor(isoIndex, listIsoValue[isoIndex]);
-			for (int i = 0; i < contours.size(); i++)
+			// original
+			if (true)
 			{
-				if(nIsoValues==1)
-					SetColor(_pModel->GetLabel(i), listIsoValue[isoIndex]);
-				drawContourLine(contours[i]);
+				QList<QList<ContourLine>> contours = _pModel->GetContour(isoIndex);
+				SetColor(isoIndex, listIsoValue[isoIndex]);
+				for (int i = 0; i < contours.size(); i++)
+				{
+					if (nIsoValues == 1)
+						SetColor(_pModel->GetLabel(i), listIsoValue[isoIndex]);
+					drawContourLine(contours[i]);
+				}
 			}
-		}
-
-		// smooth
-		if(false)
-		{
-			QList<QList<ContourLine>> contours = _pModel->GetContourSmooth(isoIndex);
-			SetColor(isoIndex+1, listIsoValue[isoIndex]);
-			for (int i = 0; i < contours.size(); i++)
+			else // smooth
 			{
-				drawContourLine(contours[i]);
+				QList<QList<ContourLine>> contours = _pModel->GetContourSmooth(isoIndex);
+				SetColor(isoIndex + 1, listIsoValue[isoIndex]);
+				for (int i = 0; i < contours.size(); i++)
+				{
+					drawContourLine(contours[i]);
+				}
 			}
 		}
 	}
@@ -344,11 +367,15 @@ void EnsembleLayer::drawContourLineSorted(){
 	int nIsoValues = listIsoValue.length();
 	for (size_t isoIndex = 0; isoIndex < nIsoValues; isoIndex++)
 	{
-		SetColor(isoIndex, listIsoValue[isoIndex]);
-		QList<QList<ContourLine>> contours = _pModel->GetContourSorted(isoIndex);
-		for (int i = 0; i < contours.size(); i++)
+
+		if (_arrIsoValueState[isoIndex])
 		{
-			drawContourLine(contours[i]);
+			SetColor(isoIndex, listIsoValue[isoIndex]);
+			QList<QList<ContourLine>> contours = _pModel->GetContourSorted(isoIndex);
+			for (int i = 0; i < contours.size(); i++)
+			{
+				drawContourLine(contours[i]);
+			}
 		}
 	}
 }
@@ -358,25 +385,78 @@ void EnsembleLayer::drawContourLineSortedSDF(){
 	int nIsoValues = listIsoValue.length();
 	for (size_t isoIndex = 0; isoIndex < nIsoValues; isoIndex++)
 	{
-		SetColor(isoIndex, listIsoValue[isoIndex]);
-		QList<QList<ContourLine>> contours = _pModel->GetContourSortedSDF(isoIndex);
-		for (int i = 0; i < contours.size(); i++)
+		if (_arrIsoValueState[isoIndex])
 		{
-			drawContourLine(contours[i]);
+			SetColor(isoIndex, listIsoValue[isoIndex]);
+			QList<QList<ContourLine>> contours = _pModel->GetContourSortedSDF(isoIndex);
+			for (int i = 0; i < contours.size(); i++)
+			{
+				drawContourLine(contours[i]);
+			}
 		}
 	}
 }
 
 void EnsembleLayer::drawContourLineResampled(){
+	if (g_bResampleForClusters)
+	{
+		QList<double> listIsoValue = _pModel->GetIsoValues();
+		int nIsoValues = listIsoValue.length();
+		if (nIsoValues!=1)
+		{
+			qDebug() << "EnsembleLayer::drawContourLineResampled, error";
+			return;
+		}
+
+		QList<QList<ContourLine>> contours = _pModel->GetContourResampled_C();
+
+
+
+		int nEnsCluster = _pModel->GetEnsCluster();
+		int nContourForEach = _pModel->GetContourLevel() + 1;
+		for (int i = 0; i < contours.size(); i++)
+		{
+			int nLabel = i / nContourForEach;
+			if (nEnsCluster ==0 || nEnsCluster ==nLabel+1)
+			{
+				SetColor(nLabel, 0);
+				drawContourLine(contours[i]);
+
+			}
+		}
+	}
+	else {
+		QList<double> listIsoValue = _pModel->GetIsoValues();
+		int nIsoValues = listIsoValue.length();
+		for (size_t isoIndex = 0; isoIndex < nIsoValues; isoIndex++)
+		{
+			if (_arrIsoValueState[isoIndex])
+			{
+				SetColor(isoIndex, listIsoValue[isoIndex]);
+				QList<QList<ContourLine>> contours = _pModel->GetContourResampled(isoIndex);
+				for (int i = 0; i < contours.size(); i++)
+				{
+					drawContourLine(contours[i]);
+				}
+			}
+		}
+	}
+}
+
+void EnsembleLayer::drawContourLineDomainResampled() {
 	QList<double> listIsoValue = _pModel->GetIsoValues();
 	int nIsoValues = listIsoValue.length();
 	for (size_t isoIndex = 0; isoIndex < nIsoValues; isoIndex++)
 	{
-		SetColor(isoIndex, listIsoValue[isoIndex]);
-		QList<QList<ContourLine>> contours = _pModel->GetContourResampled(isoIndex);
-		for (int i = 0; i < contours.size(); i++)
+
+		if (_arrIsoValueState[isoIndex])
 		{
-			drawContourLine(contours[i]);
+			SetColor(isoIndex, listIsoValue[isoIndex]);
+			QList<QList<ContourLine>> contours = _pModel->GetContourDomainResampled(isoIndex);
+			for (int i = 0; i < contours.size(); i++)
+			{
+				drawContourLine(contours[i]);
+			}
 		}
 	}
 }
@@ -386,11 +466,14 @@ void EnsembleLayer::drawContourLineSDF(){
 	int nIsoValues = listIsoValue.length();
 	for (size_t isoIndex = 0; isoIndex < nIsoValues; isoIndex++)
 	{
-		SetColor(isoIndex, listIsoValue[isoIndex]);
-		QList<QList<ContourLine>> contours = _pModel->GetContourSDF(isoIndex);
-		for (int i = 0; i < contours.size(); i++)
+		if (_arrIsoValueState[isoIndex])
 		{
-			drawContourLine(contours[i]);
+			SetColor(isoIndex, listIsoValue[isoIndex]);
+			QList<QList<ContourLine>> contours = _pModel->GetContourSDF(isoIndex);
+			for (int i = 0; i < contours.size(); i++)
+			{
+				drawContourLine(contours[i]);
+			}
 		}
 	}
 }
