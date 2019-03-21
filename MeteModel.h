@@ -113,9 +113,9 @@ public:
 	virtual QList<QList<ContourLine>> GetContourDomainResampled(int isoIndex = 0);
 	virtual QList<QList<ContourLine>> GetContourBrushed();
 	virtual QList<QList<ContourLine>> GetContourNotBrushed();
-	virtual QList<UnCertaintyArea*> GetUncertaintyArea(int isoIndex = 0);
-	virtual QList<UnCertaintyArea*> GetUncertaintyAreaValid(int isoIndex = 0);
-	virtual QList<UnCertaintyArea*> GetUncertaintyAreaHalf(int isoIndex = 0);
+	virtual QList<UnCertaintyArea*> GetUncertaintyArea(int nTimeIndex=0,int isoIndex = 0);
+	virtual QList<UnCertaintyArea*> GetUncertaintyAreaValid(int nTimeIndex = 0, int isoIndex = 0);
+	virtual QList<UnCertaintyArea*> GetUncertaintyAreaHalf(int nTimeIndex = 0, int isoIndex = 0);
 	virtual int GetUncertaintyAreas() { return _nUncertaintyRegions; }
 	virtual int GetLabel(int l);
 	virtual void GetMerge(int l, int& nSource, int& nTarget);
@@ -291,5 +291,7 @@ protected:
 	int _nTime = 0;		// time step
 signals:
 	void UpdateView();
+public:
+	int GetCurrentTimeIndex();
 };
 

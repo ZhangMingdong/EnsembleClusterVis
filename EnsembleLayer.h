@@ -28,6 +28,10 @@ private:
 	// tessellation the area segmentation, generate three display list start from _gllist
 	void tessSegmentation(GLuint gllist, QList<UnCertaintyArea*> areas);
 
+
+	// tessellation the area segmentation, generate uncertain area only
+	void tessSegmentation_uncertainOnly(GLuint gllist, QList<UnCertaintyArea*> areas);
+
 	// draw the color bar
 	void drawColorBar();
 

@@ -222,16 +222,17 @@ void EnsembleLayer::draw(DisplayStates states){
 void EnsembleLayer::drawBand() {
 	QList<double> listIsoValue = _pModel->GetIsoValues();
 	int nIsoValues = listIsoValue.length();
+	int nTimeIndex = _pModel->GetCurrentTimeIndex();
 	for (size_t i = 0; i < nIsoValues; i++)
 	{
 		if (_arrIsoValueState[i])
 		{
-			int nBias = i * 9;
+			int nBias = nTimeIndex * nIsoValues * 3;
 			bool bContourBoxplot = true;
 			if (bContourBoxplot) {
 				SetColor(i, listIsoValue[i], .3);
-				glCallList(_gllist + nBias + 4);
-				glCallList(_gllist + nBias + 7);
+				glCallList(_gllist + nBias+i*3 + 1);
+				glCallList(_gllist + nBias+i*3 + 2);
 			}
 			else {
 				double fTransparency = .2;
@@ -619,6 +620,97 @@ void EnsembleLayer::tessSegmentation(GLuint gllist, QList<UnCertaintyArea*> area
 	delete[]contourBuffer;
 }
 
+/*
+	tessellation the area segmentation, generate uncertain area only
+	this function is modified from ¡®tessSegmentation¡¯, build uncertainty area only
+*/
+void EnsembleLayer::tessSegmentation_uncertainOnly(GLuint gllist, QList<UnCertaintyArea*> areas) {
+	// create buffer for the uncertainty areas	
+	int nAreaLen = areas.size();										// how many area
+	GLdouble**** contourBuffer = new GLdouble***[areas.size()];
+	// for each area
+	for (int i = 0; i < nAreaLen; i++)
+	{
+		int nContourLen = areas[i]->_listEmbeddedArea.size() + 1;		// how many contour
+		contourBuffer[i] = new GLdouble**[nContourLen];
+		// first contour
+		int nLen = areas[i]->_contour._listPt.size();
+		contourBuffer[i][0] = new GLdouble*[nLen];
+		for (int j = 0; j < nLen; j++)
+		{
+			contourBuffer[i][0][j] = new GLdouble[3];
+			contourBuffer[i][0][j][0] = areas[i]->_contour._listPt[j].x();
+			contourBuffer[i][0][j][1] = areas[i]->_contour._listPt[j].y();
+			contourBuffer[i][0][j][2] = 0;
+		}
+		// other contours
+		for (int k = 0; k < nContourLen - 1; k++)
+		{
+			int nLen = areas[i]->_listEmbeddedArea[k]->_contour._listPt.size();
+			contourBuffer[i][k + 1] = new GLdouble*[nLen];
+			for (int j = 0; j < nLen; j++)
+			{
+				contourBuffer[i][k + 1][j] = new GLdouble[3];
+				contourBuffer[i][k + 1][j][0] = areas[i]->_listEmbeddedArea[k]->_contour._listPt[j].x();
+				contourBuffer[i][k + 1][j][1] = areas[i]->_listEmbeddedArea[k]->_contour._listPt[j].y();
+				contourBuffer[i][k + 1][j][2] = 0;
+			}
+		}
+	}
+	// uncertain area only, state==0;
+	{
+		int nState = 0;
+		glNewList(gllist, GL_COMPILE);
+		gluTessProperty(_tobj, GLU_TESS_WINDING_RULE, TessProperty[nProperty]);
+		gluTessBeginPolygon(_tobj, NULL);
+		for (int i = 0; i < nAreaLen; i++)
+		{
+			// 		if (i != 1) continue;
+			if (areas[i]->_nState == nState)
+			{
+				int nContourLen = areas[i]->_listEmbeddedArea.size() + 1;
+				for (int k = 0; k < nContourLen; k++)
+				{
+					int nLen;
+					if (k == 0) nLen = areas[i]->_contour._listPt.size();
+					else nLen = areas[i]->_listEmbeddedArea[k - 1]->_contour._listPt.size();
+					gluTessBeginContour(_tobj);
+					for (int j = 0; j < nLen; j++)
+					{
+						gluTessVertex(_tobj, contourBuffer[i][k][j], contourBuffer[i][k][j]);
+					}
+					gluTessEndContour(_tobj);
+				}
+			}
+		}
+		gluTessEndPolygon(_tobj);
+		glEndList();
+	}
+
+	for (int i = 0; i < nAreaLen; i++)
+	{
+		int nContourLen = areas[i]->_listEmbeddedArea.size() + 1;		// how many contour
+		// first contour
+		int nLen = areas[i]->_contour._listPt.size();
+		for (int j = 0; j < nLen; j++)
+		{
+			delete contourBuffer[i][0][j];
+		}
+		for (int k = 0; k < nContourLen - 1; k++)
+		{
+			int nLen = areas[i]->_listEmbeddedArea[k]->_contour._listPt.size();
+			for (int j = 0; j < nLen; j++)
+			{
+				delete[]contourBuffer[i][k + 1][j];
+			}
+			delete[]contourBuffer[i][k + 1];
+		}
+		delete[]contourBuffer[i];
+	}
+
+	delete[]contourBuffer;
+}
+
 void EnsembleLayer::Brush(int nLeft, int nRight, int nTop, int nBottom) {
 	_pModel->Brush(nLeft, nRight, nTop, nBottom);
 }
@@ -821,7 +913,9 @@ void EnsembleLayer::generateColorBarTexture() {
 // build the tess for uncertainty regions
 void EnsembleLayer::buildTess() {
 	int nIsoValues = _pModel->GetIsoValues().length();
-	_gllist = glGenLists(9*nIsoValues);					// generate the display lists
+	int nTimeSteps = (g_nTimeEnd - g_nTimeStart) / 6 + 1;
+	int nTimeStartIndex = g_nTimeStart / 6;
+	_gllist = glGenLists(nTimeSteps*nIsoValues);					// generate the display lists
 
 
 	_tobj = gluNewTess();
@@ -837,11 +931,15 @@ void EnsembleLayer::buildTess() {
 
 
 	// 4.tess the areas
-	for (size_t i = 0; i < nIsoValues; i++)
+	for (size_t i = 0; i < nTimeSteps; i++)
 	{
-		tessSegmentation(_gllist + i * 9, _pModel->GetUncertaintyArea(i));
-		tessSegmentation(_gllist + i * 9 + 3, _pModel->GetUncertaintyAreaValid(i));
-		tessSegmentation(_gllist + i * 9 + 6, _pModel->GetUncertaintyAreaHalf(i));
+		for (size_t j = 0; j < nIsoValues; j++)
+		{
+			tessSegmentation_uncertainOnly(_gllist + (i * nIsoValues + j) * 3, _pModel->GetUncertaintyArea(nTimeStartIndex+i,j));
+			tessSegmentation_uncertainOnly(_gllist + (i * nIsoValues + j) * 3 + 1, _pModel->GetUncertaintyAreaValid(nTimeStartIndex + i,j));
+			tessSegmentation_uncertainOnly(_gllist + (i * nIsoValues + j) * 3 + 2, _pModel->GetUncertaintyAreaHalf(nTimeStartIndex + i,j));
+		}
+
 	}
 
 }

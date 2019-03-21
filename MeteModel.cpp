@@ -850,10 +850,20 @@ void MeteModel::updateTimeStep() {
 			//listIsoValue.append(5880);
 
 
-			listIsoValue.append(5480);
-			listIsoValue.append(5560);
-			listIsoValue.append(5640);
-			listIsoValue.append(5720);
+			//listIsoValue.append(5500);
+			//listIsoValue.append(5540);
+			//listIsoValue.append(5580);
+			//listIsoValue.append(5620);
+			//listIsoValue.append(5660);
+			//listIsoValue.append(5700);
+
+			int nBase = 5620;
+			int nStep = 30;
+			for (int  i = -3; i < 3; i++)
+			{
+				listIsoValue.append(nBase + i * nStep);
+			}
+			//listIsoValue.append(nBase);
 
 			SetIsoValues(listIsoValue);
 		}
@@ -1424,9 +1434,9 @@ QList<ContourLine> MeteModel::GetContourMax(int isoIndex)  { return _pTimeStep->
 QList<ContourLine> MeteModel::GetContourMean(int isoIndex) { return _pTimeStep->_listFeature[isoIndex]->GetContourMean(); }
 QList<ContourLine> MeteModel::GetContourMedian(int isoIndex) { return _pTimeStep->_listFeature[isoIndex]->GetContourMedian(); }
 
-QList<UnCertaintyArea*> MeteModel::GetUncertaintyAreaValid(int isoIndex) { return _pTimeStep->_listFeature[isoIndex]->GetUncertaintyAreaValid(); }
-QList<UnCertaintyArea*> MeteModel::GetUncertaintyAreaHalf(int isoIndex) { return _pTimeStep->_listFeature[isoIndex]->GetUncertaintyAreaHalf(); }
-QList<UnCertaintyArea*> MeteModel::GetUncertaintyArea(int isoIndex) { return _pTimeStep->_listFeature[isoIndex]->GetUncertaintyArea(); }
+QList<UnCertaintyArea*> MeteModel::GetUncertaintyAreaValid(int nTimeIndex,int isoIndex) { return _arrTimeSteps[nTimeIndex]->_listFeature[isoIndex]->GetUncertaintyAreaValid(); }
+QList<UnCertaintyArea*> MeteModel::GetUncertaintyAreaHalf(int nTimeIndex, int isoIndex) { return _arrTimeSteps[nTimeIndex]->_listFeature[isoIndex]->GetUncertaintyAreaHalf(); }
+QList<UnCertaintyArea*> MeteModel::GetUncertaintyArea(int nTimeIndex, int isoIndex) { return _arrTimeSteps[nTimeIndex]->_listFeature[isoIndex]->GetUncertaintyArea(); }
 
 void MeteModel::SetIsoValues(QList<double> listIsoValues) {
 	_listIsoValues = listIsoValues;
@@ -1437,6 +1447,10 @@ void MeteModel::updateTimeStep(int nTS) {
 	_nTime = nTS;
 	updateTimeStep();
 	UpdateView();
+}
+
+int MeteModel::GetCurrentTimeIndex() {
+	return (_nTime - g_nTimeStart) / 6;
 }
 
 void MeteModel::updateContourLevel0(int nLevel) { _arrContourLevel[0] = nLevel; UpdateView();

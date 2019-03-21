@@ -376,10 +376,12 @@ void MyMapWidget::onCheckShowBeliefEllipse(bool bChecked) {
 }
 
 void MyMapWidget::viewShowIntersection(bool on){
-	_bShowIntersection = on; updateGL(); };
+	_bShowIntersection = on; 
+	updateGL(); };
 
 void MyMapWidget::viewShowUnionB(bool on){ 
-	_bShowUnionB = on; updateGL();
+	_bShowUnionB = on; 
+	updateGL();
 };
 
 void MyMapWidget::viewShowUnionE(bool on){
