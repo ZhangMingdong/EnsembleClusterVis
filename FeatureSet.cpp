@@ -71,51 +71,55 @@ FeatureSet::FeatureSet(DataField* pData, double dbIsoValue, int nWidth, int nHei
 	_pICDY = new double[_nGrids];
 	_pICDZ = new double[_nGrids];
 	_pICD = new double[((_nWidth - 1)*_nDetailScale + 1)*((_nHeight - 1)*_nDetailScale + 1)];
-	_pSet = new bool[_nGrids*_nEnsembleLen];
+	_pUpperSet = new bool[_nGrids*_nEnsembleLen];
 	_pGridDiverse = new bool[_nGrids];
 	_pSetBandDepth = new int[_nEnsembleLen];
 	_pMemberType = new int[_nEnsembleLen];
 
 	_arrLabels = new int[_nEnsembleLen];
+	for (size_t i = 0; i < _nEnsembleLen; i++) _arrLabels[i] = 0;
 	_arrMergeTarget = new int[_nEnsembleLen];
 	_arrMergeSource = new int[_nEnsembleLen];
-	for (size_t i = 0; i < _nEnsembleLen; i++)
-	{
-		_arrLabels[i] = 0;
-	}
 	_arrPC = new double[_nEnsembleLen*_nPCLen];
 
 
 
 
-	// 1.calculate set
-	if(g_bCalculateSet) calculateSet();
 
-	// 2.calculate band depth
-	if(g_bCalculateBandDepth) calculateBandDepth();
+	if (g_bStatistic) {	
+		// 1.calculate set
+		calculateLevelSet();
 
-	// 3.calculate member type
-	if(g_bCalculateMemberType) calculateMemberType();
+		// 2.calculate band depth
+		calculateBandDepth();
 
-	// 4.calculate valid max and min and mean
-	if(g_bStatistic) doStatistics();
+		// 3.calculate member type
+		calculateMemberType();
 
+		// 4.calculate valid max and min and mean
+		doStatistics();
+
+	}
 	// 5.generate all the contours and the bands
 	if(g_bGenerateContours) generateContours();
 
-	if(g_bSmoothContours) smoothContours();
+	// *5.generate smoothed contours
+	if (g_bSmoothContours) smoothContours();
 
-	// 6.calculate signed distance function, according to a given isovalue
-	if (g_bCalculateSDF) {
-		CalculateSDF(dbIsoValue, _nEnsembleLen, _nWidth, _nHeight, _pData, _pSDF, _listContour);
-		//calculateSimilarityMatrix();
+	// 6.generate bands
+	if (g_bGenerateArea) {
+		generateContourImp(_listContourMinValid, _listContourMaxValid, _listAreaValid);
+		generateContourImp(_listContourMinHalf, _listContourMaxHalf, _listAreaHalf);
 	}
 
-	// 7.sort according to sdf and generate contours according to sdf
-	if(g_bBuildSortedSDF) buildSortedSDF();
 
+	// 7.SDFs, sorted SDFs, contours from SDFs and sorted SDFs
+	if(g_bCalculateSDF) buildSDF();
+
+	// 8.Resample contours
 	if(g_bResampleContours) resampleContours();
 
+	// *8.Generate contours using domain sampled data
 	if (g_bDomainResampleContours)
 	{
 		// domain space
@@ -137,31 +141,35 @@ FeatureSet::FeatureSet(DataField* pData, double dbIsoValue, int nWidth, int nHei
 		}
 	}
 
-	// 8.calculate ICD
-	if(g_bCalculateICD) calculateICD();
-	if(g_bCalculateICD_L) buildICD_LineKernel();
-	if(g_bCalculateICD_V) buildICD_Vector();
-	if(g_bCalculateICDV) buildICDV();
+	// 9. calculate iso-contour density
+	if (g_bCalculateICD) {
+		calculateICD();
+		buildICD_LineKernel();
+		buildICD_Vector();
+		buildICDV();
+	}
 
-//==Clustering==
-	if(g_bCalculateDiverse) calculateDiverse();
+	// 10.Clustering
+	if (g_bClustering)
+	{
+		// 10.1.calculate diversity
+		calculateDiverse();
 
-	if (g_bCalculatePCA) {
-		//calculatePCA();
+		// 10.2.calculate PCA
+
+		calculatePCA();
+		//calculatePCA_Whole();
 		//calculatePCA_MDS();
-		//calculatePCA_MDS_Dis();
-		calculatePCA_MDS_Whole();
+		//calculatePCA_MDS_Set();
+		//calculatePCA_MDS_Whole();
 		//calculatePCA_MDS_Whole_Density();
 		//calculatePCA_MutualInformation();
 
-	}
+		// 10.3.clustering
+		//doPCAClustering();
+		doClustering();
 
-
-	if (g_bClustering)
-	{
-		doPCAClustering();
-		//doClustering();
-
+		// 10.4.resample clusters
 		if (g_bResampleForClusters)
 		{
 			resampleContours_C();
@@ -267,7 +275,7 @@ FeatureSet::~FeatureSet()
 	delete[] _pICDZ;
 	delete[] _pSortedSDF;
 	delete[] _pICD;
-	delete[] _pSet;
+	delete[] _pUpperSet;
 	delete[] _pGridDiverse;
 	delete[] _pSetBandDepth;
 	delete[] _pMemberType;
@@ -312,13 +320,11 @@ void FeatureSet::generateContours() {
 	ContourGenerator::GetInstance()->Generate(GetHalfMax(), _listContourMaxHalf, _dbIsoValue, _nWidth, _nHeight);
 	ContourGenerator::GetInstance()->Generate(GetMedian(), _listContourMedianE, _dbIsoValue, _nWidth, _nHeight);
 
-	if (g_bGenerateArea) {
-		generateContourImp(_listContourMinValid, _listContourMaxValid, _listAreaValid);
-		generateContourImp(_listContourMinHalf, _listContourMaxHalf, _listAreaHalf);
-
-	}
 }
-
+/*
+	smooth contours
+	using contours
+*/
 void FeatureSet::smoothContours() {
 	double dbScale = .2;
 	for each (QList<ContourLine> contours in _listContour)
@@ -361,19 +367,18 @@ void FeatureSet::smoothContours() {
 	}
 }
 
-void FeatureSet::buildSortedSDF() {
-	sortBuf(_pSDF, _pSortedSDF);
-	double dbBiasMax = 0;
-	int index = -1;
-	for (size_t i = 0; i < _nGrids; i++)
-	{
-		double dbBias = abs(_pSortedSDF[i] - _pSortedSDF[(_nEnsembleLen - 1)*_nGrids + i]);
-		if (dbBias > dbBiasMax) {
-			dbBiasMax = dbBias;
-			index = i;
-		}
-	}
+/*
+	calculate signed distance function, according to a given isovalue
+	sort according to sdf and generate contours according to sdf
+*/
+void FeatureSet::buildSDF() {
+	// 1.build SDF
+	CalculateSDF(_dbIsoValue, _nEnsembleLen, _nWidth, _nHeight, _pData, _pSDF, _listContour);
 
+	// 2.Sort SDF
+	sortBuf(_pSDF, _pSortedSDF);
+
+	// 3.generate contours from SDF and sorted SDF
 	for (size_t i = 0; i < _nEnsembleLen; i++)
 	{
 		// contours from SDF
@@ -391,6 +396,10 @@ void FeatureSet::buildSortedSDF() {
 	}
 }
 
+/*
+	resample the sdf and generate resampled contours
+	using Sorted SDF
+*/
 void FeatureSet::resampleContours() {
 	// 1.Resample buffer
 	resampleBuf(_pSortedSDF, _pResampledSDF, _nResampleLen);	
@@ -418,6 +427,10 @@ void FeatureSet::resampleContours_C() {
 	qDebug() << "resampleContours_C:" << _listContourResampled_C.length();
 }
 
+/*
+	calculate type of each member: 0-outlier; 1-100%; 2-50%
+	using SetBandDepth
+*/
 void FeatureSet::calculateMemberType() {
 	for (size_t i = 0; i < _nEnsembleLen; i++)
 	{
@@ -432,9 +445,9 @@ void FeatureSet::calculateMemberType() {
 			nOutliers++;
 		}
 	}
-	int nValidLen = (_nEnsembleLen - nOutliers) / 2;
+	int nValidHalfLen = (_nEnsembleLen - nOutliers) / 2;
 	// find valid and 50%
-	for (int i = 0; i < nValidLen; i++)
+	for (int i = 0; i < nValidHalfLen; i++)
 	{
 		int nMaxDepth = 0;
 		int nIndex = -1;
@@ -450,6 +463,10 @@ void FeatureSet::calculateMemberType() {
 	}
 }
 
+/*
+	calculate meadian, valid, and 50%
+	using MemberType and BandDepth
+*/
 void FeatureSet::doStatistics() {
 	for (int i = 0; i < _nGrids; i++) {
 		std::vector<double> vecDataValid;
@@ -489,44 +506,50 @@ void FeatureSet::doStatistics() {
 	}
 }
 
-void FeatureSet::calculateSet() {
+void FeatureSet::calculateLevelSet() {
 	// 1.calculate set
 	for (int l = 0; l < _nEnsembleLen; l++)
 	{
 		for (int i = 0; i < _nGrids; i++) {
-			_pSet[l*_nGrids + i] = (_pData->GetData(l,i) > _dbIsoValue);
+			_pUpperSet[l*_nGrids + i] = (_pData->GetData(l,i) > _dbIsoValue);
 		}
 	}
 }
 
-// caclulate sBand depth
+/*
+	caclulate sBand depth
+	using UpperSet;
+*/
 void FeatureSet::calculateBandDepth() {
 	int mSet = (_nEnsembleLen - 1) * (_nEnsembleLen - 2) / 2;	// count of j=2 sets
-	int* arrMatrix = new int[_nEnsembleLen*mSet];				// the matrix
-	// 1.calculate the matrix
+	int nMatrixLength = _nEnsembleLen * mSet;
+	int* arrMatrix = new int[nMatrixLength];					// the matrix
+	// 1.calculate the matrix, n*C^2_n
 	for (size_t i = 0; i < _nEnsembleLen; i++){					// for each member
 		int nSetIndex = 0;										// index of current set
 		for (size_t j = 0; j < _nEnsembleLen; j++){
 			if (i == j) continue;
 			for (size_t k = 0; k < j; k++){
-				if (i == k) continue;
+				if (i == k || j==k) continue;
 				// for each set
-				int nIntersection = 0;				// count intersection breaks
-				int nUnion = 0;						// count uniton breaks
+				int nBreaks = 0;				// count of breaks(i not between j and k)
 				for (int l = 0; l < _nGrids; l++)
 				{
-					if ((_pSet[i*_nGrids + l] && !_pSet[j*_nGrids + l] && !_pSet[k*_nGrids + l])) nIntersection++;
-					if ((!_pSet[i*_nGrids + l] && _pSet[j*_nGrids + l] && _pSet[k*_nGrids + l])) nUnion++;
+					if ((_pUpperSet[i*_nGrids + l] && !_pUpperSet[j*_nGrids + l] && !_pUpperSet[k*_nGrids + l])) nBreaks++;
+					if ((!_pUpperSet[i*_nGrids + l] && _pUpperSet[j*_nGrids + l] && _pUpperSet[k*_nGrids + l])) nBreaks++;
 				}
-				arrMatrix[i*mSet + nSetIndex] = (nIntersection > nUnion) ? nIntersection: nUnion;
+				arrMatrix[i*mSet + nSetIndex] = nBreaks;
 				nSetIndex++;
 			}
 		}
 	}
 	// 2.calculate epsilon
-	int nMatrixLength = _nEnsembleLen * mSet;
 	double dbThreshold = nMatrixLength / 6.0;
-	int epsilon = 1;
+	/*
+		6 is from "Contour Boxplots: A Method for Characterizing Uncertainty in Feature Sets from Simulation Ensembles"
+		number of breaks that more than 1/6 grid points have can be though as threshold.
+	*/
+	int epsilon = 1;				// breaks less than epsilon can be considered as be sandwiched
 	while (true) {	// break when find a proper epsilon
 		int nCount = 0;
 		for (size_t i = 0; i < nMatrixLength; i++)
@@ -536,8 +559,6 @@ void FeatureSet::calculateBandDepth() {
 		if (nCount > dbThreshold) break;
 		else epsilon++;
 	}
-//	qDebug() <<"epsilon:"<< epsilon;
-//	qDebug() << "band depth:";
 	// 3.claculate band depth
 	for (size_t i = 0; i < _nEnsembleLen; i++)
 	{
@@ -545,48 +566,8 @@ void FeatureSet::calculateBandDepth() {
 		for (size_t j = 0; j < mSet; j++) {
 			if (arrMatrix[i*mSet + j] < epsilon)_pSetBandDepth[i]++;
 		}
-//		qDebug() << _pSetBandDepth[i];
 	}
-//	qDebug() << "~band depth:";
-	/*
-	qDebug() << "test:";
-	for (size_t j = 0; j < mSet; j++) {
-		qDebug() << arrMatrix[j];
-	}
-	qDebug() << "test finished";
-	*/
-
 	delete[] arrMatrix;
-}
-
-void FeatureSet::calculateBandDepth_v1() {
-	int nThreshold = 18;
-	qDebug() << "test:";
-	// caclulate sBand depth
-	for (size_t i = 0; i < _nEnsembleLen; i++)
-	{
-		_pSetBandDepth[i] = 0;
-		for (size_t j = 0; j < _nEnsembleLen; j++)
-		{
-			if (i == j) continue;
-			for (size_t k = 0; k < j; k++)
-			{
-				if (i == k) continue;
-				int nFailed = 0;
-				for (int l = 0; l < _nGrids; l++)
-				{
-					if ((_pSet[i*_nGrids + l] && !_pSet[j*_nGrids + l] && !_pSet[k*_nGrids + l])
-						|| (!_pSet[i*_nGrids + l] && _pSet[j*_nGrids + l] && _pSet[k*_nGrids + l])) {
-						nFailed++;
-					}
-					//if (nFailed == nThreshold) break;
-				}
-				if (i == 0) qDebug() << nFailed;
-				if (nFailed < nThreshold) _pSetBandDepth[i]++;
-			}
-		}
-	}
-	qDebug() << "test finished";
 }
 
 const double* FeatureSet::GetMedian() { return _pData->GetData(_nMedianIndex); }
@@ -635,8 +616,10 @@ void FeatureSet::CalculateSDF(double dbIsoValue,int nEnsembleLen,int nWidth,int 
 	//qDebug() << "~CalculateSDF";
 }
 
+/*
+	calculate pca using diverse grids
+*/
 void FeatureSet::calculatePCA() {
-
 	// 1.set parameter
 	int mI = _nDiverseCount;
 	int mO = _nPCLen;
@@ -647,24 +630,36 @@ void FeatureSet::calculatePCA() {
 	// 3.pca
 	MyPCA pca;
 	pca.DoPCA(arrInput, _arrPC, n, mI, mO, true);
-	// 4.generate points from the output
-	for (size_t i = 0; i < n; i++)
-	{
-		qDebug() << _arrPC[2*i];
-		//qDebug() << arrOutput[i * 2] << "," << arrOutput[i * 2 + 1];
-		//qDebug() << arrOutput[i * 3] << "," << arrOutput[i * 3 + 1] << "," << arrOutput[i * 3 + 2];
-		//qDebug() << arrOutput[i * 4] << "," << arrOutput[i * 4 + 1] << "," << arrOutput[i * 4 + 2] << "," << arrOutput[i * 4 + 3];
-	}
-	qDebug() << "===========================";
-	for (size_t i = 0; i < n; i++)
-	{
-		qDebug() << _arrPC[2 * i+1];
-	}
-	// 5.release the buffer
 
 	delete[] arrInput;
 }
 
+/*
+	calculate pca using whole grids
+*/
+void FeatureSet::calculatePCA_Whole() {
+	// 1.set parameter
+	int mI = _nGrids;
+	int mO = _nPCLen;
+	int n = _nEnsembleLen;
+	// 2.allocate input and output buffer
+	double* arrInput = _pSDF;
+
+	// 3.pca
+	MyPCA pca;
+
+	unsigned long t1 = GetTickCount();
+
+	pca.DoPCA(arrInput, _arrPC, n, mI, mO, true);
+	unsigned long t2 = GetTickCount();
+	qDebug() << "Time of calculatePCA_Whole: " << t2-t1;
+
+	delete[] arrInput;
+}
+
+/*
+	calculate PCA using MDS for the diverse grids
+*/
 void FeatureSet::calculatePCA_MDS() {
 
 	// 2.allocate input buffer
@@ -714,31 +709,31 @@ void FeatureSet::calculatePCA_MDS() {
 	delete[] arrInput;
 }
 
+/*
+	calculate PCA using MDS
+	using SDFs.
+*/
 void FeatureSet::calculatePCA_MDS_Whole() {
-	int nClusterWidth =  _nWidth;// / 4;
-	int nStartX = 0;
-	qDebug() << "Width:" << _nWidth;
+
 	int n = _nEnsembleLen;
+
+	// 1.build vectors
 	std::vector<VectorXd> points(n);
 	for (size_t l = 0; l < n; l++)
 	{
+		points[l] = VectorXd(_nHeight*_nWidth);
 
-		points[l] = VectorXd(_nHeight*nClusterWidth);
-		/*
-		for (size_t i = 0; i < _nGrids; i++)
-		{
-			points[l](i) = _pSDF[l*_nGrids + i];
-		}*/
 		for (size_t i = 0; i < _nHeight; i++)
 		{
-			for (size_t j = 0; j < nClusterWidth; j++)
+			for (size_t j = 0; j < _nWidth; j++)
 			{
-				points[l](i*nClusterWidth + j) = _pSDF[l*_nWidth*_nHeight + i * _nWidth + nStartX + j];
+				points[l](i*_nWidth + j) = _pSDF[l*_nWidth*_nHeight + i * _nWidth + j];
 			}
 
 		}
 	}
 
+	// 2.calculate distance matrix of vectors
 	MatrixXd D(n, n);
 	for (unsigned i = 0; i < n; ++i)
 	{
@@ -750,7 +745,7 @@ void FeatureSet::calculatePCA_MDS_Whole() {
 		}
 	}
 
-	// Compute metric MDS (embedding into a 2-dimensional space)
+	// 3.Compute metric MDS (embedding into a 2-dimensional space)
 	const MatrixXd X = mathtoolbox::ComputeClassicalMds(D, _nPCLen);
 	for (size_t i = 0; i < _nEnsembleLen; i++)
 	{
@@ -759,19 +754,11 @@ void FeatureSet::calculatePCA_MDS_Whole() {
 			_arrPC[i*_nPCLen + j] = X(j, i);
 		}
 	}
-	/*
-	for (size_t i = 0; i < n; i++)
-	{
-		qDebug() << X(0, i);
-	}
-	qDebug() << "======================";
-	for (size_t i = 0; i < n; i++)
-	{
-		qDebug() << X(1, i);
-	}
-	*/
 }
 
+/*
+	calculate PCA usinng MDS and density
+*/
 void FeatureSet::calculatePCA_MDS_Whole_Density() {
 	int nClusterWidth = _nWidth;// / 4;
 	int nStartX = 0;
@@ -834,6 +821,9 @@ void FeatureSet::calculatePCA_MDS_Whole_Density() {
 	*/
 }
 
+/*
+	calculate PCA using mutual information
+*/
 void FeatureSet::calculatePCA_MutualInformation() {
 	// calculate the range of sdf;
 	double dbMax = -10000;
@@ -868,7 +858,10 @@ void FeatureSet::calculatePCA_MutualInformation() {
 	}
 }
 
-void FeatureSet::calculatePCA_MDS_Dis() {	
+/*
+	calculate pca using MDS by set differences
+*/
+void FeatureSet::calculatePCA_MDS_Set() {
 	int n = _nEnsembleLen;
 
 	MatrixXd D(n, n);
@@ -879,7 +872,7 @@ void FeatureSet::calculatePCA_MDS_Dis() {
 			int dis = 0;
 			for (size_t k = 0; k < _nGrids; k++)
 			{
-				if (_pSet[i*_nGrids + k] != _pSet[j*_nGrids + k])
+				if (_pUpperSet[i*_nGrids + k] != _pUpperSet[j*_nGrids + k])
 					dis++;
 			}
 			D(i, j) = dis;
@@ -908,6 +901,10 @@ void FeatureSet::calculatePCA_MDS_Dis() {
 	}
 }
 
+/*
+	calculate diverse grids and diverse count
+	using UpperSet
+*/
 void FeatureSet::calculateDiverse() {
 	_nDiverseCount = 0;
 	for (size_t i = 0; i < _nGrids; i++)
@@ -916,7 +913,7 @@ void FeatureSet::calculateDiverse() {
 
 		for (size_t l = 1; l < _nEnsembleLen; l++)
 		{
-			if (_pSet[l*_nGrids + i] != _pSet[(l - 1)*_nGrids + i]) {
+			if (_pUpperSet[l*_nGrids + i] != _pUpperSet[(l - 1)*_nGrids + i]) {
 				bDiverse = true;
 				_nDiverseCount++;
 				break;
@@ -943,31 +940,30 @@ double* FeatureSet::createDiverseArray() {
 	return arrBuf;
 }
 
+/*
+	cluster using diverse grids
+*/
 void FeatureSet::doClustering() {
 	// 2.cluster
-	CLUSTER::Clustering* pClusterer = new CLUSTER::KMeansClustering();
+	CLUSTER::Clustering* pClusterer = new CLUSTER::AHCClustering();
 	int nN = _nEnsembleLen;			// number of data items
 	int nM = _nDiverseCount;		// dimension
-	int nK = 2;						// clusters
-	int* arrLabel = new int[nN];
+	int nK = 1;			// clusters
 	double* arrBuf = createDiverseArray();
 
 
-	pClusterer->DoCluster(nN, nM, nK, arrBuf, arrLabel);
-	qDebug() << "Labels";
-	for (size_t i = 0; i < nN; i++)
-	{
-		qDebug() << arrLabel[i];
-	}
+	pClusterer->DoCluster(nN, nM, nK, arrBuf, _arrLabels, _arrMergeSource, _arrMergeTarget);
 
-	// 4.record label
+	resetLabels();
 
 	// 5.release the resouse
-	delete arrLabel;
+	delete[] arrBuf;
 	delete pClusterer;
-	delete arrBuf;
 }
 
+/*
+	cluster using PCA
+*/
 void FeatureSet::doPCAClustering() {
 
 	// 2.cluster

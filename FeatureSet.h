@@ -25,14 +25,17 @@ private:
 	double* _gridValidMax;			// maximum of valid ensemble results
 	double* _gridValidMin;			// minimum of valid ensemble results
 	int _nMedianIndex = -1;			// index of median of the contour
-	bool * _pSet;					// set state of the grid point given iso-value
-	bool* _pGridDiverse;			// diversed grid points
+
+	int _nOutlierThreshold = 1;		// threshold for outliars
+
+	bool * _pUpperSet;				// m; if the grid point in the upper set
 	int *_pSetBandDepth;			// sBandDepth
 	int *_pMemberType;				// type of each member.0:outlier,1-100%,2-50%.
-	int _nOutlierThreshold = 1;		// threshold for outliars
+
+	bool* _pGridDiverse;			// diversed grid points
 	int _nDiverseCount = 0;			// count of diverse grids
 
-	int _nPCLen=10;					// length of PC
+	int _nPCLen=40;					// length of PC
 	double* _arrPC;					// array of PCs
 
 	int _nClusters = 5;				// number of clusters
@@ -106,7 +109,7 @@ public:
 
 
 	const double* GetSortedSDF(int l) { return _pSortedSDF + l * _nGrids; }
-	bool* GetSet(int l) { return _pSet + l * _nGrids; }
+	bool* GetUpperSet(int l) { return _pUpperSet + l * _nGrids; }
 	int GetMemberType(int l) { return _pMemberType[l]; }
 	virtual QList<UnCertaintyArea*> GetUncertaintyAreaValid() { return _listAreaValid; }
 	virtual QList<UnCertaintyArea*> GetUncertaintyAreaHalf() { return _listAreaHalf; }
@@ -125,14 +128,13 @@ private:
 	double* getSDF(int l) { return _pSDF + l * _nGrids; }
 // basic operation
 private:
-	void calculateSet();
+	void calculateLevelSet();
 	void calculateBandDepth();		// new version, use the method in contour boxplot
-	void calculateBandDepth_v1();	// old version, use a threshold
 	void calculateMemberType();
-	void doStatistics();			// calculate meadian, valid, and 50%
+	void doStatistics();			
 	void generateContours();
 	void smoothContours();
-	void buildSortedSDF();
+	void buildSDF();
 	void resampleContours();
 	void resampleContours_C();				// resample contours for each cluster
 	void calculateSimilarityMatrix();		// calculate similarity matrix of the ensemble members
@@ -149,10 +151,11 @@ public:
 
 // dimension-reduction and clustering
 private:
-	void calculateDiverse();			// calculate diverse grids and diverse count
+	void calculateDiverse();			
 	void calculatePCA();				// calculate pca
+	void calculatePCA_Whole();			// calculate pca
 	void calculatePCA_MDS();			// calculate pca using MDS
-	void calculatePCA_MDS_Dis();		// calculate pca using MDS by distance
+	void calculatePCA_MDS_Set();		
 	void calculatePCA_MDS_Whole();		// calculate pca using MDS of the whole grids
 	void calculatePCA_MDS_Whole_Density();		// calculate pca using MDS of the whole grids by density
 	void calculatePCA_MutualInformation();		// calculate pca using mutual information
@@ -177,7 +180,6 @@ private:
 
 private:
 	void calculateICD();			// calculate _pICD
-
 	void buildICD_LineKernel();		// build iso-contour density using line kernel
 	void buildICD_Vector();			// build iso-contour density using vector kernel
 	void buildICDV();

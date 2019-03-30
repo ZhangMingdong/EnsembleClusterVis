@@ -14,6 +14,7 @@ class MeteLayer;
 class MeteModel;
 class EnsembleLayer;
 class LayerLayout;
+class CostLineLayer;
 
 
 class MyMapWidget : public MyGLWidget,ILayerCB
@@ -84,14 +85,16 @@ public:
 	void SetModelE(MeteModel* pModelE);
 private:// state
 	MeteLayer::DisplayStates _displayStates;
-	bool _bShowGridLines;
-	bool _bShowIntersection;
-	bool _bShowUnionB;
-	bool _bShowLineChart;
-	bool _bShowContourLineTruth;
-	bool _bShowClusterBS;
-	bool _bShowClusterBV;
+	bool _bShowMap = false;
+	bool _bShowGridLines = false;
+	bool _bShowIntersection = false;
+	bool _bShowUnionB = false;
+	bool _bShowLineChart = false;
+	bool _bShowContourLineTruth = false;
+	bool _bShowClusterBS = false;
+	bool _bShowClusterBV = false;
 public slots:
+	void viewShowMap(bool on);
 	void viewShowGrid(bool on);
 	void viewShowBackground(bool on);
 	void viewShowIntersection(bool on);
@@ -140,10 +143,12 @@ public slots:
 	void onIsoValue8(bool bState);
 	void onIsoValue9(bool bState);
 
+
 private:
 	
 	std::vector<MeteLayer*> _vecLayers;	// vector of layers to render
 	EnsembleLayer* _pEnsLayer;			// ensemble layer
+	CostLineLayer* _pMapLayer;
 	MeteModel* _pModelE;				// model
 
 

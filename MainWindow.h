@@ -23,6 +23,7 @@ public:
 	~MainWindow();
 
 private:	// action
+	QAction *viewShowMapAction;
 	QAction *viewShowGridLinesAction;			
 	QAction *viewShowBackgroundAction;
 	QAction *viewShowIntersectionAction;

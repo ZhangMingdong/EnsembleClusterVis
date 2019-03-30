@@ -4,6 +4,7 @@
 class QComboBox;
 class QSpinBox;
 class QCheckBox;
+class QPushButton;
 
 class DisplayCtrlWidget : public QWidget
 {
@@ -61,6 +62,8 @@ private:
 	*/
 	QSpinBox *_pSpinBoxTimeStep;
 
+	QPushButton *_pBtnOptimization;			// detail level optimization
+
 private:
 	void createWidgets();
 	void createLayout();
@@ -96,6 +99,7 @@ private slots:
 	void updateContourLevel7(int nLevel);
 	void updateContourLevel8(int nLevel);
 	void updateContourLevel9(int nLevel);
+	void onOptimizing();
 signals:
 	void bgFunctionChanged(int nFunction);
 	void smoothChanged(int nSmooth);
@@ -126,4 +130,5 @@ signals:
 	void ContourLevel7Changed(int nLevel);
 	void ContourLevel8Changed(int nLevel);
 	void ContourLevel9Changed(int nLevel);
+	void Optimizing();
 };

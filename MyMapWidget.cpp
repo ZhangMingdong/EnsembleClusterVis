@@ -21,13 +21,6 @@ using namespace std;
 
 MyMapWidget::MyMapWidget(QWidget *parent)
 : MyGLWidget(parent)
-, _bShowGridLines(false)
-, _bShowIntersection(false)
-, _bShowUnionB(false)
-, _bShowClusterBS(false)
-, _bShowClusterBV(false)
-, _bShowLineChart(false)
-, _bShowContourLineTruth(false)
 {
 	_pLayout = new LayerLayout();
 	
@@ -42,6 +35,10 @@ MyMapWidget::MyMapWidget(QWidget *parent)
 	_fChartLW = .5;
 	_fChartLLeft = _fChartLRight-_fChartLW;
 
+	// for china area
+	m_pt3Eye = DPoint3(1867, 587, 300);
+	m_dbScale = 1778;
+
 	startTimer(100);
 }
 
@@ -53,6 +50,7 @@ MyMapWidget::~MyMapWidget()
 		delete layer;
 	}
 
+	delete _pMapLayer;
 	delete _pLayout;
 }
 
@@ -70,9 +68,9 @@ void MyMapWidget::init()
 	_vecLayers.push_back(pLayer);
 	*/
 	// create cost line layer
-	MeteLayer* pLayer = new CostLineLayer();
-	pLayer->InitLayer(_pLayout, _fScaleW, _fScaleH);
-	_vecLayers.push_back(pLayer);
+	_pMapLayer = new CostLineLayer();
+	_pMapLayer->InitLayer(_pLayout, _fScaleW, _fScaleH);
+	//_vecLayers.push_back(pLayer);
 
 
 	_font.InitFont(wglGetCurrentDC(), L"Arial", 22);
@@ -187,6 +185,9 @@ void MyMapWidget::paint() {
 	glVertex2f(fX1, fY1);
 	glVertex2f(fX1, fY0);
 	glEnd();
+
+	if (_bShowMap)
+		_pMapLayer->DrawLayer(_displayStates);
 
 	for each (MeteLayer* pLayer in _vecLayers)
 	{
@@ -360,6 +361,11 @@ void MyMapWidget::drawPlaceHolder()
 		glVertex2f(fX0, fY + 10);
 		glEnd();
 	}
+}
+
+void MyMapWidget::viewShowMap(bool on) {
+	_bShowMap = on;
+	updateGL();
 }
 
 void MyMapWidget::viewShowGrid(bool on){
@@ -565,4 +571,3 @@ void MyMapWidget::onIsoValue6(bool bState) { _pEnsLayer->_arrIsoValueState[6] = 
 void MyMapWidget::onIsoValue7(bool bState) { _pEnsLayer->_arrIsoValueState[7] = bState; updateGL(); };
 void MyMapWidget::onIsoValue8(bool bState) { _pEnsLayer->_arrIsoValueState[8] = bState; updateGL(); };
 void MyMapWidget::onIsoValue9(bool bState) { _pEnsLayer->_arrIsoValueState[9] = bState; updateGL(); };
-

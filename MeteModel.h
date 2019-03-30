@@ -131,7 +131,7 @@ public:
 protected:
 	// specialized model initialization
 	virtual void initializeModel();
-	void updateTimeStep();				// update according to current time step
+	virtual void updateTimeStep();				// update according to current time step
 protected:
 
 	// read the dip value
@@ -287,6 +287,7 @@ public slots:
 	void updateContourLevel8(int nLevel);
 	void updateContourLevel9(int nLevel);
 
+	void onOptimizing();
 protected:
 	int _nTime = 0;		// time step
 signals:

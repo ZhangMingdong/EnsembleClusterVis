@@ -6,9 +6,9 @@ class ArtificialModel :
 public:
 	ArtificialModel();
 	~ArtificialModel();
-protected:
-	// specialized model initialization
-	virtual void initializeModel();
+protected:	
+	virtual void initializeModel();				// specialized model initialization
+	virtual void updateTimeStep() {};				// update according to current time step
 private:
 	QList<QList<ContourLine>> regenerateData();		// regenerate data from contours
 	void generateDataFromContour();					// regenerate data from given contours
@@ -34,5 +34,10 @@ private:
 		reverse the modes
 	*/
 	void generateDataFromField_4();
+public:
+	virtual QList<UnCertaintyArea*> GetUncertaintyAreaValid(int nTimeIndex, int isoIndex);
+	virtual QList<UnCertaintyArea*> GetUncertaintyAreaHalf(int nTimeIndex, int isoIndex);
+	virtual QList<UnCertaintyArea*> GetUncertaintyArea(int nTimeIndex, int isoIndex);
+
 };
 

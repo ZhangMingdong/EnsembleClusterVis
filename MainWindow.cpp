@@ -26,6 +26,7 @@
 
 
 
+const QString ShowMap("ShowMap");
 const QString ShowGridLines("ShowGridLines");
 const QString ShowBackground("ShowBackground");
 const QString ShowIntersection("ShowIntersection");
@@ -69,6 +70,7 @@ MainWindow::MainWindow()
 	populateMenusAndToolBars();
 
 	QSettings settings;
+	viewShowMapAction->setChecked(settings.value(ShowMap, true).toBool());
 	viewShowGridLinesAction->setChecked(settings.value(ShowGridLines, true).toBool());
 	viewShowBackgroundAction->setChecked(settings.value(ShowBackground, true).toBool());
 	viewShowIntersectionAction->setChecked(settings.value(ShowIntersection, true).toBool());
@@ -221,6 +223,7 @@ void MainWindow::populateMenusAndToolBars()
 // 		<< viewZoomInAction
 // 		<< viewZoomOutAction
 		<< separator
+		<< viewShowMapAction
 		<< viewShowGridLinesAction
 		<< viewShowBackgroundAction
 //		<< viewShowIntersectionAction
@@ -278,6 +281,10 @@ void MainWindow::populateMenuAndToolBar(QMenu *menu, QToolBar *toolBar, QList<QA
 void MainWindow::createActions()
 {
 	// view
+	viewShowMapAction = new QAction(tr("Show Map"), this);
+	viewShowMapAction->setIcon(QIcon(":/images/showgrid.png"));
+	viewShowMapAction->setCheckable(true);
+
 	viewShowGridLinesAction = new QAction(tr("Show Gridlines"), this);
 	viewShowGridLinesAction->setIcon(QIcon(":/images/showgrid.png"));
 	viewShowGridLinesAction->setCheckable(true);
@@ -369,6 +376,7 @@ void MainWindow::createActions()
 
 void MainWindow::createConnections(){
 	// view
+	connect(viewShowMapAction, SIGNAL(toggled(bool)), _view3D, SLOT(viewShowMap(bool)));
 	connect(viewShowGridLinesAction, SIGNAL(toggled(bool)), _view3D, SLOT(viewShowGrid(bool)));
 	connect(viewShowBackgroundAction, SIGNAL(toggled(bool)), _view3D, SLOT(viewShowBackground(bool)));
 	connect(viewShowIntersectionAction, SIGNAL(toggled(bool)), _view3D, SLOT(viewShowIntersection(bool)));
@@ -426,6 +434,7 @@ void MainWindow::createConnections(){
 	connect(_pDisplayCtrlWidget, SIGNAL(ContourLevel7Changed(int)), _pModel, SLOT(updateContourLevel7(int)));
 	connect(_pDisplayCtrlWidget, SIGNAL(ContourLevel8Changed(int)), _pModel, SLOT(updateContourLevel8(int)));
 	connect(_pDisplayCtrlWidget, SIGNAL(ContourLevel9Changed(int)), _pModel, SLOT(updateContourLevel9(int)));
+	connect(_pDisplayCtrlWidget, SIGNAL(Optimizing()), _pModel, SLOT(onOptimizing()));
 
 
 }
@@ -438,6 +447,7 @@ void MainWindow::closeEvent(QCloseEvent *event)
 // 	if (okToClearData()) 
 	{
 		QSettings settings;
+		settings.setValue(ShowMap, viewShowMapAction->isChecked());
 		settings.setValue(ShowGridLines, viewShowGridLinesAction->isChecked());
 		settings.setValue(ShowBackground, viewShowBackgroundAction->isChecked());
 		settings.setValue(ShowIntersection, viewShowIntersectionAction->isChecked());

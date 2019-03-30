@@ -17,7 +17,6 @@ MyGLWidget::MyGLWidget(QWidget *parent):QGLWidget(parent)
 , _nSelectedRight(-1)
 , _nSelectedTop(-1)
 , _nSelectedBottom(-1)
-, m_pt3Eye(0, 0, 300)
 , m_dbFovy(45)
 , m_dbZNear(0.0001)
 , m_dbZFar(1500.0)
@@ -51,6 +50,8 @@ void MyGLWidget::paintGL(){
 	gluLookAt(m_pt3Eye.x, m_pt3Eye.y, m_pt3Eye.z, m_pt3Eye.x, m_pt3Eye.y, 0, 0, 1, 0);
 
 	glScaled(m_dbScale, m_dbScale, 1);
+
+	//qDebug() << m_pt3Eye.x << m_pt3Eye.y << m_pt3Eye.z << m_dbScale << m_dbFovy << m_dbZNear << m_dbZFar;
 
 	paint();
 }
@@ -147,11 +148,11 @@ void MyGLWidget::wheelEvent(QWheelEvent * event)
 {
 	if (event->delta()>0)
 	{
-		m_dbScale *= 1.1;
+		m_dbScale *= 1.03;
 	}
 	else
 	{
-		m_dbScale *= .9;
+		m_dbScale *= .97;
 	}
 	updateGL();
 }

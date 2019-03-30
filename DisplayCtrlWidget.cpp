@@ -5,6 +5,7 @@
 #include <QSpinBox>
 #include <QComboBox>
 #include <QCheckBox>
+#include <QPushButton>
 
 #include <QDebug>
 #include "def.h"
@@ -129,6 +130,8 @@ void DisplayCtrlWidget::createWidgets() {
 	_pCheckBoxIsoValue8 = new QCheckBox; _pCheckBoxIsoValue8->setChecked(true);
 	_pCheckBoxIsoValue9 = new QCheckBox; _pCheckBoxIsoValue9->setChecked(true);
 	
+	_pBtnOptimization = new QPushButton;
+	_pBtnOptimization->setText("Optimizing");
 
 }
 
@@ -166,6 +169,7 @@ void DisplayCtrlWidget::createLayout() {
 	layout->addRow(tr("Iso-value 7:"), _pSpinBoxContourLevel7);
 	layout->addRow(tr("Iso-value 8:"), _pSpinBoxContourLevel8);
 	layout->addRow(tr("Iso-value 9:"), _pSpinBoxContourLevel9);
+	layout->addRow(tr("Optimization:"), _pBtnOptimization);
 	setLayout(layout);
 }
 
@@ -200,6 +204,7 @@ void DisplayCtrlWidget::createConnections() {
 	connect(_pCheckBoxIsoValue7, SIGNAL(clicked(bool)), this, SLOT(onIsoValue7(bool)));
 	connect(_pCheckBoxIsoValue8, SIGNAL(clicked(bool)), this, SLOT(onIsoValue8(bool)));
 	connect(_pCheckBoxIsoValue9, SIGNAL(clicked(bool)), this, SLOT(onIsoValue9(bool)));
+	connect(_pBtnOptimization, SIGNAL(clicked()), this, SLOT(onOptimizing()));
 }
 
 void DisplayCtrlWidget::updateBgFunction(int nBgFunction)
@@ -266,3 +271,6 @@ void DisplayCtrlWidget::updateContourLevel6(int nLevel) { emit ContourLevel6Chan
 void DisplayCtrlWidget::updateContourLevel7(int nLevel) { emit ContourLevel7Changed(nLevel); }
 void DisplayCtrlWidget::updateContourLevel8(int nLevel) { emit ContourLevel8Changed(nLevel); }
 void DisplayCtrlWidget::updateContourLevel9(int nLevel) { emit ContourLevel9Changed(nLevel); }
+void DisplayCtrlWidget::onOptimizing() {
+	//qDebug() << "DisplayCtrlWidget::onOptimizing()";
+	emit Optimizing(); }

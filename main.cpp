@@ -42,8 +42,11 @@ int g_nBiasD=0;
 //int g_nTimeEnd = 360;				// end of time steps
 
 
-int g_nTimeStart = 132;			// start of time steps
-int g_nTimeEnd = 132;				// end of time steps
+//int g_nTimeStart = 132;			// start of time steps
+//int g_nTimeEnd = 132;				// end of time steps
+
+int g_nTimeStart = 126;			// start of time steps
+int g_nTimeEnd = 126;				// end of time steps
 
 int main(int argc, char *argv[])
 {

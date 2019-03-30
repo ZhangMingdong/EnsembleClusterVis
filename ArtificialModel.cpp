@@ -293,10 +293,10 @@ void ArtificialModel::initializeModel() {
 	SetIsoValues(listIsoValue);
 
 
-	//generateDataFromContour();
+	generateDataFromContour();
 	//generateDataFromField();
 	//generateDataFromField_2();
-	generateDataFromField_3();
+	//generateDataFromField_3();
 	//generateDataFromField_4();
 
 
@@ -453,6 +453,9 @@ void ArtificialModel::generateDataFromField_2() {
 	}
 }
 
+QList<UnCertaintyArea*> ArtificialModel::GetUncertaintyAreaValid(int nTimeIndex, int isoIndex) { return _arrTimeSteps[0]->_listFeature[isoIndex]->GetUncertaintyAreaValid(); }
+QList<UnCertaintyArea*> ArtificialModel::GetUncertaintyAreaHalf(int nTimeIndex, int isoIndex) { return _arrTimeSteps[0]->_listFeature[isoIndex]->GetUncertaintyAreaHalf(); }
+QList<UnCertaintyArea*> ArtificialModel::GetUncertaintyArea(int nTimeIndex, int isoIndex) { return _arrTimeSteps[0]->_listFeature[isoIndex]->GetUncertaintyArea(); }
 
 
 

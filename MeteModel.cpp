@@ -810,14 +810,6 @@ void MeteModel::updateTimeStep() {
 			//listIsoValue.append(5550);
 			//listIsoValue.append(5600);
 
-			//listIsoValue.append(5300);
-			//listIsoValue.append(5400);
-			//listIsoValue.append(5500);
-			//listIsoValue.append(5600);
-			//listIsoValue.append(5700);
-			//listIsoValue.append(5800);
-			//listIsoValue.append(5900);
-
 
 			//listIsoValue.append(5300);
 			//listIsoValue.append(5500);
@@ -857,13 +849,23 @@ void MeteModel::updateTimeStep() {
 			//listIsoValue.append(5660);
 			//listIsoValue.append(5700);
 
+			//int nBase = 5620;
+			//int nStep = 30;
+
+
 			int nBase = 5620;
-			int nStep = 30;
-			for (int  i = -3; i < 3; i++)
-			{
-				listIsoValue.append(nBase + i * nStep);
+			int nStep = 100;
+
+			bool bBaseOnly = true;
+			if (bBaseOnly) {
+				listIsoValue.append(nBase);
 			}
-			//listIsoValue.append(nBase);
+			else {
+				for (int i = -3; i < 4; i++)
+				{
+					listIsoValue.append(nBase + i * nStep);
+				}
+			}
 
 			SetIsoValues(listIsoValue);
 		}
@@ -1465,3 +1467,9 @@ void MeteModel::updateContourLevel6(int nLevel) { _arrContourLevel[6] = nLevel; 
 void MeteModel::updateContourLevel7(int nLevel) { _arrContourLevel[7] = nLevel; UpdateView();}
 void MeteModel::updateContourLevel8(int nLevel) { _arrContourLevel[8] = nLevel; UpdateView();}
 void MeteModel::updateContourLevel9(int nLevel) { _arrContourLevel[9] = nLevel; UpdateView();}
+
+
+void MeteModel::onOptimizing() {
+	//qDebug() << "MeteModel::onOptimizing()";
+}
+

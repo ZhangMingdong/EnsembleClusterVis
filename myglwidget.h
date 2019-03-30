@@ -43,12 +43,13 @@ protected:
 	int _nSelectedBottom;
 
 protected:
-	DPoint3 m_pt3Eye;
 	GLdouble m_dbFovy;					// angle of eye open
 	GLdouble m_dbZNear;
 	GLdouble m_dbZFar;
 	GLuint m_uidlCity;
+	DPoint3 m_pt3Eye = DPoint3(0, 0, 300);
 	double m_dbScale = 500;
+
 
 protected:
 	double GetSWScale()
