@@ -19,8 +19,8 @@ const bool g_bDomainResampleContours = false;
 
 const bool g_bCalculateICD = false;
 
-const bool g_bClustering = true;
-const bool g_bResampleForClusters = true;		// resample for each clusters
+const bool g_bClustering = false;
+const bool g_bResampleForClusters = false;		// resample for each clusters
 
 
 
@@ -41,7 +41,7 @@ const bool g_bChart = false;	// if show the chart
 
 // ==================Chart=========================
 const bool g_bDrawHierarchy = false;
-const bool g_bDrawCluster = true;
+const bool g_bDrawCluster = false;
 
 // ==================Debug==========================
 const bool g_bDebugDataField = false;

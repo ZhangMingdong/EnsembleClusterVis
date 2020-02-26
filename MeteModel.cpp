@@ -853,10 +853,10 @@ void MeteModel::updateTimeStep() {
 			//int nStep = 30;
 
 
-			int nBase = 5620;
-			int nStep = 100;
+			int nBase = 5600;
+			int nStep = 20;
 
-			bool bBaseOnly = true;
+			bool bBaseOnly = false;
 			if (bBaseOnly) {
 				listIsoValue.append(nBase);
 			}
@@ -875,7 +875,6 @@ void MeteModel::updateTimeStep() {
 		{
 			_pTimeStep->_listFeature.append(new FeatureSet(_pTimeStep->_pData, isoValue, _nWidth, _nHeight, _nEnsembleLen));
 		}
-
 	}
 }
 

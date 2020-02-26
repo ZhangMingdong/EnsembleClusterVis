@@ -157,17 +157,17 @@ FeatureSet::FeatureSet(DataField* pData, double dbIsoValue, int nWidth, int nHei
 
 		// 10.2.calculate PCA
 
-		calculatePCA();
+		//calculatePCA();
 		//calculatePCA_Whole();
 		//calculatePCA_MDS();
 		//calculatePCA_MDS_Set();
-		//calculatePCA_MDS_Whole();
+		calculatePCA_MDS_Whole();
 		//calculatePCA_MDS_Whole_Density();
 		//calculatePCA_MutualInformation();
 
 		// 10.3.clustering
-		//doPCAClustering();
-		doClustering();
+		doPCAClustering();
+		//doClustering();
 
 		// 10.4.resample clusters
 		if (g_bResampleForClusters)
@@ -418,7 +418,7 @@ void FeatureSet::resampleContours_C() {
 	resampleBuf_C(_pSDF, _arrLabels, _pResampledSDF_C, _nClusters);
 
 	// 2.generate contours for each grid point
-	for (size_t l = 0; l < 55; l++)
+	for (size_t l = 0; l < _nClusters*11; l++)
 	{
 		QList<ContourLine> contour;
 		ContourGenerator::GetInstance()->Generate(_pResampledSDF_C + l * _nGrids, contour, 0, _nWidth, _nHeight);
@@ -944,20 +944,31 @@ double* FeatureSet::createDiverseArray() {
 	cluster using diverse grids
 */
 void FeatureSet::doClustering() {
-	// 2.cluster
+	// 1.create cluster instance
 	CLUSTER::Clustering* pClusterer = new CLUSTER::AHCClustering();
 	int nN = _nEnsembleLen;			// number of data items
-	int nM = _nDiverseCount;		// dimension
-	int nK = 1;			// clusters
-	double* arrBuf = createDiverseArray();
+	int nK = 1;
 
+	// 2.clustering
+	bool bUseDiversity = false;		// whether using diversity
+	if (bUseDiversity) {
+		// 2.cluster
+		int nM = _nDiverseCount;		// dimension
+		double* arrBuf = createDiverseArray();
 
-	pClusterer->DoCluster(nN, nM, nK, arrBuf, _arrLabels, _arrMergeSource, _arrMergeTarget);
+		pClusterer->DoCluster(nN, nM, nK, arrBuf, _arrLabels, _arrMergeSource, _arrMergeTarget);
 
+		delete[] arrBuf;
+	}
+	else {
+		int nM = _nGrids;
+		pClusterer->DoCluster(nN, nM, nK, _pSDF, _arrLabels, _arrMergeSource, _arrMergeTarget);
+	}
+
+	// 3.reset labels
 	resetLabels();
 
-	// 5.release the resouse
-	delete[] arrBuf;
+	// 4.release cluster instance
 	delete pClusterer;
 }
 
